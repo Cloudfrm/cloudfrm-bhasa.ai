@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from pydantic import Field
@@ -7,6 +8,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 SERVICE_ROOT = Path(__file__).resolve().parents[2]
 PROJECT_ROOT = SERVICE_ROOT.parent
+# Vercel (and most serverless runtimes) ship a read-only deployment bundle;
+# only /tmp is writable at runtime.
+_WRITABLE_DATA_ROOT = Path("/tmp/himalaya-support") if os.environ.get("VERCEL") else SERVICE_ROOT / "data"
 
 
 class Settings(BaseSettings):
@@ -75,7 +79,7 @@ class Settings(BaseSettings):
 
     @property
     def store_dir(self) -> Path:
-        path = self.data_dir / "store"
+        path = _WRITABLE_DATA_ROOT / "store"
         path.mkdir(parents=True, exist_ok=True)
         return path
 
