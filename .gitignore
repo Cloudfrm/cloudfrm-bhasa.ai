@@ -1,6 +1,8 @@
 .env
 .venv/
 venv/
+officer-desk/node_modules/
+officer-desk/.next/
 __pycache__/
 *.py[cod]
 *.egg-info/
