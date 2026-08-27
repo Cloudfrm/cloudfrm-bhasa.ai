@@ -1,0 +1,32 @@
+[project]
+name = "himalaya-support"
+version = "0.1.0"
+description = "AI customer support module powered by Himalaya AI models and datasets."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0,<0.130.0",
+    "uvicorn[standard]>=0.32.0,<0.36.0",
+    "httpx>=0.28.0,<0.29.0",
+    "pydantic>=2.10.0,<3.0.0",
+    "pydantic-settings>=2.7.0,<3.0.0",
+    "huggingface-hub>=0.28.0,<1.0.0",
+    "python-multipart>=0.0.18",
+    "python-dotenv>=1.0.1",
+    "edge-tts>=7.2.0,<8.0.0",
+]
+
+[project.optional-dependencies]
+local = ["torch", "transformers", "accelerate"]
+ocr = ["pillow"]
+
+[project.scripts]
+support-api = "himalaya_support.main:run"
+support-chat = "himalaya_support.cli:main"
+support-sync = "himalaya_support.rag.sync:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

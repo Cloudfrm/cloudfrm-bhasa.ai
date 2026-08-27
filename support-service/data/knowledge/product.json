@@ -1,0 +1,104 @@
+{
+  "product": "Bhasa",
+  "locale_default": "ne",
+  "articles": [
+    {
+      "id": "login-reset",
+      "language": "en",
+      "tags": ["account", "login", "password", "pin", "mobile-banking"],
+      "title": "Mobile banking login and PIN",
+      "body": "Open the cooperative or bank mobile app, tap Sign in, then Forgot PIN/password. Enter the registered mobile number. A 6-digit OTP is valid for 10 minutes. Set a new PIN of 4–6 digits or a password of at least 8 characters. After 5 failed tries the login locks for 30 minutes. Never share PIN, password, or OTP in this desk."
+    },
+    {
+      "id": "login-reset-ne",
+      "language": "ne",
+      "tags": ["account", "login", "password", "pin", "mobile-banking"],
+      "title": "मोबाइल बैंकिङ लगइन र पिन",
+      "body": "सहकारी वा बैंकको मोबाइल एप खोल्नुहोस्, साइन इन > पिन/पासवर्ड बिर्सनुभयो। दर्ता मोबाइल नम्बर हाल्नुहोस्। ६ अङ्कको ओटीपी १० मिनेटमा सकिन्छ। नयाँ पिन ४–६ अङ्क वा पासवर्ड कम्तीमा ८ अक्षर राख्नुहोस्। ५ पटक गलत भए ३० मिनेट लक हुन्छ। यस सेवामा पिन, पासवर्ड वा ओटीपी नदिनुहोस्।"
+    },
+    {
+      "id": "transfer",
+      "language": "en",
+      "tags": ["transfer", "remittance", "billing"],
+      "title": "Transfers and failed payments",
+      "body": "Fund transfers show as pending until the receiving bank confirms, usually within minutes, up to one working day for some IPS/connectIPS cases. If money left your account but the beneficiary did not receive it, note the last 4 digits of the account, approximate time, and amount. Duplicate debit is reversed after the payment reference is confirmed. Do not send full account numbers in chat if not asked."
+    },
+    {
+      "id": "transfer-ne",
+      "language": "ne",
+      "tags": ["transfer", "remittance", "billing"],
+      "title": "रकम स्थानान्तरण र असफल भुक्तानी",
+      "body": "स्थानान्तरण प्रापक बैंकले पुष्टि नगर्दासम्म पेन्डिङ देखिन सक्छ, सामान्यतया केही मिनेट, कहिलेकाहीं एक कार्य दिन। रकम कट्टी भए तर नपुगे खाताका अन्तिम ४ अङ्क, समय र रकम भन्नुहोस्। दोहोरो कट्टी सन्दर्भ नम्बर पुष्टि भएपछि फिर्ता हुन्छ। नमागेसम्म पूरा खाता नम्बर च्याटमा नलेख्नुहोस्।"
+    },
+    {
+      "id": "loan",
+      "language": "en",
+      "tags": ["loan", "emi", "billing"],
+      "title": "Loans and instalments",
+      "body": "Loan instalments (EMI) are due on the date in the passbook or app. Pay from Savings > Loan payment. A missed instalment may add a late fee as per the cooperative/bank rules. For a new loan or reschedule, a human officer must review documents. Collect member number and loan type before escalating."
+    },
+    {
+      "id": "loan-ne",
+      "language": "ne",
+      "tags": ["loan", "emi", "billing"],
+      "title": "ऋण र किस्ता",
+      "body": "ऋण किस्ता पासबुक वा एपमा लेखिएको मितिमा तिर्नुपर्छ। बचत > ऋण भुक्तानी बाट तिर्न सकिन्छ। छुटेमा सहकारी/बैंक नियमअनुसार जरिवाना लाग्न सक्छ। नयाँ ऋण वा तालिका मिलाउन अधिकृतले कागजात हेर्नुपर्छ। एस्केलेट गर्नुअघि सदस्य नम्बर र ऋणको प्रकार लिनुहोस्।"
+    },
+    {
+      "id": "kyc",
+      "language": "en",
+      "tags": ["onboarding", "kyc", "account"],
+      "title": "Account, KYC, and membership",
+      "body": "New members complete KYC with citizenship or national ID at the branch or in the app under Profile > Verify. Unverified accounts cannot transfer above the daily limit. Name or mobile changes need a branch visit with original ID. OTP for KYC expires in 10 minutes."
+    },
+    {
+      "id": "kyc-ne",
+      "language": "ne",
+      "tags": ["onboarding", "kyc", "account"],
+      "title": "खाता, केवाईसी र सदस्यता",
+      "body": "नयाँ सदस्यले नागरिकता वा राष्ट्रिय परिचयपत्रले शाखा वा एपको प्रोफाइल > प्रमाणित मा केवाईसी पूरा गर्छन्। प्रमाणित नभएको खाताले दैनिक सीमाभन्दा बढी पठाउन सक्दैन। नाम वा मोबाइल बदल्न मूल परिचयपत्र लिएर शाखा जानुपर्छ। केवाईसी ओटीपी १० मिनेटमा सकिन्छ।"
+    },
+    {
+      "id": "card",
+      "language": "en",
+      "tags": ["technical", "card", "atm"],
+      "title": "Card, ATM, and app issues",
+      "body": "If a debit card is lost, freeze it in the app: Cards > Lock, then visit the branch with ID. ATM cash not received but account debited is reversed after the journal is checked, usually 3–7 working days. If the app crashes, update it, then clear cache only. Share device and app version if it still fails."
+    },
+    {
+      "id": "card-ne",
+      "language": "ne",
+      "tags": ["technical", "card", "atm"],
+      "title": "कार्ड, एटीएम र एप समस्या",
+      "body": "डेबिट कार्ड हराए एपमा कार्ड > लक गर्नुहोस्, अनि परिचयपत्र लिएर शाखा जानुहोस्। एटीएमले पैसा नदिए तर खाता कट्टी भए जर्नल जाँचपछि ३–७ कार्य दिनमा फिर्ता हुन्छ। एप क्र्यास भए अपडेट गर्नुहोस्, क्यास मात्र क्लियर गर्नुहोस्। नखुले डिभाइस र एप संस्करण भन्नुहोस्।"
+    },
+    {
+      "id": "privacy",
+      "language": "en",
+      "tags": ["policy", "privacy", "security"],
+      "title": "Security at this support desk",
+      "body": "Bhasa staff never ask for full PIN, password, OTP, or CVV. Do not type them here. For fraud or legal matters we open a ticket for a human officer. Account closure follows branch procedure and can take up to 30 days."
+    },
+    {
+      "id": "privacy-ne",
+      "language": "ne",
+      "tags": ["policy", "privacy", "security"],
+      "title": "यो सेवामा सुरक्षा",
+      "body": "भाषा सेवामा पूरा पिन, पासवर्ड, ओटीपी वा सीभीभी कहिल्यै मागिँदैन। यहाँ नलेख्नुहोस्। ठगी वा कानुनी विषयमा मानव अधिकृतलाई टिकट खोलिन्छ। खाता बन्द शाखा प्रक्रियाअनुसार ३० दिनसम्म लाग्न सक्छ।"
+    },
+    {
+      "id": "greeting",
+      "language": "en",
+      "tags": ["greeting", "smalltalk"],
+      "title": "Greetings",
+      "body": "If the member says namaste, sanchai, or hello, greet as Bhasa customer support for their cooperative or bank. Offer help with login, transfers, loans, KYC, or cards. Do not say you have no physical location."
+    },
+    {
+      "id": "greeting-ne",
+      "language": "ne",
+      "tags": ["greeting", "smalltalk"],
+      "title": "अभिवादन",
+      "body": "सदस्यले नमस्ते, सञ्चै, sanchai वा hello भने भाषा ग्राहक सेवाबाट सम्मानपूर्वक जवाफ दिनुहोस्। लगइन, रकम, ऋण, केवाईसी वा कार्डमा सहयोग प्रस्ताब गर्नुहोस्। आफूलाई स्थान नभएको एआई भन्नु पर्दैन।"
+    }
+  ]
+}

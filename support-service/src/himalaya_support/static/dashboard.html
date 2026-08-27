@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>भाषा · डेसबोर्ड</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #f4f7f5;
+      --muted: #c3d4ce;
+      --line: rgba(255, 255, 255, 0.16);
+      --glass: rgba(255, 255, 255, 0.1);
+      --glass-hi: rgba(255, 255, 255, 0.16);
+      --glass-mid: rgba(255, 255, 255, 0.08);
+      --gold: #e0c078;
+      --gold-deep: #8f6d2a;
+      --leaf: #8fe3cf;
+      --crimson: #ff6b7a;
+      --blur: 28px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; width: 100%; margin: 0; }
+    body {
+      color: var(--ink);
+      font-family: "Noto Sans Devanagari", "Segoe UI", sans-serif;
+      background: #061310;
+      overflow: hidden;
+      color-scheme: dark;
+    }
+    .atmosphere {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(980px 700px at 8% 12%, rgba(224, 192, 120, 0.55), transparent 58%),
+        radial-gradient(860px 760px at 92% 8%, rgba(46, 200, 168, 0.55), transparent 56%),
+        radial-gradient(720px 560px at 78% 92%, rgba(255, 107, 122, 0.32), transparent 58%),
+        radial-gradient(560px 460px at 12% 86%, rgba(90, 210, 196, 0.4), transparent 52%),
+        linear-gradient(165deg, #04110e 0%, #0a2621 48%, #12352c 100%);
+    }
+    .atmosphere .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(40px);
+      opacity: 0.7;
+      animation: drift 22s ease-in-out infinite;
+    }
+    .orb-a { width: 340px; height: 340px; left: 8%; top: 18%; background: rgba(224, 192, 120, 0.45); }
+    .orb-b { width: 420px; height: 420px; right: 4%; top: -8%; background: rgba(47, 170, 148, 0.4); animation-delay: -7s; }
+    .orb-c { width: 280px; height: 280px; right: 22%; bottom: 4%; background: rgba(255, 107, 122, 0.28); animation-delay: -13s; }
+    @keyframes drift {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(28px, -22px) scale(1.08); }
+    }
+    .glass {
+      background: var(--glass);
+      backdrop-filter: blur(var(--blur)) saturate(165%);
+      -webkit-backdrop-filter: blur(var(--blur)) saturate(165%);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    }
+    .app {
+      position: relative;
+      z-index: 1;
+      height: 100vh;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 248px 1fr;
+      gap: 14px;
+      padding: 14px;
+    }
+    .sidebar {
+      color: #f6f3ec;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 18px;
+      min-height: 0;
+      border-radius: 24px;
+    }
+    .brand { display: flex; gap: 12px; align-items: center; margin-bottom: 28px; }
+    .mark {
+      width: 44px; height: 44px; border-radius: 14px;
+      background: linear-gradient(145deg, var(--gold), var(--gold-deep));
+      color: #0b3a32;
+      font-family: "Source Serif 4", Georgia, serif;
+      font-weight: 700; font-size: 22px;
+      display: grid; place-items: center; flex-shrink: 0;
+      box-shadow: 0 8px 20px rgba(224, 192, 120, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+    .brand h1 { margin: 0; font-size: 26px; font-family: "Source Serif 4", Georgia, serif; }
+    .brand small { display: block; color: #d5e4df; font-size: 12px; margin-top: 2px; }
+    .sidebar nav { display: flex; flex-direction: column; gap: 6px; }
+    .sidebar nav button {
+      text-align: left;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #d5e4df;
+      font: inherit;
+      font-weight: 600;
+      font-size: 15px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background .2s, border-color .2s, color .2s;
+    }
+    .sidebar nav button:hover { background: var(--glass-mid); border-color: var(--line); }
+    .sidebar nav button.active {
+      background: rgba(224, 192, 120, 0.22);
+      border-color: rgba(224, 192, 120, 0.45);
+      color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .sidebar .grow { flex: 1; }
+    .lang-switch { display: flex; gap: 6px; }
+    .lang-switch button, .topbar .controls button {
+      border: 1px solid var(--line);
+      background: var(--glass-mid);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .lang-switch button.active, .topbar .controls button.active {
+      background: linear-gradient(145deg, var(--gold), #c4a35a);
+      color: #0b3a32;
+      border-color: rgba(224, 192, 120, 0.7);
+    }
+    .main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      border-radius: 24px;
+      overflow: hidden;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 28px;
+      background: rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+    .topbar h2 { margin: 0; font-size: 20px; font-family: "Source Serif 4", Georgia, serif; }
+    .status { display: flex; align-items: center; gap: 8px; color: var(--leaf); font-weight: 600; font-size: 14px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #3fd19a; box-shadow: 0 0 10px #3fd19a; }
+    .dot.busy { background: var(--crimson); box-shadow: 0 0 10px var(--crimson); }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .stage { flex: 1; min-height: 0; display: grid; }
+    .stage.home, .stage.settings { grid-template-columns: 1fr; }
+    .stage.work { grid-template-columns: 300px 1fr; }
+    .inbox {
+      background: rgba(255, 255, 255, 0.04);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .inbox header {
+      padding: 16px 16px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .inbox h3 { margin: 0; font-size: 15px; }
+    .inbox .new {
+      border: 1px solid var(--line);
+      background: var(--glass-hi);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font: inherit;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .inbox .list { overflow: auto; flex: 1; padding: 0 10px 12px; }
+    .thread {
+      width: 100%; text-align: left; border: 1px solid transparent; background: transparent;
+      border-radius: 12px; padding: 10px; cursor: pointer; font: inherit; color: inherit;
+    }
+    .thread:hover, .thread.on {
+      background: var(--glass-hi);
+      border-color: var(--line);
+    }
+    .thread .meta { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .thread .preview {
+      margin-top: 4px; font-size: 13px;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .tickets { padding: 10px 16px 16px; border-top: 1px solid var(--line); }
+    .tickets h4 { margin: 0 0 8px; font-size: 12px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+    .ticket { font-size: 13px; color: var(--muted); padding: 4px 0; }
+    .desk { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: transparent; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 24px 0; }
+    .chips button {
+      border: 1px solid var(--line);
+      background: var(--glass-mid);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .chips button:hover { background: var(--glass-hi); border-color: rgba(224, 192, 120, 0.45); }
+    #log, #call-log { flex: 1; overflow: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .welcome, .home, .settings { padding: 36px 40px; overflow: auto; }
+    .welcome {
+      background: var(--glass-mid);
+      backdrop-filter: blur(22px) saturate(160%);
+      -webkit-backdrop-filter: blur(22px) saturate(160%);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 22px;
+      max-width: 640px;
+      margin: 24px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    }
+    .welcome h2, .home h2, .settings h2 { margin: 0 0 8px; font-size: 28px; font-family: "Source Serif 4", Georgia, serif; }
+    .welcome p, .lede, .settings p { margin: 0; color: var(--muted); line-height: 1.55; max-width: 640px; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin: 28px 0;
+    }
+    .stat, .door {
+      background: var(--glass-mid);
+      backdrop-filter: blur(22px) saturate(160%);
+      -webkit-backdrop-filter: blur(22px) saturate(160%);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      transition: transform .2s, border-color .2s, background .2s;
+    }
+    .stat span, .door span { display: block; color: var(--muted); font-size: 13px; font-weight: 600; }
+    .stat strong { display: block; font-size: 32px; margin-top: 8px; font-family: "Source Serif 4", Georgia, serif; }
+    .doors { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .door { cursor: pointer; text-align: left; font: inherit; color: inherit; width: 100%; }
+    .door:hover { border-color: rgba(224, 192, 120, 0.55); background: var(--glass-hi); transform: translateY(-2px); }
+    .door h3 { margin: 8px 0 6px; font-size: 22px; font-family: "Source Serif 4", Georgia, serif; }
+    .door p { margin: 0; color: var(--muted); line-height: 1.5; }
+    .turn { display: flex; flex-direction: column; gap: 6px; max-width: 720px; }
+    .turn.member { align-self: flex-end; align-items: flex-end; }
+    .who { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .bubble {
+      padding: 12px 14px;
+      border-radius: 16px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .member .bubble {
+      background: rgba(224, 192, 120, 0.28);
+      border: 1px solid rgba(224, 192, 120, 0.42);
+      color: #fff8e8;
+    }
+    .agent .bubble {
+      background: var(--glass-hi);
+      border: 1px solid var(--line);
+    }
+    .err .bubble { background: rgba(255, 107, 122, 0.18); border-color: rgba(255, 107, 122, 0.45); color: #ffd0d5; }
+    .play { border: 0; background: transparent; color: var(--leaf); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; }
+    .loading { color: var(--muted); display: flex; align-items: center; gap: 10px; }
+    .dots { display: inline-flex; gap: 4px; }
+    .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); animation: bounce 1s infinite ease-in-out; }
+    .dots span:nth-child(2) { animation-delay: .15s; }
+    .dots span:nth-child(3) { animation-delay: .3s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: .35; }
+      40% { transform: translateY(-5px); opacity: 1; }
+    }
+    .composer {
+      padding: 16px 24px 20px;
+      border-top: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .composer form { display: flex; gap: 8px; }
+    .composer input {
+      flex: 1; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line);
+      font: inherit; background: var(--glass-mid); color: var(--ink);
+    }
+    .composer input::placeholder { color: #9bb4ad; }
+    .composer input:focus { outline: 2px solid rgba(224, 192, 120, 0.45); border-color: var(--gold); }
+    .unicoder { min-height: 22px; margin-top: 8px; color: var(--leaf); font-weight: 600; font-size: 15px; }
+    .unicoder.idle { color: var(--muted); font-weight: 500; font-size: 13px; }
+    .composer button, .call-actions button {
+      border: 0; border-radius: 14px; padding: 12px 16px; font: inherit; font-weight: 700; cursor: pointer;
+    }
+    #send {
+      background: linear-gradient(145deg, var(--gold), #c4a35a);
+      color: #0b3a32;
+      min-width: 108px;
+      box-shadow: 0 8px 18px rgba(224, 192, 120, 0.25);
+    }
+    #mic {
+      background: var(--glass-hi);
+      color: var(--ink);
+      border: 1px solid var(--line) !important;
+      min-width: 52px;
+    }
+    #mic.hot { background: var(--crimson); color: #fff; border-color: var(--crimson) !important; }
+    button:disabled { opacity: .55; }
+    .hidden { display: none !important; }
+    .call-stage { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .ring {
+      margin: 36px auto 0; width: 168px; height: 168px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: var(--glass-hi);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      border: 6px solid rgba(224, 192, 120, 0.35);
+      font-family: "Source Serif 4", Georgia, serif; font-size: 42px; color: var(--gold);
+      box-shadow: 0 0 40px rgba(224, 192, 120, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+    .ring.live { border-color: var(--crimson); box-shadow: 0 0 0 10px rgba(255, 107, 122, 0.18), 0 0 40px rgba(255, 107, 122, 0.28); }
+    .call-copy { text-align: center; margin: 16px 24px 0; }
+    .call-copy h3 { margin: 0 0 6px; font-family: "Source Serif 4", Georgia, serif; font-size: 24px; }
+    .call-copy p { margin: 0; color: var(--muted); }
+    .call-actions { display: flex; justify-content: center; gap: 10px; padding: 18px; }
+    #pickup {
+      background: linear-gradient(145deg, var(--gold), #c4a35a);
+      color: #0b3a32;
+      min-width: 180px;
+    }
+    #hangup { background: var(--crimson); color: #fff; min-width: 140px; }
+    .empty { color: var(--muted); font-size: 13px; padding: 8px; }
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      .glass, .stat, .door, .welcome, .bubble { background: rgba(18, 48, 42, 0.92); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .atmosphere .orb { animation: none; }
+      .door { transition: none; }
+    }
+    @media (max-width: 960px) {
+      body { overflow: auto; }
+      .app { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+      .sidebar { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px; }
+      .brand { margin: 0; }
+      .sidebar nav { flex-direction: row; flex-wrap: wrap; }
+      .sidebar .grow { display: none; }
+      .stage.work { grid-template-columns: 1fr; }
+      .inbox { max-height: 180px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .stats, .doors { grid-template-columns: 1fr; }
+      .home, .settings { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true">
+    <span class="orb orb-a"></span>
+    <span class="orb orb-b"></span>
+    <span class="orb orb-c"></span>
+  </div>
+  <div class="app" id="app">
+    <aside class="sidebar glass">
+      <div class="brand">
+        <div class="mark">भा</div>
+        <div>
+          <h1>भाषा</h1>
+          <small id="brand-sub">ग्राहक सेवा डेसबोर्ड</small>
+        </div>
+      </div>
+      <nav>
+        <button type="button" id="nav-home" class="active" data-view="home"></button>
+        <button type="button" id="nav-chat" data-view="chat"></button>
+        <button type="button" id="nav-call" data-view="call"></button>
+        <button type="button" id="nav-settings" data-view="settings"></button>
+      </nav>
+      <div class="grow"></div>
+      <div class="lang-switch">
+        <button type="button" id="lang-ne" class="active">नेपाली</button>
+        <button type="button" id="lang-en">English</button>
+      </div>
+    </aside>
+    <div class="main glass">
+      <header class="topbar">
+        <div>
+          <h2 id="page-title"></h2>
+          <div class="status"><span class="dot" id="status-dot"></span><span id="live"></span></div>
+        </div>
+        <div class="controls">
+          <button type="button" id="speak-toggle" class="active"></button>
+        </div>
+      </header>
+      <div class="stage home" id="stage">
+        <section class="home" id="view-home">
+          <h2 id="home-title"></h2>
+          <p class="lede" id="home-lede"></p>
+          <div class="stats">
+            <div class="stat"><span id="stat-chat-label"></span><strong id="stat-chat">0</strong></div>
+            <div class="stat"><span id="stat-call-label"></span><strong id="stat-call">0</strong></div>
+            <div class="stat"><span id="stat-ticket-label"></span><strong id="stat-ticket">0</strong></div>
+          </div>
+          <div class="doors">
+            <button type="button" class="door" data-go="chat">
+              <span id="door-chat-kicker"></span>
+              <h3 id="door-chat-title"></h3>
+              <p id="door-chat-body"></p>
+            </button>
+            <button type="button" class="door" data-go="call">
+              <span id="door-call-kicker"></span>
+              <h3 id="door-call-title"></h3>
+              <p id="door-call-body"></p>
+            </button>
+          </div>
+        </section>
+        <aside class="inbox hidden" id="inbox-pane">
+          <header>
+            <h3 id="inbox-title"></h3>
+            <button type="button" class="new" id="new-thread"></button>
+          </header>
+          <div class="list" id="inbox-list"></div>
+          <div class="tickets" id="ticket-box">
+            <h4 id="tickets-label"></h4>
+            <div id="ticket-list"></div>
+          </div>
+        </aside>
+        <section class="desk hidden" id="view-chat">
+          <div class="chips" id="chips"></div>
+          <div id="log"></div>
+          <div class="composer">
+            <form id="form">
+              <button id="mic" type="button">🎤</button>
+              <input id="box" autocomplete="off" />
+              <button id="send" type="submit"></button>
+            </form>
+            <div id="unicoder" class="unicoder idle"></div>
+          </div>
+        </section>
+        <section class="desk hidden" id="view-call">
+          <div class="call-stage">
+            <div class="ring" id="ring">भा</div>
+            <div class="call-copy">
+              <h3 id="call-title"></h3>
+              <p id="call-body"></p>
+            </div>
+            <div class="call-actions">
+              <button type="button" id="pickup"></button>
+              <button type="button" id="hangup" class="hidden"></button>
+            </div>
+            <div id="call-log"></div>
+          </div>
+        </section>
+        <section class="settings hidden" id="view-settings">
+          <h2 id="settings-title"></h2>
+          <p id="settings-body"></p>
+        </section>
+      </div>
+    </div>
+  </div>
+  <script>
+    const copy = {
+      ne: {
+        title: "भाषा · डेसबोर्ड",
+        brandSub: "ग्राहक सेवा डेसबोर्ड",
+        home: "डेसबोर्ड",
+        chat: "च्याट",
+        call: "कल",
+        settings: "सेटिङ",
+        pageHome: "अवलोकन",
+        pageChat: "ग्राहक च्याट",
+        pageCall: "एआई कल",
+        pageSettings: "सेटिङ",
+        liveHome: "सेवा खुला",
+        liveChat: "सेवा खुला · च्याट",
+        liveIdle: "निष्क्रिय · कल",
+        liveOn: "लाइनमा · एआईले उठायो",
+        voice: "आवाज",
+        homeTitle: "नमस्ते, यो भाषा डेसबोर्ड हो",
+        homeLede: "सदस्यलाई च्याट वा कलबाट सहयोग गर्नुहोस्। एउटै Gemma दिमाग दुवैमा जवाफ दिन्छ।",
+        statChat: "च्याट संवाद",
+        statCall: "कल",
+        statTicket: "खुला टिकट",
+        doorChatKicker: "लेखेर",
+        doorChatTitle: "ग्राहक सहयोग च्याट",
+        doorChatBody: "नेपाली वा अंग्रेजी अक्षरमा लेख्नुहोस्। युनिकोडमा बदलिन्छ, त्यसपछि जवाफ आउँछ।",
+        doorCallKicker: "बोलेर",
+        doorCallTitle: "एआईले कल उठाउँछ",
+        doorCallBody: "उठ्नुहोस् थिच्नुहोस्। भाषा सेवा सुन्छ र नेपालीमा बोल्छ। फोन लाइन पछि।",
+        welcomeTitle: "नमस्ते, म भाषा हुँ",
+        welcomeBody: "लगइन, रकम, ऋण, केवाईसी वा कार्ड — विषय छान्नुहोस् वा समस्या लेख्नुहोस्।",
+        placeholder: "नेपाली वा अंग्रेजी अक्षरमा लेख्नुहोस्…",
+        unicoderHint: "अंग्रेजी अक्षर यहाँ नेपाली युनिकोडमा बदलिन्छ",
+        unicoderLabel: "नेपालीमा: ",
+        send: "पठाउनुहोस्",
+        mic: "बोल्नुहोस्",
+        agent: "भाषा सेवा",
+        member: "तपाईं",
+        play: "सुन्नुहोस्",
+        newThread: "नयाँ",
+        tickets: "टिकट",
+        emptyInbox: "अहिले संवाद छैन",
+        emptyTickets: "खुला टिकट छैन",
+        callTitle: "एआईले कल उठाउँछ",
+        callBody: "उठ्नुहोस् थिच्नुहोस् — भाषा सेवा जवाफ दिन्छ। यो ब्राउजर कल हो, फोन लाइन पछि जोडिन्छ।",
+        pickup: "कल उठाउनुहोस्",
+        hangup: "राख्नुहोस्",
+        settingsTitle: "सेटिङ",
+        settingsBody: "एपीआई की, फोन नम्बर र ज्ञान भण्डार यहीँ आउँछ। अहिले च्याट र कल मात्र खुला छन्।",
+        ticketPrefix: "टिकट: ",
+        micErr: "आवाजका लागि Chrome वा Edge प्रयोग गर्नुहोस्।",
+        hearErr: "सुनिएन। फेरि बोल्नुहोस्।"
+      },
+      en: {
+        title: "Bhasa · Dashboard",
+        brandSub: "Customer support dashboard",
+        home: "Dashboard",
+        chat: "Chat",
+        call: "Call",
+        settings: "Settings",
+        pageHome: "Overview",
+        pageChat: "Support chat",
+        pageCall: "AI call",
+        pageSettings: "Settings",
+        liveHome: "Service open",
+        liveChat: "Open · chat",
+        liveIdle: "Idle · call",
+        liveOn: "On a call · AI picked up",
+        voice: "Voice",
+        homeTitle: "Namaste, this is the Bhasa dashboard",
+        homeLede: "Help members by chat or call. The same Gemma brain answers both.",
+        statChat: "Chat threads",
+        statCall: "Calls",
+        statTicket: "Open tickets",
+        doorChatKicker: "Type",
+        doorChatTitle: "Customer support chat",
+        doorChatBody: "Type in Nepali or English letters. They convert to Unicode, then Bhasa replies.",
+        doorCallKicker: "Speak",
+        doorCallTitle: "AI picks up the call",
+        doorCallBody: "Press pick up. Bhasa listens and speaks. A phone line comes later.",
+        welcomeTitle: "Namaste, I am Bhasa",
+        welcomeBody: "Login, transfers, loans, KYC, or cards — pick a topic or type the issue.",
+        placeholder: "Type in English letters — they convert to Nepali…",
+        unicoderHint: "English letters convert to Nepali Unicode here",
+        unicoderLabel: "Nepali: ",
+        send: "Send",
+        mic: "Speak",
+        agent: "Bhasa support",
+        member: "You",
+        play: "Listen",
+        newThread: "New",
+        tickets: "Tickets",
+        emptyInbox: "No conversations yet",
+        emptyTickets: "No open tickets",
+        callTitle: "AI picks up the call",
+        callBody: "Press pick up — Bhasa answers. This is a browser call; a phone line comes later.",
+        pickup: "Pick up",
+        hangup: "Hang up",
+        settingsTitle: "Settings",
+        settingsBody: "API keys, phone numbers, and knowledge will live here. Chat and Call are open now.",
+        ticketPrefix: "Ticket: ",
+        micErr: "Voice needs Chrome or Edge.",
+        hearErr: "Could not hear that. Speak again."
+      }
+    };
+    const topics = [
+      { ne: "मोबाइल बैंकिङ", en: "Mobile banking", neMsg: "मोबाइल बैंकिङमा लगइन गर्न सकिएन", enMsg: "I cannot sign in to mobile banking" },
+      { ne: "पिन / पासवर्ड", en: "PIN / password", neMsg: "मेरो पिन बिर्सें", enMsg: "I forgot my PIN" },
+      { ne: "रकम", en: "Transfers", neMsg: "रकम पठाएँ तर पुगेन", enMsg: "I sent money but it did not arrive" },
+      { ne: "ऋण", en: "Loans", neMsg: "ऋण किस्ता कहिले तिर्ने?", enMsg: "When is my loan instalment due?" },
+      { ne: "केवाईसी", en: "KYC", neMsg: "केवाईसी कसरी गर्ने?", enMsg: "How do I complete KYC?" },
+      { ne: "कार्ड", en: "Cards", neMsg: "कार्ड हरायो, के गर्ने?", enMsg: "My card is lost. What should I do?" },
+      { ne: "ब्याजदर", en: "Interest rate", neMsg: "बचत खाताको ब्याजदर कति हो?", enMsg: "What is the savings interest rate?" }
+    ];
+
+    const log = document.getElementById("log");
+    const callLog = document.getElementById("call-log");
+    const box = document.getElementById("box");
+    const send = document.getElementById("send");
+    const mic = document.getElementById("mic");
+    const unicoderHint = document.getElementById("unicoder");
+    let view = "home";
+    let replyLang = localStorage.getItem("bhasa-lang") || "ne";
+    let speakOn = localStorage.getItem("bhasa-speak") !== "off";
+    let chatId = null;
+    let callId = null;
+    let callLive = false;
+    let lastAudio = null;
+    let started = false;
+    let lastMemberBubble = null;
+    let unicoderTimer = null;
+    let unicoderReq = 0;
+    let callRec = null;
+    let callBusy = false;
+
+    function t() { return copy[replyLang]; }
+    function hasLatin(text) { return /[A-Za-z]/.test(text || ""); }
+
+    function setView(name) {
+      view = name;
+      const work = name === "chat" || name === "call";
+      document.getElementById("stage").className = "stage " + (work ? "work" : name);
+      document.getElementById("view-home").classList.toggle("hidden", name !== "home");
+      document.getElementById("view-chat").classList.toggle("hidden", name !== "chat");
+      document.getElementById("view-call").classList.toggle("hidden", name !== "call");
+      document.getElementById("view-settings").classList.toggle("hidden", name !== "settings");
+      document.getElementById("inbox-pane").classList.toggle("hidden", !work);
+      document.getElementById("nav-home").classList.toggle("active", name === "home");
+      document.getElementById("nav-chat").classList.toggle("active", name === "chat");
+      document.getElementById("nav-call").classList.toggle("active", name === "call");
+      document.getElementById("nav-settings").classList.toggle("active", name === "settings");
+      document.getElementById("ticket-box").classList.toggle("hidden", name !== "chat");
+      document.getElementById("speak-toggle").classList.toggle("hidden", name !== "chat");
+      paintChrome();
+      if (name === "home") loadHome();
+      if (work) loadInbox();
+      if (name === "chat") loadTickets();
+    }
+
+    function paintChrome() {
+      const c = t();
+      document.documentElement.lang = replyLang === "ne" ? "ne" : "en";
+      document.title = c.title;
+      document.getElementById("brand-sub").textContent = c.brandSub;
+      document.getElementById("nav-home").textContent = c.home;
+      document.getElementById("nav-chat").textContent = c.chat;
+      document.getElementById("nav-call").textContent = c.call;
+      document.getElementById("nav-settings").textContent = c.settings;
+      document.getElementById("page-title").textContent = ({
+        home: c.pageHome, chat: c.pageChat, call: c.pageCall, settings: c.pageSettings
+      })[view];
+      document.getElementById("live").textContent = view === "call"
+        ? (callLive ? c.liveOn : c.liveIdle)
+        : (view === "chat" ? c.liveChat : c.liveHome);
+      document.getElementById("speak-toggle").textContent = c.voice;
+      document.getElementById("speak-toggle").classList.toggle("active", speakOn);
+      document.getElementById("lang-ne").classList.toggle("active", replyLang === "ne");
+      document.getElementById("lang-en").classList.toggle("active", replyLang === "en");
+      document.getElementById("home-title").textContent = c.homeTitle;
+      document.getElementById("home-lede").textContent = c.homeLede;
+      document.getElementById("stat-chat-label").textContent = c.statChat;
+      document.getElementById("stat-call-label").textContent = c.statCall;
+      document.getElementById("stat-ticket-label").textContent = c.statTicket;
+      document.getElementById("door-chat-kicker").textContent = c.doorChatKicker;
+      document.getElementById("door-chat-title").textContent = c.doorChatTitle;
+      document.getElementById("door-chat-body").textContent = c.doorChatBody;
+      document.getElementById("door-call-kicker").textContent = c.doorCallKicker;
+      document.getElementById("door-call-title").textContent = c.doorCallTitle;
+      document.getElementById("door-call-body").textContent = c.doorCallBody;
+      document.getElementById("inbox-title").textContent = view === "call" ? c.call : c.chat;
+      document.getElementById("new-thread").textContent = c.newThread;
+      document.getElementById("tickets-label").textContent = c.tickets;
+      document.getElementById("settings-title").textContent = c.settingsTitle;
+      document.getElementById("settings-body").textContent = c.settingsBody;
+      document.getElementById("call-title").textContent = c.callTitle;
+      document.getElementById("call-body").textContent = c.callBody;
+      document.getElementById("pickup").textContent = c.pickup;
+      document.getElementById("hangup").textContent = c.hangup;
+      box.placeholder = c.placeholder;
+      send.textContent = c.send;
+      mic.title = c.mic;
+      paintChips();
+      paintUnicoderHint();
+      if (view === "chat" && !started) showWelcome();
+    }
+
+    function paintChips() {
+      const wrap = document.getElementById("chips");
+      wrap.innerHTML = "";
+      topics.forEach((row) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = replyLang === "ne" ? row.ne : row.en;
+        btn.addEventListener("click", () => sendText(replyLang === "ne" ? row.neMsg : row.enMsg));
+        wrap.appendChild(btn);
+      });
+    }
+
+    function paintUnicoderHint(preview) {
+      if (replyLang !== "ne") {
+        unicoderHint.textContent = t().unicoderHint;
+        unicoderHint.className = "unicoder idle";
+        if (preview && preview !== box.value) {
+          unicoderHint.className = "unicoder";
+          unicoderHint.textContent = t().unicoderLabel + preview;
+        }
+        return;
+      }
+      if (preview && preview !== box.value) {
+        unicoderHint.className = "unicoder";
+        unicoderHint.textContent = t().unicoderLabel + preview;
+        return;
+      }
+      unicoderHint.className = "unicoder idle";
+      unicoderHint.textContent = t().unicoderHint;
+    }
+
+    async function toUnicoder(text) {
+      const raw = text || "";
+      if (!raw || !hasLatin(raw)) return raw;
+      const res = await fetch("/v1/support/unicoder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: raw })
+      });
+      const data = await res.json();
+      return (res.ok && data.nepali) ? data.nepali : raw;
+    }
+
+    function pendingLatin(value) {
+      const match = value.match(/[A-Za-z']+$/);
+      return match ? match[0] : "";
+    }
+
+    async function convertComposer(commitCurrent) {
+      const typed = box.value;
+      if (!hasLatin(typed)) {
+        paintUnicoderHint();
+        return typed;
+      }
+      const req = ++unicoderReq;
+      const converted = await toUnicoder(typed);
+      if (req !== unicoderReq) return typed;
+      paintUnicoderHint(converted);
+      const shouldReplace = commitCurrent || !pendingLatin(typed);
+      if (replyLang === "ne" && shouldReplace && converted && converted !== typed && box.value === typed) {
+        box.value = converted;
+        paintUnicoderHint();
+      }
+      return converted;
+    }
+
+    function showWelcome() {
+      log.innerHTML = "";
+      const el = document.createElement("div");
+      el.className = "welcome";
+      el.innerHTML = "<h2>" + t().welcomeTitle + "</h2><p>" + t().welcomeBody + "</p>";
+      log.appendChild(el);
+      started = false;
+      chatId = null;
+    }
+
+    function addTurn(host, role, text, isErr) {
+      if (host === log && !started) { host.innerHTML = ""; started = true; }
+      const wrap = document.createElement("div");
+      wrap.className = "turn " + (role === "user" || role === "member" ? "member" : "agent") + (isErr ? " err" : "");
+      wrap.innerHTML = '<div class="who">' + (wrap.classList.contains("member") ? t().member : t().agent) + "</div>";
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+      wrap.appendChild(bubble);
+      host.appendChild(wrap);
+      host.scrollTop = host.scrollHeight;
+      return bubble;
+    }
+
+    function addAgent(text, isErr, meta) {
+      const bubble = addTurn(log, "agent", text, isErr);
+      if (meta && meta.tickets && meta.tickets.length) {
+        const note = document.createElement("div");
+        note.className = "who";
+        note.textContent = t().ticketPrefix + meta.tickets.join(", ");
+        bubble.parentNode.appendChild(note);
+      }
+      if (!isErr) {
+        const play = document.createElement("button");
+        play.type = "button";
+        play.className = "play";
+        play.textContent = t().play;
+        play.addEventListener("click", () => speakReply(text, false));
+        bubble.parentNode.appendChild(play);
+        speakReply(text, false);
+      }
+    }
+
+    function showLoading(host) {
+      const el = document.createElement("div");
+      el.className = "turn agent";
+      el.id = host === callLog ? "call-pending" : "pending";
+      el.innerHTML = '<div class="who">' + t().agent + '</div><div class="bubble loading"><span class="dots"><span></span><span></span><span></span></span></div>';
+      host.appendChild(el);
+      host.scrollTop = host.scrollHeight;
+    }
+
+    function clearLoading(id) {
+      const pending = document.getElementById(id);
+      if (pending) pending.remove();
+    }
+
+    async function speakReply(text, wait) {
+      if (!text) return;
+      if (!wait && !speakOn) return;
+      try {
+        const res = await fetch("/v1/support/speak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, locale: replyLang })
+        });
+        const data = await res.json();
+        if (res.ok && data.audio_base64) {
+          if (lastAudio) lastAudio.pause();
+          lastAudio = new Audio("data:" + (data.mime || "audio/mpeg") + ";base64," + data.audio_base64);
+          const done = lastAudio.play().catch(() => {});
+          if (wait) await new Promise((resolve) => { lastAudio.onended = resolve; lastAudio.onerror = resolve; });
+          await done;
+        }
+      } catch {}
+    }
+
+    async function playPayload(data) {
+      if (!data || !data.audio_base64) return;
+      if (lastAudio) lastAudio.pause();
+      lastAudio = new Audio("data:" + (data.mime || "audio/mpeg") + ";base64," + data.audio_base64);
+      try { await lastAudio.play(); } catch {}
+      await new Promise((resolve) => { lastAudio.onended = resolve; lastAudio.onerror = resolve; });
+    }
+
+    async function sendText(message) {
+      if (!message || send.disabled) return;
+      let shown = message;
+      if (hasLatin(message)) shown = await toUnicoder(message);
+      lastMemberBubble = addTurn(log, "member", shown);
+      send.disabled = true;
+      mic.disabled = true;
+      showLoading(log);
+      try {
+        const res = await fetch("/v1/support/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: shown, conversation_id: chatId, locale: replyLang, channel: "chat" })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
+        chatId = data.conversation_id;
+        if (data.transliterated && lastMemberBubble) lastMemberBubble.textContent = data.transliterated;
+        clearLoading("pending");
+        addAgent(data.reply, false, data);
+        loadInbox("chat");
+        loadTickets();
+        loadHome();
+      } catch (err) {
+        clearLoading("pending");
+        addAgent(String(err.message || err), true);
+      } finally {
+        send.disabled = false;
+        mic.disabled = false;
+        box.focus();
+      }
+    }
+
+    function listenChat() {
+      const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Rec) { addAgent(t().micErr, true); return; }
+      const rec = new Rec();
+      rec.lang = replyLang === "ne" ? "ne-NP" : "en-US";
+      rec.interimResults = false;
+      rec.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        if (text) sendText(text);
+      };
+      rec.onerror = () => addAgent(t().hearErr, true);
+      rec.start();
+      mic.classList.add("hot");
+      rec.onend = () => mic.classList.remove("hot");
+    }
+
+    async function loadInbox(channel) {
+      const kind = channel || (view === "call" ? "call" : "chat");
+      const res = await fetch("/v1/support/conversations?channel=" + encodeURIComponent(kind));
+      const rows = await res.json();
+      const list = document.getElementById("inbox-list");
+      list.innerHTML = "";
+      if (!Array.isArray(rows) || !rows.length) {
+        list.innerHTML = '<div class="empty">' + t().emptyInbox + "</div>";
+        return;
+      }
+      const active = kind === "call" ? callId : chatId;
+      rows.forEach((row) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "thread" + (row.id === active ? " on" : "");
+        const when = (row.updated_at || "").slice(0, 16).replace("T", " ");
+        btn.innerHTML = '<div class="meta">' + when + '</div><div class="preview"></div>';
+        btn.querySelector(".preview").textContent = row.preview || row.id.slice(0, 8);
+        btn.addEventListener("click", () => openThread(row.id, kind));
+        list.appendChild(btn);
+      });
+    }
+
+    async function openThread(id, kind) {
+      const res = await fetch("/v1/support/conversations/" + id);
+      const data = await res.json();
+      if (kind === "call") {
+        callId = id;
+        callLog.innerHTML = "";
+        (data.messages || []).forEach((msg) => addTurn(callLog, msg.role, msg.content));
+        loadInbox("call");
+        return;
+      }
+      chatId = id;
+      started = true;
+      log.innerHTML = "";
+      (data.messages || []).forEach((msg) => addTurn(log, msg.role === "user" ? "member" : "agent", msg.content));
+      loadInbox("chat");
+    }
+
+    async function loadTickets() {
+      const res = await fetch("/v1/support/tickets");
+      const rows = await res.json();
+      const boxEl = document.getElementById("ticket-list");
+      boxEl.innerHTML = "";
+      const open = (Array.isArray(rows) ? rows : []).filter((row) => row.status !== "resolved");
+      if (!open.length) {
+        boxEl.innerHTML = '<div class="empty">' + t().emptyTickets + "</div>";
+        return open.length;
+      }
+      open.slice(0, 8).forEach((row) => {
+        const el = document.createElement("div");
+        el.className = "ticket";
+        el.textContent = (row.id || "") + " · " + (row.subject || row.status);
+        boxEl.appendChild(el);
+      });
+      return open.length;
+    }
+
+    async function loadHome() {
+      try {
+        const [chats, calls, tickets] = await Promise.all([
+          fetch("/v1/support/conversations?channel=chat").then((r) => r.json()),
+          fetch("/v1/support/conversations?channel=call").then((r) => r.json()),
+          fetch("/v1/support/tickets").then((r) => r.json())
+        ]);
+        document.getElementById("stat-chat").textContent = Array.isArray(chats) ? chats.length : 0;
+        document.getElementById("stat-call").textContent = Array.isArray(calls) ? calls.length : 0;
+        const open = (Array.isArray(tickets) ? tickets : []).filter((row) => row.status !== "resolved");
+        document.getElementById("stat-ticket").textContent = open.length;
+      } catch {}
+    }
+
+    function setCallUi(on) {
+      callLive = on;
+      document.getElementById("ring").classList.toggle("live", on);
+      document.getElementById("status-dot").classList.toggle("busy", on);
+      document.getElementById("live").textContent = on ? t().liveOn : t().liveIdle;
+      document.getElementById("pickup").classList.toggle("hidden", on);
+      document.getElementById("hangup").classList.toggle("hidden", !on);
+    }
+
+    async function pickup() {
+      if (callLive) return;
+      setCallUi(true);
+      callLog.innerHTML = "";
+      showLoading(callLog);
+      try {
+        const res = await fetch("/v1/support/calls/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ locale: replyLang })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
+        callId = data.conversation_id;
+        clearLoading("call-pending");
+        addTurn(callLog, "agent", data.reply);
+        loadInbox("call");
+        loadHome();
+        await playPayload(data);
+        if (callLive) listenCall();
+      } catch (err) {
+        clearLoading("call-pending");
+        addTurn(callLog, "agent", String(err.message || err), true);
+        setCallUi(false);
+      }
+    }
+
+    function hangup() {
+      callLive = false;
+      callBusy = false;
+      if (callRec) { try { callRec.stop(); } catch {} callRec = null; }
+      if (lastAudio) { lastAudio.pause(); lastAudio = null; }
+      setCallUi(false);
+      loadInbox("call");
+    }
+
+    function listenCall() {
+      if (!callLive || callBusy) return;
+      const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Rec) { addTurn(callLog, "agent", t().micErr, true); return; }
+      const rec = new Rec();
+      callRec = rec;
+      rec.lang = replyLang === "ne" ? "ne-NP" : "en-US";
+      rec.interimResults = false;
+      rec.onresult = async (event) => {
+        const text = event.results[0][0].transcript;
+        if (!text || !callLive) return;
+        callBusy = true;
+        try { rec.stop(); } catch {}
+        await sendCallTurn(text);
+        callBusy = false;
+        if (callLive) listenCall();
+      };
+      rec.onerror = () => {
+        if (callLive && !callBusy) addTurn(callLog, "agent", t().hearErr, true);
+      };
+      rec.onend = () => {
+        callRec = null;
+        if (callLive && !callBusy) setTimeout(() => { if (callLive && !callBusy) listenCall(); }, 500);
+      };
+      try { rec.start(); } catch {}
+    }
+
+    async function sendCallTurn(message) {
+      let shown = message;
+      if (hasLatin(message)) shown = await toUnicoder(message);
+      addTurn(callLog, "member", shown);
+      showLoading(callLog);
+      try {
+        const res = await fetch("/v1/support/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: shown, conversation_id: callId, locale: replyLang, channel: "call" })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
+        callId = data.conversation_id;
+        clearLoading("call-pending");
+        addTurn(callLog, "agent", data.reply);
+        loadInbox("call");
+        await speakReply(data.reply, true);
+      } catch (err) {
+        clearLoading("call-pending");
+        addTurn(callLog, "agent", String(err.message || err), true);
+      }
+    }
+
+    document.querySelectorAll(".sidebar nav button").forEach((btn) => {
+      btn.addEventListener("click", () => setView(btn.getAttribute("data-view")));
+    });
+    document.querySelectorAll(".door").forEach((btn) => {
+      btn.addEventListener("click", () => setView(btn.getAttribute("data-go")));
+    });
+    document.getElementById("lang-ne").addEventListener("click", () => {
+      replyLang = "ne";
+      localStorage.setItem("bhasa-lang", "ne");
+      paintChrome();
+    });
+    document.getElementById("lang-en").addEventListener("click", () => {
+      replyLang = "en";
+      localStorage.setItem("bhasa-lang", "en");
+      paintChrome();
+    });
+    document.getElementById("speak-toggle").addEventListener("click", () => {
+      speakOn = !speakOn;
+      localStorage.setItem("bhasa-speak", speakOn ? "on" : "off");
+      paintChrome();
+    });
+    document.getElementById("new-thread").addEventListener("click", () => {
+      if (view === "call") { hangup(); callId = null; callLog.innerHTML = ""; }
+      else showWelcome();
+      loadInbox();
+    });
+    mic.addEventListener("click", listenChat);
+    box.addEventListener("input", () => {
+      clearTimeout(unicoderTimer);
+      const typed = box.value;
+      const commit = /[\s?؟।.!,\u0964]$/.test(typed) || !pendingLatin(typed);
+      unicoderTimer = setTimeout(() => convertComposer(commit), commit ? 40 : 90);
+    });
+    document.getElementById("form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const converted = await convertComposer(true);
+      const message = (converted || box.value).trim();
+      box.value = "";
+      paintUnicoderHint();
+      sendText(message);
+    });
+    document.getElementById("pickup").addEventListener("click", pickup);
+    document.getElementById("hangup").addEventListener("click", hangup);
+
+    setView("home");
+  </script>
+</body>
+</html>
