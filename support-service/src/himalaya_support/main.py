@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from himalaya_support.api.routes import router
 from himalaya_support.config import get_settings
@@ -42,12 +43,18 @@ app.include_router(router, prefix="/v1")
 
 CHAT_PAGE = Path(__file__).with_name("static") / "chat.html"
 DASHBOARD_PAGE = Path(__file__).with_name("static") / "dashboard.html"
+STATIC_DIR = Path(__file__).with_name("static")
 
 
 @app.middleware("http")
 async def require_api_key(request: Request, call_next):
     key = settings.api_key.strip()
-    if not key or request.url.path in {"/", "/chat", "/v1/health"} or request.method == "OPTIONS":
+    if (
+        not key
+        or request.url.path in {"/", "/chat", "/v1/health"}
+        or request.url.path.startswith("/static/")
+        or request.method == "OPTIONS"
+    ):
         return await call_next(request)
     given = request.headers.get("x-api-key") or ""
     auth = request.headers.get("authorization") or ""
@@ -66,6 +73,9 @@ def dashboard_page() -> FileResponse:
 @app.get("/chat", include_in_schema=False)
 def chat_page() -> FileResponse:
     return FileResponse(CHAT_PAGE, headers={"Cache-Control": "no-store"})
+
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 def run() -> None:
