@@ -25,6 +25,11 @@ class ChatResponse(BaseModel):
     echo: str = ""
     credential_kinds: list[str] = Field(default_factory=list)
     grounded: bool = True
+    # True when a generative model wrote `reply` (the passage is then provenance, not the reply).
+    generated: bool = False
+    model: str | None = None
+    backend: str | None = None  # "ollama" | "openai_compat" | … | "extractive" | "extractive_fallback"
+    note: str | None = None  # e.g. "llm_unreachable", "ungrounded_quantity: …"
     suggest_ticket: bool = False
     considered: list[dict[str, Any]] = Field(default_factory=list)
 

@@ -14,8 +14,14 @@
     ],
     "allowed_common_noun_examples": ["इन्टरफेस भाषा", "प्रश्नको भाषा", "नेपाली भाषा"]
   },
+  "architecture_claim": {
+    "rule": "Decision (Rupesh, 2026-08-28): a generative model stays in this prototype's answer path. Copy must say exactly that — retrieve, model writes from the passage, numeric grounding check, verbatim passage shown as evidence, fixed refusal strings — and must never claim 'no generative model' or 'the same brain answers chat and calls'. This differs from the deployed bhasa-api, which is extractive.",
+    "answer_path": "generative_grounded",
+    "differs_from_deployed_product": true
+  },
   "prohibited_claims": [
-    "Gemma",
+    "एउटै Gemma दिमाग",
+    "same Gemma brain",
     "एआई जवाफ दिन्छ",
     "AI replies",
     "listens and speaks",

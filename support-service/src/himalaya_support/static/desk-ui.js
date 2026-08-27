@@ -14,6 +14,9 @@
       agent: "bhasa",
       member: "सदस्यको प्रश्न",
       quoted: "दस्तावेजबाट उद्धृत",
+      generatedLabel: "मोडेलले लेखेको जवाफ",
+      evidence: "प्रमाण — दस्तावेजबाट जस्ताको तस्तै",
+      fallbackNote: "मोडेल पुग्न सकिएन — दस्तावेजको अंश जस्ताको तस्तै देखाइएको छ।",
       source: "स्रोत",
       langName: { ne: "नेपाली", en: "English" },
       refusalLabel: {
@@ -30,7 +33,7 @@
       failed: "पठाउन सकिएन",
       failedBody: "सेवाबाट जवाफ आएन। सन्देश यहीँ सुरक्षित छ — फेरि पठाउन सक्नुहुन्छ।",
       timeout: "समय सकियो",
-      timeoutBody: "३० सेकेन्डसम्म जवाफ आएन। सन्देश यहीँ छ — फेरि पठाउन सक्नुहुन्छ।",
+      timeoutBody: "६० सेकेन्डसम्म जवाफ आएन। सन्देश यहीँ छ — फेरि पठाउन सक्नुहुन्छ।",
       retry: "फेरि पठाउनुहोस्",
       rateLimited: "अहिले धेरै अनुरोध भयो",
       rateLimitedBody: "एकछिन पर्खेर फेरि पठाउनुहोस्।",
@@ -56,6 +59,9 @@
       agent: "bhasa",
       member: "Member's question",
       quoted: "Quoted from a document",
+      generatedLabel: "Reply written by the model",
+      evidence: "Evidence — verbatim from the document",
+      fallbackNote: "The model was unreachable — the document passage is shown verbatim instead.",
       source: "Source",
       langName: { ne: "नेपाली", en: "English" },
       refusalLabel: {
@@ -72,7 +78,7 @@
       failed: "Could not send",
       failedBody: "No reply from the service. The message is kept here — you can send it again.",
       timeout: "Timed out",
-      timeoutBody: "No reply within 30 seconds. The message is kept here — you can send it again.",
+      timeoutBody: "No reply within 60 seconds. The message is kept here — you can send it again.",
       retry: "Send again",
       rateLimited: "Too many requests right now",
       rateLimitedBody: "Wait a moment, then send again.",
@@ -125,19 +131,36 @@
     return wrap;
   }
 
-  function answerCard({ reply, passage, question_language }) {
+  function answerCard({ reply, passage, question_language, generated, model, backend, note }) {
     const lang = question_language === "en" ? "en" : "ne";
     const c = copy(lang);
     const plang = passage && passage.language === "en" ? "en" : "ne";
-    const wrap = el("div", { class: "turn agent", "data-kind": "answer", lang });
+    const wrap = el("div", { class: "turn agent", "data-kind": "answer", "data-generated": generated ? "true" : "false", lang });
     wrap.appendChild(el("div", { class: "who", text: c.agent }));
-    const card = el("div", { class: "card answer", role: "group", "aria-label": c.quoted });
-    card.appendChild(el("div", { class: "card__label" }, [
-      el("span", { class: "card__glyph", "aria-hidden": "true", text: "❝" }),
-      el("span", { text: c.quoted + (passage && passage.title ? " · " + passage.title : "") }),
-    ]));
-    // Verbatim. Own lang so Devanagari line-height applies; never reformatted.
-    card.appendChild(el("blockquote", { class: "passage", lang: plang, text: reply }));
+    const card = el("div", { class: "card answer", role: "group", "aria-label": generated ? c.generatedLabel : c.quoted });
+    if (generated) {
+      // The model wrote this text; the verbatim passage below is its evidence.
+      card.appendChild(el("div", { class: "card__label" }, [
+        el("span", { class: "card__glyph", "aria-hidden": "true", text: "✎" }),
+        el("span", { text: c.generatedLabel + (model ? " · " + model : "") }),
+      ]));
+      card.appendChild(el("p", { class: "generated", lang, text: reply }));
+      if (passage) {
+        card.appendChild(el("div", { class: "card__label card__label--evidence" }, [
+          el("span", { class: "card__glyph", "aria-hidden": "true", text: "❝" }),
+          el("span", { text: c.evidence + (passage.title ? " · " + passage.title : "") }),
+        ]));
+        card.appendChild(el("blockquote", { class: "passage", lang: plang, text: passage.text }));
+      }
+    } else {
+      card.appendChild(el("div", { class: "card__label" }, [
+        el("span", { class: "card__glyph", "aria-hidden": "true", text: "❝" }),
+        el("span", { text: c.quoted + (passage && passage.title ? " · " + passage.title : "") }),
+      ]));
+      if (backend === "extractive_fallback") card.appendChild(el("p", { class: "card__note", text: c.fallbackNote }));
+      // Verbatim. Own lang so Devanagari line-height applies; never reformatted.
+      card.appendChild(el("blockquote", { class: "passage", lang: plang, text: reply }));
+    }
     if (passage) {
       card.appendChild(el("div", { class: "card__meta", text: `${c.source}: ${passage.source} · ${passage.id} · ${c.langName[plang]}` }));
     }

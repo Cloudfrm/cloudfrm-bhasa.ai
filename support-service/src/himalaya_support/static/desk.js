@@ -18,7 +18,7 @@
       langGroup: "इन्टरफेस भाषा",
       themeToLight: "उज्यालो", themeToDark: "अँध्यारो", themeToggle: "उज्यालो र अँध्यारो मोड बदल्नुहोस्",
       homeTitle: "अधिकृत डेस्क",
-      homeLede: "सदस्यको प्रश्न लेख्नुहोस्। bhasa ले लोड गरिएका बैंक/उत्पादन दस्तावेजबाट मिल्ने अंश जस्ताको तस्तै उद्धृत गर्छ। कुनै उत्पादक (generative) मोडेलले जवाफ लेख्दैन — मिल्ने अंश नभेटिए उत्पादनको स्थिर अस्वीकार वाक्य आउँछ।",
+      homeLede: "सदस्यको प्रश्न लेख्नुहोस्। bhasa ले लोड गरिएका बैंक/उत्पादन दस्तावेजबाट मिल्ने अंश खोज्छ, त्यही अंशका आधारमा भाषा-मोडेल (Gemma) ले जवाफ लेख्छ, र प्रमाणका रूपमा अंश जस्ताको तस्तै देखाउँछ। दस्तावेजमा नभएको अंक जवाफमा आए, वा मिल्ने अंश नभेटिए, स्थिर अस्वीकार वाक्य आउँछ। मोडेल पुग्न नसके अंश मात्र देखिन्छ।",
       statChat: "च्याट संवाद", statTicket: "खुला टिकट", statDocs: "लोड गरिएका दस्तावेज",
       doorChatKicker: "लेखेर", doorChatTitle: "सदस्य सहयोग च्याट",
       doorChatBody: "सदस्यको प्रश्न लेख्नुहोस्। रोमन अक्षर शब्द-शब्द गरी देवनागरीमा बदल्न सकिन्छ; अंग्रेजी र संकेत (KYC, OTP, NPR…) जस्ताको तस्तै रहन्छन्।",
@@ -29,7 +29,7 @@
       topics: "नमूना प्रश्न — दस्तावेजबाट जवाफ आउने पुष्टि भएका",
       topicsNone: "अहिले पुष्टि भएको नमूना प्रश्न छैन",
       roomNew: "नयाँ संवाद", roomNewSub: "सदस्यले सोधेको प्रश्न लेख्नुहोस्, वा तलको नमूना प्रश्न छान्नुहोस्।",
-      roomThread: "संवाद", roomMsgs: "सन्देश", roomSince: "सुरु", roomTag: "दस्तावेजबाट उद्धृत जवाफ",
+      roomThread: "संवाद", roomMsgs: "सन्देश", roomSince: "सुरु", roomTag: "दस्तावेजमा आधारित जवाफ · प्रमाण जस्ताको तस्तै",
       placeholder: "सदस्यको प्रश्न यहाँ लेख्नुहोस्…",
       hint: "Enter ले पठाउँछ · Shift+Enter ले नयाँ लाइन",
       send: "पठाउनुहोस्",
@@ -37,7 +37,8 @@
       settingsBody: "गोप्य कुञ्जीहरू यो स्क्रिनमा कहिल्यै राखिँदैनन् — ती सर्भरको सुरक्षित सेटिङ र प्रदायकको ड्यासबोर्डमा मात्र बस्छन्। तल सेवाको वास्तविक क्षमता र यस डेस्कका नियम देखिन्छन्।",
       capsTitle: "क्षमता (/v1/capabilities)", rulesTitle: "शब्दावली र ढाँचा नियम",
       yes: "उपलब्ध", no: "तैनाथ छैन",
-      capRows: { answer_path: "जवाफको बाटो", documents: "दस्तावेज", stt: "आवाज → पाठ (STT)", tts: "पाठ → आवाज (TTS)", grounding: "अस्वीकार वाक्य", rate_limit: "दर सीमा", checked_at: "जाँच" },
+      capRows: { answer_path: "जवाफको बाटो", llm: "भाषा-मोडेल", documents: "दस्तावेज", stt: "आवाज → पाठ (STT)", tts: "पाठ → आवाज (TTS)", grounding: "अस्वीकार वाक्य", rate_limit: "दर सीमा", checked_at: "जाँच" },
+      llmUnreachable: "पुग्न सकिएन — दस्तावेजको अंश जस्ताको तस्तै देखाइन्छ",
       mic: "बोल्नुहोस्",
     },
     en: {
@@ -51,7 +52,7 @@
       langGroup: "Interface language",
       themeToLight: "Light", themeToDark: "Dark", themeToggle: "Toggle light and dark theme",
       homeTitle: "Officer desk",
-      homeLede: "Type the member's question. bhasa quotes the matching passage verbatim from the loaded bank/product documents. No generative model writes the reply — if nothing matches, the product's fixed refusal sentence is returned.",
+      homeLede: "Type the member's question. bhasa retrieves the matching passage from the loaded bank/product documents, a language model (Gemma) writes the reply from that passage, and the passage is shown verbatim as evidence. If the reply contains a figure the document does not, or nothing matches, the fixed refusal sentence is returned. If the model is unreachable, only the passage is shown.",
       statChat: "Chat threads", statTicket: "Open tickets", statDocs: "Documents loaded",
       doorChatKicker: "Type", doorChatTitle: "Member support chat",
       doorChatBody: "Type the member's question. Roman letters can be converted to Devanagari word by word; English and codes (KYC, OTP, NPR…) stay exactly as typed.",
@@ -62,7 +63,7 @@
       topics: "Sample questions — verified to be answered from the documents",
       topicsNone: "No verified sample questions right now",
       roomNew: "New conversation", roomNewSub: "Type the member's question as asked, or pick a sample question below.",
-      roomThread: "Conversation", roomMsgs: "messages", roomSince: "started", roomTag: "Replies quoted from documents",
+      roomThread: "Conversation", roomMsgs: "messages", roomSince: "started", roomTag: "Document-grounded replies · evidence verbatim",
       placeholder: "Type the member's question here…",
       hint: "Enter sends · Shift+Enter adds a line",
       send: "Send",
@@ -70,7 +71,8 @@
       settingsBody: "Secrets are never kept on this screen — they live only in the server's secret store and the provider dashboards. Below are the service's real capabilities and this desk's rules.",
       capsTitle: "Capabilities (/v1/capabilities)", rulesTitle: "Terminology and format rules",
       yes: "available", no: "not deployed",
-      capRows: { answer_path: "Answer path", documents: "Documents", stt: "Speech → text (STT)", tts: "Text → speech (TTS)", grounding: "Refusal strings", rate_limit: "Rate limit", checked_at: "Checked" },
+      capRows: { answer_path: "Answer path", llm: "Language model", documents: "Documents", stt: "Speech → text (STT)", tts: "Text → speech (TTS)", grounding: "Refusal strings", rate_limit: "Rate limit", checked_at: "Checked" },
+      llmUnreachable: "unreachable — the document passage is shown verbatim instead",
       mic: "Speak",
     },
   };
@@ -352,8 +354,10 @@
 
   /* ------------------------------------------------------------- send */
 
-  const TIMEOUT_MS = 30000;
-  const LONG_MS = 6000;
+  // A local 3.4 GB Gemma needs ~13 s of eval (more on first load), so the
+  // "taking longer" line appears at 8 s and the hard timeout is 60 s.
+  const TIMEOUT_MS = 60000;
+  const LONG_MS = 8000;
 
   async function send(text) {
     const message = core.nfc(text).trim();
@@ -546,8 +550,10 @@
     host.innerHTML = "";
     const caps = state.caps;
     if (!caps) { host.appendChild(ui.el("div", { class: "empty", text: c.statusChecking })); return; }
+    const llm = caps.llm || {};
     const rows = [
       [c.capRows.answer_path, caps.answer_path],
+      [c.capRows.llm, llm.reachable ? `${llm.backend} · ${llm.model}` : `${llm.backend || "—"} · ${c.llmUnreachable}`],
       [c.capRows.documents, core.fmtNum(caps.documents, state.lang)],
       [c.capRows.stt, caps.stt.available ? c.yes : c.no + " (" + caps.stt.reason + ")"],
       [c.capRows.tts, caps.tts.available ? c.yes : c.no + " (" + caps.tts.reason + ")"],

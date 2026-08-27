@@ -60,6 +60,11 @@ class Settings(BaseSettings):
         default="http://127.0.0.1:8000,http://localhost:8000,http://127.0.0.1:8088,http://localhost:8088",
         alias="SUPPORT_CORS_ORIGINS",
     )
+    # Answer path. Rupesh's decision (2026-08-28): a generative model stays in
+    # the path. "generative_grounded" = retrieve → Gemma writes the reply →
+    # numeric grounding check → fetched refusal strings. "extractive" = the
+    # deployed product's architecture (verbatim passage only).
+    answer_path: str = Field(default="generative_grounded", alias="SUPPORT_ANSWER_PATH")
     # Voice (STT/TTS) is not deployed. Controls render only when this is true
     # AND /v1/capabilities reports available === true.
     voice_enabled: bool = Field(default=False, alias="SUPPORT_VOICE_ENABLED")

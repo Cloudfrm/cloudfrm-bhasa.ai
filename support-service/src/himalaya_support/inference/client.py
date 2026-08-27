@@ -182,6 +182,56 @@ class HimalayaChatClient:
             return str(data["generated_text"]).strip()
         raise InferenceError(f"Unexpected HF text-generation payload: {str(data)[:300]}")
 
+    def ollama_models(self) -> list[str]:
+        url = f"{self.settings.ollama_host.rstrip('/')}/api/tags"
+        try:
+            response = httpx.get(url, timeout=3.0)
+            if response.status_code >= 400:
+                return []
+            return [str(m.get("name") or "") for m in (response.json().get("models") or [])]
+        except (httpx.HTTPError, ValueError):
+            return []
+
+    def resolve_ollama_model(self) -> str | None:
+        """The configured tag if Ollama has it, else the first Gemma / Himalaya tag it does have."""
+        names = self.ollama_models()
+        if not names:
+            return None
+        if self.settings.ollama_model in names:
+            return self.settings.ollama_model
+        for needle in ("himalaya-gemma", "gemma", "himalaya"):
+            for name in names:
+                if needle in name.lower():
+                    return name
+        return None
+
+    def probe(self) -> dict[str, Any]:
+        """Cheap reachability check (no generation). Used by /v1/capabilities."""
+        for backend in self._backend_order():
+            if backend == "openai_compat" and self.settings.inference_base_url:
+                root = self.settings.inference_base_url.rstrip("/")
+                try:
+                    r = httpx.get(f"{root}/models", timeout=3.0)
+                    return {"backend": backend, "model": self.settings.chat_model, "reachable": r.status_code < 500, "detail": f"{root}/models -> {r.status_code}"}
+                except httpx.HTTPError as exc:
+                    return {"backend": backend, "model": self.settings.chat_model, "reachable": False, "detail": str(exc)[:160]}
+            if backend == "llamacpp":
+                return {"backend": backend, "model": str(self.settings.resolve_gguf()), "reachable": True, "detail": "local gguf present"}
+            if backend in {"hf_router", "hf_inference"}:
+                if self.settings.hf_token.strip():
+                    return {"backend": backend, "model": self.settings.chat_model, "reachable": True, "detail": "HF_TOKEN set (not exercised)"}
+                continue
+            if backend == "ollama":
+                tag = self.resolve_ollama_model()
+                names = self.ollama_models()
+                return {
+                    "backend": backend,
+                    "model": tag,
+                    "reachable": tag is not None,
+                    "detail": f"ollama tags: {names}" if names else "ollama not running or no models",
+                }
+        return {"backend": None, "model": None, "reachable": False, "detail": "no backend configured"}
+
     def _ollama_chat(
         self,
         messages: list[dict[str, str]],
@@ -189,10 +239,12 @@ class HimalayaChatClient:
         max_tokens: int,
     ) -> ChatResult:
         url = f"{self.settings.ollama_host.rstrip('/')}/api/chat"
+        model = self.resolve_ollama_model() or self.settings.ollama_model
         payload = {
-            "model": self.settings.ollama_model,
+            "model": model,
             "messages": messages,
             "stream": False,
+            "think": False,  # Gemma 4 otherwise spends the budget on hidden reasoning and returns empty content
             "options": {"temperature": temperature, "num_predict": max_tokens},
         }
         with httpx.Client(timeout=self._timeout) as client:
@@ -200,10 +252,12 @@ class HimalayaChatClient:
         if response.status_code >= 400:
             raise InferenceError(f"Ollama {url} returned {response.status_code}: {response.text[:400]}")
         data = response.json()
+        if data.get("error"):
+            raise InferenceError(f"Ollama error: {str(data['error'])[:300]}")
         text = (data.get("message") or {}).get("content") or ""
         if not text:
             raise InferenceError("Ollama returned an empty message")
-        return ChatResult(text.strip(), self.settings.ollama_model, "ollama", data)
+        return ChatResult(text.strip(), model, "ollama", data)
 
     def _get_llm(self):
         if self._llm is not None:

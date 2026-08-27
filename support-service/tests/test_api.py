@@ -24,7 +24,8 @@ def client(tmp_path, monkeypatch):
 
 def test_capabilities_reports_voice_not_deployed(client):
     data = client.get("/v1/capabilities").json()
-    assert data["answer_path"] == "extractive"
+    assert data["answer_path"] in {"generative_grounded", "extractive"}
+    assert "llm" in data and "reachable" in data["llm"]
     assert data["stt"] == {"available": False, "model": None, "reason": "not_deployed"}
     assert data["tts"] == {"available": False, "model": None, "reason": "not_deployed"}
     assert data["rate_limit"]["retry_after_header"] is False
