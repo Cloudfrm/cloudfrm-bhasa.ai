@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ne">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>भाषा · डेसबोर्ड</title>
-  <meta name="theme-color" id="theme-color" content="#f4fbf8" />
+  <title>bhasa · अधिकृत डेस्क</title>
+  <meta id="theme-color" name="theme-color" content="#f4fbf8" />
   <link rel="icon" href="/static/cloudfrm-logo.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,92 +20,50 @@
     })();
   </script>
   <style>
-    /* ------------------------------------------------------------------
-       Theme — Material 3 tokens taken from cloudfrm.ai (light + .dark).
-       ------------------------------------------------------------------ */
+    /* Material 3 tokens from cloudfrm.ai (light + .dark) */
     :root {
       color-scheme: light;
-      --md-sys-color-primary: #006a60;
-      --md-sys-color-on-primary: #ffffff;
-      --md-sys-color-primary-container: #74f8e5;
-      --md-sys-color-on-primary-container: #00201c;
-      --md-sys-color-secondary: #4a635f;
-      --md-sys-color-secondary-container: #cce8e2;
-      --md-sys-color-on-secondary-container: #05201c;
-      --md-sys-color-tertiary: #456179;
-      --md-sys-color-error: #ba1a1a;
-      --md-sys-color-on-error: #ffffff;
-      --md-sys-color-error-container: #ffdad6;
-      --md-sys-color-on-error-container: #410002;
-      --md-sys-color-background: #f4fbf8;
-      --md-sys-color-on-background: #161d1b;
-      --md-sys-color-surface: #f4fbf8;
-      --md-sys-color-on-surface: #161d1b;
-      --md-sys-color-on-surface-variant: #3f4947;
-      --md-sys-color-outline: #6f7977;
+      --md-sys-color-primary: #006a60; --md-sys-color-on-primary: #ffffff;
+      --md-sys-color-primary-container: #74f8e5; --md-sys-color-on-primary-container: #00201c;
+      --md-sys-color-secondary-container: #cce8e2; --md-sys-color-on-secondary-container: #05201c;
+      --md-sys-color-error: #ba1a1a; --md-sys-color-on-error: #ffffff;
+      --md-sys-color-error-container: #ffdad6; --md-sys-color-on-error-container: #410002;
+      --md-sys-color-background: #f4fbf8; --md-sys-color-on-surface: #161d1b;
+      --md-sys-color-on-surface-variant: #3f4947; --md-sys-color-outline: #6f7977;
       --md-sys-color-outline-variant: #bec9c6;
-      --md-sys-color-surface-container-lowest: #ffffff;
-      --md-sys-color-surface-container-low: #eff5f2;
-      --md-sys-color-surface-container: #e9efec;
-      --md-sys-color-surface-container-high: #e3eae7;
+      --md-sys-color-surface-container-lowest: #ffffff; --md-sys-color-surface-container-low: #eff5f2;
+      --md-sys-color-surface-container: #e9efec; --md-sys-color-surface-container-high: #e3eae7;
       --md-sys-color-surface-container-highest: #dde4e1;
       --shadow-card: 0 12px 32px rgba(22, 29, 27, 0.08);
-      --shadow-bar: 0 -10px 28px rgba(22, 29, 27, 0.08);
     }
     html.dark {
       color-scheme: dark;
-      --md-sys-color-primary: #53dbc9;
-      --md-sys-color-on-primary: #003731;
-      --md-sys-color-primary-container: #005048;
-      --md-sys-color-on-primary-container: #74f8e5;
-      --md-sys-color-secondary: #b1ccc6;
-      --md-sys-color-secondary-container: #334b47;
-      --md-sys-color-on-secondary-container: #cce8e2;
-      --md-sys-color-tertiary: #adcae5;
-      --md-sys-color-error: #ffb4ab;
-      --md-sys-color-on-error: #690005;
-      --md-sys-color-error-container: #93000a;
-      --md-sys-color-on-error-container: #ffdad6;
-      --md-sys-color-background: #0e1513;
-      --md-sys-color-on-background: #dde4e1;
-      --md-sys-color-surface: #0e1513;
-      --md-sys-color-on-surface: #dde4e1;
-      --md-sys-color-on-surface-variant: #bec9c6;
-      --md-sys-color-outline: #899391;
+      --md-sys-color-primary: #53dbc9; --md-sys-color-on-primary: #003731;
+      --md-sys-color-primary-container: #005048; --md-sys-color-on-primary-container: #74f8e5;
+      --md-sys-color-secondary-container: #334b47; --md-sys-color-on-secondary-container: #cce8e2;
+      --md-sys-color-error: #ffb4ab; --md-sys-color-on-error: #690005;
+      --md-sys-color-error-container: #93000a; --md-sys-color-on-error-container: #ffdad6;
+      --md-sys-color-background: #0e1513; --md-sys-color-on-surface: #dde4e1;
+      --md-sys-color-on-surface-variant: #bec9c6; --md-sys-color-outline: #899391;
       --md-sys-color-outline-variant: #3f4947;
-      --md-sys-color-surface-container-lowest: #090f0e;
-      --md-sys-color-surface-container-low: #161d1b;
-      --md-sys-color-surface-container: #1a2120;
-      --md-sys-color-surface-container-high: #252b2a;
+      --md-sys-color-surface-container-lowest: #090f0e; --md-sys-color-surface-container-low: #161d1b;
+      --md-sys-color-surface-container: #1a2120; --md-sys-color-surface-container-high: #252b2a;
       --md-sys-color-surface-container-highest: #303635;
       --shadow-card: 0 18px 44px rgba(0, 0, 0, 0.42);
-      --shadow-bar: 0 -12px 32px rgba(0, 0, 0, 0.35);
     }
     :root {
-      /* semantic aliases used by the layout */
-      --bg: var(--md-sys-color-background);
-      --ink: var(--md-sys-color-on-surface);
-      --muted: var(--md-sys-color-on-surface-variant);
-      --line: var(--md-sys-color-outline-variant);
+      --bg: var(--md-sys-color-background); --ink: var(--md-sys-color-on-surface);
+      --muted: var(--md-sys-color-on-surface-variant); --line: var(--md-sys-color-outline-variant);
       --line-soft: color-mix(in srgb, var(--md-sys-color-outline-variant) 55%, transparent);
-      --panel: var(--md-sys-color-surface-container-low);
-      --panel-2: var(--md-sys-color-surface-container);
-      --panel-3: var(--md-sys-color-surface-container-high);
-      --panel-4: var(--md-sys-color-surface-container-highest);
+      --panel: var(--md-sys-color-surface-container-low); --panel-2: var(--md-sys-color-surface-container);
+      --panel-3: var(--md-sys-color-surface-container-high); --panel-4: var(--md-sys-color-surface-container-highest);
       --well: var(--md-sys-color-surface-container-lowest);
-      --primary: var(--md-sys-color-primary);
-      --on-primary: var(--md-sys-color-on-primary);
-      --primary-soft: var(--md-sys-color-primary-container);
-      --on-primary-soft: var(--md-sys-color-on-primary-container);
-      --accent-soft: var(--md-sys-color-secondary-container);
-      --on-accent-soft: var(--md-sys-color-on-secondary-container);
-      --danger: var(--md-sys-color-error);
-      --on-danger: var(--md-sys-color-on-error);
-      --danger-soft: var(--md-sys-color-error-container);
-      --on-danger-soft: var(--md-sys-color-on-error-container);
+      --primary: var(--md-sys-color-primary); --on-primary: var(--md-sys-color-on-primary);
+      --primary-soft: var(--md-sys-color-primary-container); --on-primary-soft: var(--md-sys-color-on-primary-container);
+      --accent-soft: var(--md-sys-color-secondary-container); --on-accent-soft: var(--md-sys-color-on-secondary-container);
+      --danger: var(--md-sys-color-error); --danger-soft: var(--md-sys-color-error-container); --on-danger-soft: var(--md-sys-color-on-error-container);
       --primary-12: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
       --primary-30: color-mix(in srgb, var(--md-sys-color-primary) 30%, transparent);
-      --primary-45: color-mix(in srgb, var(--md-sys-color-primary) 45%, transparent);
     }
 
     * { box-sizing: border-box; }
@@ -113,545 +71,217 @@
     body {
       color: var(--ink);
       font-family: "Noto Sans Devanagari", "Segoe UI", Roboto, system-ui, sans-serif;
-      background:
-        radial-gradient(900px 520px at 88% -12%, var(--primary-12), transparent 62%),
-        var(--bg);
+      font-weight: 400; /* Devanagari is never set lighter than regular (E12) */
+      background: radial-gradient(900px 520px at 88% -12%, var(--primary-12), transparent 62%), var(--bg);
       overflow: hidden;
       -webkit-font-smoothing: antialiased;
+      line-height: 1.8;
     }
-    button { font: inherit; }
+    /* E12: Devanagari 1.8, Latin 1.6 */
+    :lang(ne), [lang="ne"] { line-height: 1.8; }
+    :lang(en), [lang="en"] { line-height: 1.6; }
+    button { font: inherit; line-height: inherit; }
     :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .hidden { display: none !important; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-    /* ------------------------------------------------------------------
-       Shell: left menu + main card
-       ------------------------------------------------------------------ */
-    .app {
-      position: relative;
-      z-index: 1;
-      height: 100vh;
-      width: 100%;
-      display: grid;
-      grid-template-columns: 248px 1fr;
-      gap: 14px;
-      padding: 14px;
-    }
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line-soft);
-      box-shadow: var(--shadow-card);
-    }
-    .sidebar {
-      display: flex;
-      flex-direction: column;
-      padding: 22px 16px;
-      min-height: 0;
-      border-radius: 24px;
-    }
-    .brand { display: flex; gap: 12px; align-items: center; margin: 0 4px 26px; }
-    .mark {
-      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
-      display: block; object-fit: cover;
-      background: #000005;
-      border: 1px solid var(--line-soft);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
-    }
-    .brand h1 { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.2; color: var(--ink); }
+    /* Shell */
+    .app { position: relative; z-index: 1; display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 14px; height: 100vh; padding: 14px; }
+    .card { background: var(--panel); border: 1px solid var(--line-soft); border-radius: 22px; box-shadow: var(--shadow-card); }
+    .sidebar { display: flex; flex-direction: column; padding: 18px 14px; gap: 10px; min-width: 0; }
+    .brand { display: flex; gap: 12px; align-items: center; padding: 4px 6px 14px; }
+    .brand .mark { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line-soft); background: #090f0e; object-fit: cover; }
+    .brand h1 { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.2; color: var(--ink); font-family: "Segoe UI", Roboto, system-ui, sans-serif; letter-spacing: 0.01em; }
     .brand small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; line-height: 1.4; }
     .sidebar nav { display: flex; flex-direction: column; gap: 4px; }
-    .sidebar nav button {
-      text-align: left;
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--muted);
-      font-weight: 600;
-      font-size: 15px;
-      padding: 11px 14px;
-      border-radius: 14px;
-      cursor: pointer;
-      transition: background .15s, border-color .15s, color .15s;
-    }
-    .sidebar nav button:hover { background: var(--panel-3); color: var(--ink); }
-    .sidebar nav button.active {
-      background: var(--accent-soft);
-      color: var(--on-accent-soft);
-      border-color: transparent;
-    }
+    .sidebar nav button { text-align: start; padding: 11px 14px; border-radius: 12px; border: 1px solid transparent; background: transparent; color: var(--ink); cursor: pointer; }
+    .sidebar nav button.active { background: var(--accent-soft); color: var(--on-accent-soft); font-weight: 600; border-color: var(--line-soft); }
     .sidebar .grow { flex: 1; }
-    .lang-switch { display: flex; gap: 6px; }
-    .pill {
-      border: 1px solid var(--line);
-      background: transparent;
-      color: var(--ink);
-      border-radius: 999px;
-      padding: 7px 12px;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: background .15s, border-color .15s, color .15s;
-    }
-    .pill:hover { background: var(--panel-3); }
-    .pill.active {
-      background: var(--primary);
-      color: var(--on-primary);
-      border-color: var(--primary);
-    }
-    .pill svg { display: block; }
-    html.dark .pill .i-moon, html:not(.dark) .pill .i-sun { display: none; }
-    .main {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      min-height: 0;
-      border-radius: 24px;
-      overflow: hidden;
-    }
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      padding: 14px 24px;
-      background: var(--panel-2);
-      border-bottom: 1px solid var(--line-soft);
-      flex-shrink: 0;
-    }
-    .topbar h2 { margin: 0; font-size: 19px; font-weight: 700; color: var(--ink); }
-    .status { display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 600; font-size: 13px; margin-top: 2px; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 8px var(--primary-45); }
-    .dot.busy { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
-    .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .stage { flex: 1; min-height: 0; display: grid; background: var(--bg); }
-    .stage.home, .stage.settings { grid-template-columns: 1fr; }
-    .stage.work { grid-template-columns: 300px 1fr; }
+    /* E18: one language control, unambiguous active state (check glyph + weight + fill + aria-checked) */
+    .lang-group { display: flex; flex-direction: column; gap: 6px; padding: 10px 6px 4px; border-top: 1px solid var(--line-soft); }
+    .lang-group__label { font-size: 12px; color: var(--muted); }
+    .lang-group__opts { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--well); }
+    .lang-group__opts button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: var(--ink); cursor: pointer; min-width: 92px; justify-content: center; }
+    .lang-group__opts button .check { display: inline-block; width: 1em; font-weight: 700; }
+    .lang-group__opts button.is-on { background: var(--primary); color: var(--on-primary); font-weight: 700; }
 
-    /* ------------------------------------------------------------------
-       Home / Settings
-       ------------------------------------------------------------------ */
-    .home, .settings { padding: 36px 40px; overflow: auto; }
-    .home h2, .settings h2 { margin: 0 0 8px; font-size: 28px; font-weight: 700; }
-    .lede, .settings p { margin: 0; color: var(--muted); line-height: 1.6; max-width: 640px; }
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-      margin: 28px 0;
-    }
-    .stat, .door {
-      background: var(--panel-2);
-      border: 1px solid var(--line-soft);
-      border-radius: 20px;
-      padding: 20px;
-      transition: transform .2s, border-color .2s, background .2s;
-    }
-    .stat span, .door span { display: block; color: var(--muted); font-size: 13px; font-weight: 600; }
-    .stat strong { display: block; font-size: 32px; margin-top: 8px; font-weight: 700; color: var(--primary); }
-    .doors { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .door { cursor: pointer; text-align: left; color: inherit; width: 100%; }
-    .door:hover { border-color: var(--primary); background: var(--panel-3); transform: translateY(-2px); }
-    .door h3 { margin: 8px 0 6px; font-size: 22px; font-weight: 700; }
-    .door p { margin: 0; color: var(--muted); line-height: 1.6; }
+    .main { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; overflow: hidden; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 22px 12px; border-bottom: 1px solid var(--line-soft); }
+    .topbar h2 { margin: 0; font-size: 18px; font-weight: 700; }
+    .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .status .glyph { font-size: 11px; }
+    .status[data-state="open"] .glyph { color: var(--primary); }
+    .status[data-state="down"] { color: var(--danger); font-weight: 600; }
+    .controls { display: flex; gap: 8px; align-items: center; }
+    .pill, .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--well); color: var(--ink); cursor: pointer; }
+    .btn { background: var(--primary); color: var(--on-primary); border-color: transparent; font-weight: 600; }
+    .btn.ghost { background: var(--well); color: var(--ink); border-color: var(--line); font-weight: 500; }
+    .btn.tiny { padding: 4px 10px; font-size: 12.5px; }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .pill .i-moon { display: none; } html.dark .pill .i-sun { display: none; } html.dark .pill .i-moon { display: inline; }
 
-    /* ------------------------------------------------------------------
-       Call (inbox + stage)
-       ------------------------------------------------------------------ */
-    .inbox {
-      background: var(--panel);
-      border-right: 1px solid var(--line-soft);
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-    .inbox header {
-      padding: 16px 16px 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .inbox h3 { margin: 0; font-size: 15px; }
-    .inbox .new {
-      border: 1px solid var(--line);
-      background: transparent;
-      color: var(--ink);
-      border-radius: 999px;
-      padding: 5px 12px;
-      font-weight: 600;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    .inbox .new:hover { background: var(--panel-3); }
-    .inbox .list { overflow: auto; flex: 1; padding: 0 10px 12px; }
-    .thread {
-      width: 100%; text-align: left; border: 1px solid transparent; background: transparent;
-      border-radius: 12px; padding: 10px; cursor: pointer; color: inherit;
-    }
-    .thread:hover, .thread.on { background: var(--panel-3); border-color: var(--line-soft); }
-    .thread .meta { font-size: 11px; color: var(--muted); font-weight: 600; }
-    .thread .preview {
-      margin-top: 4px; font-size: 13px; line-height: 1.6;
-      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    }
-    .tickets h4 { margin: 0 0 8px; font-size: 12px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
-    .ticket { font-size: 13px; color: var(--muted); padding: 4px 0; }
-    .desk { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-    #log, #call-log { flex: 1; overflow: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-    .call-stage { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-    .ring {
-      margin: 36px auto 0; width: 168px; height: 168px; border-radius: 50%;
-      display: grid; place-items: center;
-      background: var(--panel-3);
-      border: 6px solid var(--primary-45);
-      font-size: 42px; font-weight: 700; color: var(--primary);
-      box-shadow: 0 0 40px var(--primary-12);
-    }
-    .ring.live { border-color: var(--danger); box-shadow: 0 0 0 10px color-mix(in srgb, var(--danger) 18%, transparent); }
-    .call-copy { text-align: center; margin: 16px 24px 0; }
-    .call-copy h3 { margin: 0 0 6px; font-size: 24px; font-weight: 700; }
-    .call-copy p { margin: 0; color: var(--muted); }
-    .call-actions { display: flex; justify-content: center; gap: 10px; padding: 18px; }
-    .call-actions button {
-      border: 0; border-radius: 14px; padding: 12px 16px; font-weight: 700; cursor: pointer;
-    }
-    #pickup { background: var(--primary); color: var(--on-primary); min-width: 180px; }
-    #hangup { background: var(--danger); color: var(--on-danger); min-width: 140px; }
-    .empty { color: var(--muted); font-size: 13px; padding: 8px; }
-    button:disabled { opacity: .55; }
-    .hidden { display: none !important; }
+    .stage { min-height: 0; overflow: hidden; }
+    .stage.home, .stage.settings { overflow: auto; }
+    .stage.chat-room { display: grid; grid-template-columns: 300px minmax(0, 1fr); }
 
-    /* ------------------------------------------------------------------
-       Message turns (shared by Chat and Call)
-       ------------------------------------------------------------------ */
-    .turn { display: flex; flex-direction: column; gap: 6px; max-width: 720px; }
-    .turn.member { align-self: flex-end; align-items: flex-end; }
-    .who { font-size: 12px; color: var(--muted); font-weight: 600; }
-    .bubble {
-      padding: 12px 16px;
-      border-radius: 14px;
-      line-height: 1.75;
-      white-space: pre-wrap;
-      font-size: 15px;
-      color: var(--ink);
-    }
-    .agent .bubble { background: var(--panel-3); border: 1px solid var(--line-soft); border-top-left-radius: 6px; }
-    .member .bubble {
-      background: var(--accent-soft);
-      color: var(--on-accent-soft);
-      border: 1px solid var(--primary-30);
-      border-top-right-radius: 6px;
-    }
-    .err .bubble { background: var(--danger-soft); border-color: var(--danger); color: var(--on-danger-soft); }
-    .play { border: 0; background: transparent; color: var(--primary); font-size: 13px; font-weight: 600; cursor: pointer; padding: 0 4px; }
-    .loading { color: var(--muted); display: flex; align-items: center; gap: 10px; }
-    .dots { display: inline-flex; gap: 4px; }
-    .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); animation: bounce 1s infinite ease-in-out; }
-    .dots span:nth-child(2) { animation-delay: .15s; }
-    .dots span:nth-child(3) { animation-delay: .3s; }
-    @keyframes bounce {
-      0%, 80%, 100% { transform: translateY(0); opacity: .35; }
-      40% { transform: translateY(-5px); opacity: 1; }
-    }
-    .unicoder { min-height: 22px; margin-top: 8px; color: var(--primary); font-weight: 600; font-size: 15px; line-height: 1.6; }
-    .unicoder.idle { color: var(--muted); font-weight: 500; font-size: 13px; }
+    /* Home */
+    .home, .settings { padding: 28px 30px; max-width: 980px; }
+    .home h2, .settings h2 { margin: 0 0 6px; font-size: 26px; }
+    .lede, .settings p { margin: 0; color: var(--muted); max-width: 680px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 22px 0; }
+    .stat { background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 16px; padding: 14px 16px; }
+    .stat span { font-size: 12.5px; color: var(--muted); }
+    .stat strong { display: block; font-size: 30px; color: var(--primary); }
+    .doors { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .door { text-align: start; background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 18px; padding: 18px; color: var(--ink); cursor: pointer; }
+    .door.note { cursor: default; background: var(--panel); }
+    .door span { font-size: 12px; color: var(--muted); }
+    .door h3 { margin: 4px 0 6px; font-size: 18px; }
+    .door p { margin: 0; color: var(--muted); }
 
-    /* ------------------------------------------------------------------
-       Chat room — three zones: inbox (left) · conversation (middle) ·
-       write bar (planted at the bottom of the conversation).
-       ------------------------------------------------------------------ */
-    .stage.chat-room { grid-template-columns: minmax(280px, 26%) minmax(0, 1fr); }
+    /* Inbox */
+    .chat-inbox { border-right: 1px solid var(--line-soft); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; }
+    .chat-inbox__head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line-soft); }
+    .chat-inbox__head h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+    .chat-inbox__count { background: var(--panel-4); border-radius: 999px; padding: 1px 9px; font-size: 12px; }
+    .chat-inbox__new { border: 1px solid var(--line); background: var(--well); border-radius: 10px; padding: 7px 10px; cursor: pointer; font-size: 13px; color: var(--ink); }
+    .chat-inbox__list { overflow: auto; padding: 8px; }
+    .convo { width: 100%; text-align: start; background: transparent; border: 1px solid transparent; border-radius: 14px; padding: 10px 12px; color: var(--ink); cursor: pointer; }
+    .convo.on { background: var(--panel-2); border-color: var(--line-soft); }
+    .convo__top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+    .convo__name { font-weight: 600; }
+    .convo__time { color: var(--muted); }
+    .convo__preview { color: var(--muted); font-size: 13px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .convo__meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .chat-inbox__foot { border-top: 1px solid var(--line-soft); padding: 10px 16px 14px; font-size: 13px; }
+    .chat-inbox__foot h4 { margin: 0 0 4px; font-size: 13px; }
+    .empty { color: var(--muted); padding: 18px 12px; text-align: center; }
+    .ticket { padding: 5px 0; border-bottom: 1px solid var(--line-soft); }
 
-    /* Zone 1 — inbox */
-    .chat-inbox {
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      min-width: 0;
-      background: var(--panel);
-      border-right: 1px solid var(--line-soft);
-      position: relative;
-      z-index: 1;
-    }
-    .chat-inbox__head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 14px 14px 12px 16px;
-      border-bottom: 1px solid var(--line-soft);
-      flex-shrink: 0;
-    }
-    .chat-inbox__head h3 { margin: 0; min-width: 0; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--ink); }
-    .chat-inbox__head h3 > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .chat-inbox__head .chat-inbox__new { flex-shrink: 0; }
-    .chat-inbox__count {
-      min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px;
-      background: var(--panel-4); color: var(--muted);
-      font-size: 12px; font-weight: 700; display: inline-grid; place-items: center;
-    }
-    .chat-inbox__new {
-      border: 1px solid var(--line);
-      background: transparent;
-      color: var(--ink);
-      border-radius: 10px;
-      padding: 7px 12px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background .15s, border-color .15s;
-    }
-    .chat-inbox__new:hover { background: var(--panel-3); border-color: var(--primary); }
-    .chat-inbox__list {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      padding: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      scrollbar-width: thin;
-    }
-    .chat-inbox__list .empty { padding: 22px 12px; text-align: center; line-height: 1.7; }
-    .convo {
-      position: relative;
-      width: 100%;
-      text-align: left;
-      border: 1px solid transparent;
-      background: transparent;
-      border-radius: 12px;
-      padding: 11px 12px 11px 18px;
-      cursor: pointer;
-      color: inherit;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      flex-shrink: 0;
-      transition: background .15s, border-color .15s;
-    }
-    .convo::before {
-      content: "";
-      position: absolute;
-      left: 7px; top: 13px; bottom: 13px; width: 3px;
-      border-radius: 3px;
-      background: transparent;
-    }
-    .convo:hover { background: var(--panel-3); }
-    .convo.on { background: var(--panel-3); border-color: var(--line-soft); }
-    .convo.on::before { background: var(--primary); }
-    .convo__top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-    .convo__name { font-size: 13.5px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .convo__time { font-size: 11.5px; color: var(--muted); font-weight: 600; flex-shrink: 0; }
-    .convo__preview {
-      font-size: 13.5px;
-      line-height: 1.7;
-      color: var(--ink);
-      opacity: .85;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      overflow-wrap: anywhere;
-    }
-    .convo__meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 6px; }
-    .chat-inbox__foot {
-      border-top: 1px solid var(--line-soft);
-      padding: 10px 16px 12px;
-      max-height: 34%;
-      overflow: auto;
-      flex-shrink: 0;
-      background: var(--panel-2);
-    }
-    .chat-inbox__foot .ticket { color: var(--ink); padding: 5px 0; line-height: 1.5; border-bottom: 1px solid var(--line-soft); }
-    .chat-inbox__foot .ticket:last-child { border-bottom: 0; }
-    .chat-inbox__foot .empty { padding: 4px 0; }
+    /* Thread (E20: setup header has a defined edge; the desk-bar has its own) */
+    .room { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; min-height: 0; }
+    .room__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 20px 12px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+    .room__title { margin: 0; font-size: 16px; }
+    .room__sub { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+    .room__tag { flex: none; align-self: center; font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--well); color: var(--muted); }
+    #net-banner:empty { display: none; }
+    .banner { display: flex; gap: 8px; align-items: center; padding: 10px 20px; background: var(--danger-soft); color: var(--on-danger-soft); border-bottom: 1px solid var(--line); font-size: 13.5px; }
+    .banner__glyph { font-size: 15px; }
+    #log { overflow: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+    .empty-thread { background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 18px; padding: 18px 20px; max-width: 640px; }
+    .empty-thread h2 { margin: 0 0 6px; font-size: 20px; }
+    .empty-thread p { margin: 0; color: var(--muted); }
+    .turn { max-width: 720px; }
+    .turn.member { align-self: flex-end; }
+    .turn .who { font-size: 12px; color: var(--muted); margin: 0 6px 4px; }
+    .turn.member .who { text-align: end; }
+    .turn.member .bubble { background: var(--primary-soft); color: var(--on-primary-soft); border-radius: 16px 16px 4px 16px; padding: 10px 14px; white-space: pre-wrap; }
+    .turn.member[data-state="pending"] .bubble { border: 1px dashed var(--primary-30); }
+    /* Answer and refusal share one geometry. Refusal is a neutral surface. */
+    .card.answer, .card.refusal, .card.error, .card.wait { border-radius: 4px 16px 16px 16px; padding: 12px 16px 14px; border: 1px solid var(--line-soft); box-shadow: none; }
+    .card.answer { background: var(--well); }
+    .card.refusal { background: var(--panel-2); }
+    .card.wait { background: var(--panel-2); }
+    .card.error { background: var(--danger-soft); color: var(--on-danger-soft); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+    .card__label { display: flex; gap: 8px; align-items: center; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+    .card.error .card__label { color: inherit; }
+    .card__glyph { font-size: 14px; }
+    .card__note { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+    .card.error .card__note { color: inherit; }
+    .passage { margin: 8px 0 0; padding: 0 0 0 12px; border-left: 3px solid var(--primary-30); white-space: pre-wrap; font-size: 15.5px; }
+    .passage.frozen { border-left-color: var(--line); }
+    .card__meta { margin-top: 8px; font-size: 12px; color: var(--muted); }
+    .card__actions { margin-top: 10px; display: flex; gap: 8px; }
+    .status-line { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13.5px; padding: 4px 6px; }
+    .status-line[data-state="searching-long"] { color: var(--ink); }
 
-    /* Zone 2 — conversation */
-    .room {
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      min-width: 0;
-      background: var(--bg);
-    }
-    .room__head {
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 13px 24px;
-      border-bottom: 1px solid var(--line-soft);
-      background: var(--panel);
-    }
-    .room__title { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); }
-    .room__sub { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
-    .room__tag {
-      flex-shrink: 0;
-      font-size: 12px; font-weight: 700; color: var(--primary);
-      border: 1px solid var(--primary-45); border-radius: 999px;
-      padding: 4px 11px; background: var(--primary-12);
-      white-space: nowrap;
-    }
-    .room #log {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      padding: 22px 28px 18px;
-      gap: 16px;
-      scrollbar-width: thin;
-    }
-    .room .turn { max-width: min(720px, 84%); }
-    .room .turn.agent { align-items: flex-start; }
-    .room .who { font-size: 11.5px; padding: 0 4px; }
-    .room .welcome {
-      background: var(--panel-2);
-      border: 1px solid var(--line-soft);
-      border-radius: 16px;
-      margin: 6px 0 0;
-      max-width: 560px;
-      padding: 20px 22px;
-      flex-shrink: 0;
-    }
-    .room .welcome h2 { margin: 0 0 6px; font-size: 22px; line-height: 1.4; font-weight: 700; }
-    .room .welcome p { margin: 0; color: var(--muted); line-height: 1.75; }
-
-    /* Zone 3 — write bar */
-    .desk-bar {
-      flex-shrink: 0;
-      background: var(--panel-2);
-      border-top: 1px solid var(--line-soft);
-      box-shadow: var(--shadow-bar);
-      padding: 10px 20px 12px;
-      position: relative;
-      z-index: 1;
-    }
-    .desk-bar__topics {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding-bottom: 10px;
-    }
-    .desk-bar__topics-label {
-      font-size: 11px; font-weight: 700; color: var(--muted);
-      text-transform: uppercase; letter-spacing: .08em; flex-shrink: 0;
-    }
+    /* Composer zone — one deliberate stack (E19):
+       topics · candidate strip → input → helper row → credential rule + send row */
+    .desk-bar { border-top: 1px solid var(--line); background: var(--panel-2); padding: 12px 20px 14px; display: grid; gap: 10px; }
+    .desk-bar__topics { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--line-soft); }
+    .desk-bar__topics-label { font-size: 12px; color: var(--muted); }
     #chips { display: flex; flex-wrap: wrap; gap: 6px; }
-    #chips button {
-      flex-shrink: 0;
-      border: 1px solid var(--line);
-      background: transparent;
-      color: var(--ink);
-      border-radius: 999px;
-      padding: 5px 12px;
-      font-size: 12.5px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background .15s, border-color .15s;
-    }
-    #chips button:hover { border-color: var(--primary); background: var(--primary-12); }
-    .desk-bar form { display: flex; align-items: flex-end; gap: 10px; }
-    .desk-bar textarea {
-      flex: 1;
-      min-width: 0;
-      min-height: 52px;
-      max-height: 168px;
-      resize: none;
-      padding: 13px 16px;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: var(--well);
-      color: var(--ink);
-      font: inherit;
-      font-size: 15px;
-      line-height: 1.7;
-      overflow-y: auto;
-    }
-    .desk-bar textarea::placeholder { color: var(--md-sys-color-outline); }
-    .desk-bar textarea:focus { outline: 2px solid var(--primary-45); outline-offset: 1px; border-color: var(--primary); }
-    .desk-bar #mic, .desk-bar #send {
-      height: 52px;
-      border-radius: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-    .desk-bar #mic {
-      min-width: 52px;
-      padding: 0 14px;
-      background: transparent;
-      border: 1px solid var(--line);
-      color: var(--ink);
-      font-size: 18px;
-    }
-    .desk-bar #mic:hover { background: var(--panel-3); }
-    .desk-bar #mic.hot { background: var(--danger); color: var(--on-danger); border-color: var(--danger); }
-    .desk-bar #send {
-      min-width: 136px;
-      padding: 0 20px;
-      border: 0;
-      background: var(--primary);
-      color: var(--on-primary);
-      font-size: 15px;
-    }
-    .desk-bar #send:hover { filter: brightness(1.08); }
+    .chip { border: 1px solid var(--line); background: var(--well); border-radius: 999px; padding: 5px 12px; font-size: 13px; color: var(--ink); cursor: pointer; }
+    .chips__none { font-size: 13px; color: var(--muted); }
+    .composer { display: grid; gap: 8px; }
+    .ime { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--well); min-height: 44px; align-items: center; }
+    .ime[hidden] { display: none; }
+    .ime__opt { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--ink); cursor: pointer; font-size: 15px; }
+    .ime__opt kbd { font: 600 11px/1 "Segoe UI", system-ui, sans-serif; background: var(--panel-4); border-radius: 6px; padding: 3px 6px; }
+    .ime__opt.is-active { background: var(--accent-soft); color: var(--on-accent-soft); border-color: var(--line-soft); font-weight: 600; }
+    .ime__opt.is-raw span { font-family: "Segoe UI", system-ui, sans-serif; }
+    .ime__opt small { color: var(--muted); font-size: 11px; }
+    .composer__input { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+    #box { width: 100%; resize: none; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--well); color: var(--ink); font: inherit; line-height: 1.8; min-height: 48px; max-height: 168px; }
+    .composer__helper { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 12.5px; color: var(--muted); padding: 0 4px; }
+    .ime-toggle { border: 1px solid var(--line); background: var(--well); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; color: var(--ink); cursor: pointer; }
+    .ime-toggle.on { background: var(--accent-soft); color: var(--on-accent-soft); border-color: transparent; font-weight: 600; }
+    #composer-notice:empty { display: none; }
+    .composer-notice { display: flex; gap: 8px; align-items: flex-start; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; border: 1px solid var(--line-soft); }
+    .composer-notice.warn { background: var(--panel-4); color: var(--ink); }
+    .composer-notice.error { background: var(--danger-soft); color: var(--on-danger-soft); }
+    .composer-notice.info { background: var(--panel-3); color: var(--ink); }
+    .composer__send { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 8px; border-top: 1px solid var(--line-soft); }
+    .cred-rule { display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); }
+    #send { padding: 10px 22px; border-radius: 12px; min-width: 130px; }
 
-    @media (prefers-reduced-motion: reduce) {
-      .door, .convo, .pill { transition: none; }
-    }
+    /* Settings */
+    .caps { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 14px 0 22px; font-size: 14px; }
+    .caps dt { color: var(--muted); }
+    .caps dd { margin: 0; }
+    .settings h3 { margin: 18px 0 4px; font-size: 16px; }
+    .settings ul { margin: 8px 0 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
+
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
     @media (max-width: 960px) {
       body { overflow: auto; }
       .app { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
       .sidebar { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px; }
-      .brand { margin: 0; }
+      .brand { padding: 0; }
       .sidebar nav { flex-direction: row; flex-wrap: wrap; }
       .sidebar .grow { display: none; }
-      .stage.work { grid-template-columns: 1fr; }
-      .inbox { max-height: 180px; border-right: 0; border-bottom: 1px solid var(--line-soft); }
-      .stats, .doors { grid-template-columns: 1fr; }
-      .home, .settings { padding: 20px 16px; }
+      .lang-group { border-top: 0; border-left: 1px solid var(--line-soft); padding: 0 0 0 12px; margin-left: auto; }
       .stage.chat-room { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
       .chat-inbox { max-height: 240px; border-right: 0; border-bottom: 1px solid var(--line-soft); }
       .chat-inbox__foot { display: none; }
       .room { min-height: 70vh; }
-      .room #log { padding: 16px; }
-      .desk-bar { padding: 10px 12px 12px; }
-      .desk-bar #send { min-width: 96px; padding: 0 14px; }
+      .stats, .doors { grid-template-columns: 1fr; }
+      .home, .settings { padding: 20px 16px; }
     }
   </style>
 </head>
 <body>
+  <div class="sr-only" id="announce" aria-live="polite" aria-atomic="true"></div>
   <div class="app" id="app">
     <aside class="sidebar card">
       <div class="brand">
         <img class="mark" src="/static/cloudfrm-logo.png" alt="CloudFRM logo" width="44" height="44" />
         <div>
-          <h1>भाषा</h1>
-          <small id="brand-sub">ग्राहक सेवा डेसबोर्ड</small>
+          <h1 lang="en">bhasa</h1>
+          <small id="brand-sub"></small>
         </div>
       </div>
-      <nav>
-        <button type="button" id="nav-home" class="active" data-view="home"></button>
+      <nav aria-label="Sections">
+        <button type="button" id="nav-home" class="active" data-view="home" aria-current="page"></button>
         <button type="button" id="nav-chat" data-view="chat"></button>
-        <button type="button" id="nav-call" data-view="call"></button>
         <button type="button" id="nav-settings" data-view="settings"></button>
       </nav>
       <div class="grow"></div>
-      <div class="lang-switch">
-        <button type="button" id="lang-ne" class="pill active">नेपाली</button>
-        <button type="button" id="lang-en" class="pill">English</button>
+      <div class="lang-group" id="lang-group" role="radiogroup">
+        <span class="lang-group__label" id="lang-group-label"></span>
+        <div class="lang-group__opts">
+          <button type="button" id="lang-ne" role="radio" aria-checked="true" lang="ne"><span class="check" aria-hidden="true"></span>नेपाली</button>
+          <button type="button" id="lang-en" role="radio" aria-checked="false" lang="en"><span class="check" aria-hidden="true"></span>English</button>
+        </div>
       </div>
     </aside>
     <div class="main card">
       <header class="topbar">
         <div>
           <h2 id="page-title"></h2>
-          <div class="status"><span class="dot" id="status-dot"></span><span id="live"></span></div>
+          <div class="status" data-state="checking"><span class="glyph" id="status-glyph" aria-hidden="true">◌</span><span id="live"></span></div>
         </div>
         <div class="controls">
-          <button type="button" id="speak-toggle" class="pill active"></button>
           <button type="button" id="theme-toggle" class="pill" aria-label="Toggle light and dark theme" aria-pressed="false">
             <svg class="i-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
             <svg class="i-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -664,9 +294,9 @@
           <h2 id="home-title"></h2>
           <p class="lede" id="home-lede"></p>
           <div class="stats">
-            <div class="stat"><span id="stat-chat-label"></span><strong id="stat-chat">0</strong></div>
-            <div class="stat"><span id="stat-call-label"></span><strong id="stat-call">0</strong></div>
-            <div class="stat"><span id="stat-ticket-label"></span><strong id="stat-ticket">0</strong></div>
+            <div class="stat"><span id="stat-chat-label"></span><strong id="stat-chat">०</strong></div>
+            <div class="stat"><span id="stat-ticket-label"></span><strong id="stat-ticket">०</strong></div>
+            <div class="stat"><span id="stat-docs-label"></span><strong id="stat-docs">०</strong></div>
           </div>
           <div class="doors">
             <button type="button" class="door" data-go="chat">
@@ -674,31 +304,26 @@
               <h3 id="door-chat-title"></h3>
               <p id="door-chat-body"></p>
             </button>
-            <button type="button" class="door" data-go="call">
-              <span id="door-call-kicker"></span>
-              <h3 id="door-call-title"></h3>
-              <p id="door-call-body"></p>
-            </button>
+            <div class="door note" id="door-voice">
+              <span id="door-voice-kicker"></span>
+              <h3 id="door-voice-title"></h3>
+              <p id="door-voice-body"></p>
+            </div>
           </div>
         </section>
-        <aside class="inbox hidden" id="inbox-pane">
-          <header>
-            <h3 id="inbox-title"></h3>
-            <button type="button" class="new" id="new-thread"></button>
-          </header>
-          <div class="list" id="inbox-list"></div>
-        </aside>
+
         <aside class="chat-inbox hidden" id="chat-inbox" aria-label="Conversations">
           <div class="chat-inbox__head">
-            <h3><span id="chat-inbox-title"></span><span class="chat-inbox__count" id="chat-inbox-count">0</span></h3>
+            <h3><span id="chat-inbox-title"></span><span class="chat-inbox__count" id="chat-inbox-count">०</span></h3>
             <button type="button" class="chat-inbox__new" id="chat-new"></button>
           </div>
           <div class="chat-inbox__list" id="chat-list"></div>
-          <div class="chat-inbox__foot tickets" id="ticket-box">
+          <div class="chat-inbox__foot" id="ticket-box">
             <h4 id="tickets-label"></h4>
             <div id="ticket-list"></div>
           </div>
         </aside>
+
         <section class="room hidden" id="view-chat">
           <header class="room__head">
             <div>
@@ -707,815 +332,46 @@
             </div>
             <span class="room__tag" id="room-tag"></span>
           </header>
-          <div id="log"></div>
+          <div id="net-banner"></div>
+          <div id="log" aria-live="off"></div>
           <div class="desk-bar">
             <div class="desk-bar__topics">
               <span class="desk-bar__topics-label" id="topics-label"></span>
               <div id="chips"></div>
             </div>
-            <form id="form">
-              <button id="mic" type="button">🎤</button>
-              <textarea id="box" rows="1" autocomplete="off"></textarea>
-              <button id="send" type="submit"></button>
+            <form id="form" class="composer">
+              <div class="ime" id="ime-strip" hidden></div>
+              <div class="composer__input">
+                <textarea id="box" rows="1" autocomplete="off" spellcheck="false" aria-describedby="hint cred-rule"></textarea>
+                <div id="voice-slot"></div>
+              </div>
+              <div class="composer__helper">
+                <button type="button" class="ime-toggle" id="ime-toggle" aria-pressed="true"></button>
+                <span id="hint"></span>
+              </div>
+              <div id="composer-notice"></div>
+              <div class="composer__send">
+                <span class="cred-rule"><span aria-hidden="true">🔒</span><span id="cred-rule"></span></span>
+                <button id="send" type="submit" class="btn"></button>
+              </div>
             </form>
-            <div id="unicoder" class="unicoder idle"></div>
           </div>
         </section>
-        <section class="desk hidden" id="view-call">
-          <div class="call-stage">
-            <div class="ring" id="ring">भा</div>
-            <div class="call-copy">
-              <h3 id="call-title"></h3>
-              <p id="call-body"></p>
-            </div>
-            <div class="call-actions">
-              <button type="button" id="pickup"></button>
-              <button type="button" id="hangup" class="hidden"></button>
-            </div>
-            <div id="call-log"></div>
-          </div>
-        </section>
+
         <section class="settings hidden" id="view-settings">
           <h2 id="settings-title"></h2>
           <p id="settings-body"></p>
+          <h3 id="caps-title"></h3>
+          <div id="caps-table"></div>
+          <h3 id="rules-title"></h3>
+          <ul id="rules-list"></ul>
         </section>
       </div>
     </div>
   </div>
-  <script>
-    const copy = {
-      ne: {
-        title: "भाषा · डेसबोर्ड",
-        brandSub: "ग्राहक सेवा डेसबोर्ड · CloudFRM",
-        home: "डेसबोर्ड",
-        chat: "च्याट",
-        call: "कल",
-        settings: "सेटिङ",
-        pageHome: "अवलोकन",
-        pageChat: "ग्राहक च्याट",
-        pageCall: "एआई कल",
-        pageSettings: "सेटिङ",
-        liveHome: "सेवा खुला",
-        liveChat: "सेवा खुला · च्याट",
-        liveIdle: "निष्क्रिय · कल",
-        liveOn: "लाइनमा · एआईले उठायो",
-        voice: "आवाज",
-        themeToLight: "उज्यालो",
-        themeToDark: "अँध्यारो",
-        themeToggle: "उज्यालो र अँध्यारो मोड बदल्नुहोस्",
-        homeTitle: "नमस्ते, यो भाषा डेसबोर्ड हो",
-        homeLede: "सदस्यलाई च्याट वा कलबाट सहयोग गर्नुहोस्। एउटै Gemma दिमाग दुवैमा जवाफ दिन्छ।",
-        statChat: "च्याट संवाद",
-        statCall: "कल",
-        statTicket: "खुला टिकट",
-        doorChatKicker: "लेखेर",
-        doorChatTitle: "ग्राहक सहयोग च्याट",
-        doorChatBody: "नेपाली वा अंग्रेजी अक्षरमा लेख्नुहोस्। युनिकोडमा बदलिन्छ, त्यसपछि जवाफ आउँछ।",
-        doorCallKicker: "बोलेर",
-        doorCallTitle: "एआईले कल उठाउँछ",
-        doorCallBody: "उठ्नुहोस् थिच्नुहोस्। भाषा सेवा सुन्छ र नेपालीमा बोल्छ। फोन लाइन पछि।",
-        welcomeTitle: "नमस्ते, म भाषा हुँ",
-        welcomeBody: "लगइन, रकम, ऋण, केवाईसी वा कार्ड — विषय छान्नुहोस् वा समस्या लेख्नुहोस्।",
-        placeholder: "नेपाली वा अंग्रेजी अक्षरमा लेख्नुहोस्…",
-        unicoderHint: "अंग्रेजी अक्षर यहाँ नेपाली युनिकोडमा बदलिन्छ · Enter ले पठाउँछ, Shift+Enter ले नयाँ लाइन",
-        unicoderLabel: "नेपालीमा: ",
-        send: "पठाउनुहोस्",
-        mic: "बोल्नुहोस्",
-        agent: "भाषा सेवा",
-        member: "तपाईं",
-        play: "सुन्नुहोस्",
-        newThread: "नयाँ",
-        tickets: "टिकट",
-        emptyInbox: "अहिले संवाद छैन",
-        emptyTickets: "खुला टिकट छैन",
-        chatInbox: "संवादहरू",
-        chatNew: "+ नयाँ संवाद",
-        topics: "छिटो विषय",
-        roomNew: "नयाँ संवाद",
-        roomNewSub: "सदस्यको पहिलो सन्देश लेख्नुहोस्, वा तलबाट विषय छान्नुहोस्।",
-        roomThread: "संवाद",
-        roomMsgs: "सन्देश",
-        roomSince: "सुरु",
-        roomTag: "एआई जवाफ दिन्छ",
-        memberRow: "सदस्य",
-        callTitle: "एआईले कल उठाउँछ",
-        callBody: "उठ्नुहोस् थिच्नुहोस् — भाषा सेवा जवाफ दिन्छ। यो ब्राउजर कल हो, फोन लाइन पछि जोडिन्छ।",
-        pickup: "कल उठाउनुहोस्",
-        hangup: "राख्नुहोस्",
-        settingsTitle: "सेटिङ",
-        settingsBody: "एपीआई की, फोन नम्बर र ज्ञान भण्डार यहीँ आउँछ। अहिले च्याट र कल मात्र खुला छन्।",
-        ticketPrefix: "टिकट: ",
-        micErr: "आवाजका लागि Chrome वा Edge प्रयोग गर्नुहोस्।",
-        hearErr: "सुनिएन। फेरि बोल्नुहोस्।"
-      },
-      en: {
-        title: "Bhasa · Dashboard",
-        brandSub: "Customer support dashboard · CloudFRM",
-        home: "Dashboard",
-        chat: "Chat",
-        call: "Call",
-        settings: "Settings",
-        pageHome: "Overview",
-        pageChat: "Support chat",
-        pageCall: "AI call",
-        pageSettings: "Settings",
-        liveHome: "Service open",
-        liveChat: "Service open · chat",
-        liveIdle: "Idle · call",
-        liveOn: "On a call · AI picked up",
-        voice: "Voice",
-        themeToLight: "Light",
-        themeToDark: "Dark",
-        themeToggle: "Toggle light and dark theme",
-        homeTitle: "Namaste, this is the Bhasa dashboard",
-        homeLede: "Help members by chat or call. The same Gemma brain answers both.",
-        statChat: "Chat threads",
-        statCall: "Calls",
-        statTicket: "Open tickets",
-        doorChatKicker: "Type",
-        doorChatTitle: "Customer support chat",
-        doorChatBody: "Type in Nepali or English letters. They convert to Unicode, then Bhasa replies.",
-        doorCallKicker: "Speak",
-        doorCallTitle: "AI picks up the call",
-        doorCallBody: "Press pick up. Bhasa listens and speaks. A phone line comes later.",
-        welcomeTitle: "Namaste, I am Bhasa",
-        welcomeBody: "Login, transfers, loans, KYC, or cards — pick a topic or type the issue.",
-        placeholder: "Type in English letters — they convert to Nepali…",
-        unicoderHint: "English letters convert to Nepali Unicode here · Enter sends, Shift+Enter adds a line",
-        unicoderLabel: "Nepali: ",
-        send: "Send",
-        mic: "Speak",
-        agent: "Bhasa support",
-        member: "You",
-        play: "Listen",
-        newThread: "New",
-        tickets: "Tickets",
-        emptyInbox: "No conversations yet",
-        emptyTickets: "No open tickets",
-        chatInbox: "Conversations",
-        chatNew: "+ New chat",
-        topics: "Quick topics",
-        roomNew: "New conversation",
-        roomNewSub: "Type the member's first message, or pick a topic below.",
-        roomThread: "Conversation",
-        roomMsgs: "messages",
-        roomSince: "started",
-        roomTag: "AI replies",
-        memberRow: "Member",
-        callTitle: "AI picks up the call",
-        callBody: "Press pick up — Bhasa answers. This is a browser call; a phone line comes later.",
-        pickup: "Pick up",
-        hangup: "Hang up",
-        settingsTitle: "Settings",
-        settingsBody: "API keys, phone numbers, and knowledge will live here. Chat and Call are open now.",
-        ticketPrefix: "Ticket: ",
-        micErr: "Voice needs Chrome or Edge.",
-        hearErr: "Could not hear that. Speak again."
-      }
-    };
-    const topics = [
-      { ne: "मोबाइल बैंकिङ", en: "Mobile banking", neMsg: "मोबाइल बैंकिङमा लगइन गर्न सकिएन", enMsg: "I cannot sign in to mobile banking" },
-      { ne: "पिन / पासवर्ड", en: "PIN / password", neMsg: "मेरो पिन बिर्सें", enMsg: "I forgot my PIN" },
-      { ne: "रकम", en: "Transfers", neMsg: "रकम पठाएँ तर पुगेन", enMsg: "I sent money but it did not arrive" },
-      { ne: "ऋण", en: "Loans", neMsg: "ऋण किस्ता कहिले तिर्ने?", enMsg: "When is my loan instalment due?" },
-      { ne: "केवाईसी", en: "KYC", neMsg: "केवाईसी कसरी गर्ने?", enMsg: "How do I complete KYC?" },
-      { ne: "कार्ड", en: "Cards", neMsg: "कार्ड हरायो, के गर्ने?", enMsg: "My card is lost. What should I do?" },
-      { ne: "ब्याजदर", en: "Interest rate", neMsg: "बचत खाताको ब्याजदर कति हो?", enMsg: "What is the savings interest rate?" }
-    ];
-    const THEME_COLORS = { light: "#f4fbf8", dark: "#0e1513" };
-
-    const log = document.getElementById("log");
-    const callLog = document.getElementById("call-log");
-    const box = document.getElementById("box");
-    const send = document.getElementById("send");
-    const mic = document.getElementById("mic");
-    const form = document.getElementById("form");
-    const unicoderHint = document.getElementById("unicoder");
-    const themeToggle = document.getElementById("theme-toggle");
-    let view = "home";
-    let replyLang = localStorage.getItem("bhasa-lang") || "ne";
-    let speakOn = localStorage.getItem("bhasa-speak") !== "off";
-    let chatId = null;
-    let callId = null;
-    let callLive = false;
-    let lastAudio = null;
-    let started = false;
-    let lastMemberBubble = null;
-    let unicoderTimer = null;
-    let unicoderReq = 0;
-    let callRec = null;
-    let callBusy = false;
-    let convoMeta = {};
-
-    function t() { return copy[replyLang]; }
-    function hasLatin(text) { return /[A-Za-z]/.test(text || ""); }
-    function isDark() { return document.documentElement.classList.contains("dark"); }
-
-    function paintTheme() {
-      const c = t();
-      const dark = isDark();
-      themeToggle.setAttribute("aria-pressed", dark ? "true" : "false");
-      themeToggle.setAttribute("aria-label", c.themeToggle);
-      themeToggle.title = c.themeToggle;
-      document.getElementById("theme-label").textContent = dark ? c.themeToLight : c.themeToDark;
-      document.getElementById("theme-color").setAttribute("content", dark ? THEME_COLORS.dark : THEME_COLORS.light);
-    }
-
-    function setTheme(dark) {
-      document.documentElement.classList.toggle("dark", dark);
-      document.documentElement.style.colorScheme = dark ? "dark" : "light";
-      try { localStorage.setItem("bhasa-theme", dark ? "dark" : "light"); } catch (e) {}
-      paintTheme();
-    }
-
-    function setView(name) {
-      view = name;
-      const work = name === "chat" || name === "call";
-      document.getElementById("stage").className = "stage " + (name === "chat" ? "chat-room" : (work ? "work" : name));
-      document.getElementById("app").classList.toggle("is-chat", name === "chat");
-      document.getElementById("view-home").classList.toggle("hidden", name !== "home");
-      document.getElementById("view-chat").classList.toggle("hidden", name !== "chat");
-      document.getElementById("view-call").classList.toggle("hidden", name !== "call");
-      document.getElementById("view-settings").classList.toggle("hidden", name !== "settings");
-      document.getElementById("inbox-pane").classList.toggle("hidden", name !== "call");
-      document.getElementById("chat-inbox").classList.toggle("hidden", name !== "chat");
-      document.getElementById("nav-home").classList.toggle("active", name === "home");
-      document.getElementById("nav-chat").classList.toggle("active", name === "chat");
-      document.getElementById("nav-call").classList.toggle("active", name === "call");
-      document.getElementById("nav-settings").classList.toggle("active", name === "settings");
-      document.getElementById("ticket-box").classList.toggle("hidden", name !== "chat");
-      document.getElementById("speak-toggle").classList.toggle("hidden", name !== "chat");
-      paintChrome();
-      if (name === "home") loadHome();
-      if (work) loadInbox();
-      if (name === "chat") { loadTickets(); box.focus(); }
-    }
-
-    function paintChrome() {
-      const c = t();
-      document.documentElement.lang = replyLang === "ne" ? "ne" : "en";
-      document.title = c.title;
-      document.getElementById("brand-sub").textContent = c.brandSub;
-      document.getElementById("nav-home").textContent = c.home;
-      document.getElementById("nav-chat").textContent = c.chat;
-      document.getElementById("nav-call").textContent = c.call;
-      document.getElementById("nav-settings").textContent = c.settings;
-      document.getElementById("page-title").textContent = ({
-        home: c.pageHome, chat: c.pageChat, call: c.pageCall, settings: c.pageSettings
-      })[view];
-      document.getElementById("live").textContent = view === "call"
-        ? (callLive ? c.liveOn : c.liveIdle)
-        : (view === "chat" ? c.liveChat : c.liveHome);
-      document.getElementById("speak-toggle").textContent = c.voice;
-      document.getElementById("speak-toggle").classList.toggle("active", speakOn);
-      document.getElementById("lang-ne").classList.toggle("active", replyLang === "ne");
-      document.getElementById("lang-en").classList.toggle("active", replyLang === "en");
-      document.getElementById("home-title").textContent = c.homeTitle;
-      document.getElementById("home-lede").textContent = c.homeLede;
-      document.getElementById("stat-chat-label").textContent = c.statChat;
-      document.getElementById("stat-call-label").textContent = c.statCall;
-      document.getElementById("stat-ticket-label").textContent = c.statTicket;
-      document.getElementById("door-chat-kicker").textContent = c.doorChatKicker;
-      document.getElementById("door-chat-title").textContent = c.doorChatTitle;
-      document.getElementById("door-chat-body").textContent = c.doorChatBody;
-      document.getElementById("door-call-kicker").textContent = c.doorCallKicker;
-      document.getElementById("door-call-title").textContent = c.doorCallTitle;
-      document.getElementById("door-call-body").textContent = c.doorCallBody;
-      document.getElementById("inbox-title").textContent = view === "call" ? c.call : c.chat;
-      document.getElementById("new-thread").textContent = c.newThread;
-      document.getElementById("chat-inbox-title").textContent = c.chatInbox;
-      document.getElementById("chat-new").textContent = c.chatNew;
-      document.getElementById("topics-label").textContent = c.topics;
-      document.getElementById("room-tag").textContent = c.roomTag;
-      document.getElementById("tickets-label").textContent = c.tickets;
-      document.getElementById("settings-title").textContent = c.settingsTitle;
-      document.getElementById("settings-body").textContent = c.settingsBody;
-      document.getElementById("call-title").textContent = c.callTitle;
-      document.getElementById("call-body").textContent = c.callBody;
-      document.getElementById("pickup").textContent = c.pickup;
-      document.getElementById("hangup").textContent = c.hangup;
-      box.placeholder = c.placeholder;
-      send.textContent = c.send;
-      mic.title = c.mic;
-      paintTheme();
-      paintChips();
-      paintUnicoderHint();
-      if (view === "chat" && !started) showWelcome();
-      paintRoomHead();
-    }
-
-    function paintChips() {
-      const wrap = document.getElementById("chips");
-      wrap.innerHTML = "";
-      topics.forEach((row) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.textContent = replyLang === "ne" ? row.ne : row.en;
-        btn.addEventListener("click", () => sendText(replyLang === "ne" ? row.neMsg : row.enMsg));
-        wrap.appendChild(btn);
-      });
-    }
-
-    function paintUnicoderHint(preview) {
-      if (replyLang !== "ne") {
-        unicoderHint.textContent = t().unicoderHint;
-        unicoderHint.className = "unicoder idle";
-        if (preview && preview !== box.value) {
-          unicoderHint.className = "unicoder";
-          unicoderHint.textContent = t().unicoderLabel + preview;
-        }
-        return;
-      }
-      if (preview && preview !== box.value) {
-        unicoderHint.className = "unicoder";
-        unicoderHint.textContent = t().unicoderLabel + preview;
-        return;
-      }
-      unicoderHint.className = "unicoder idle";
-      unicoderHint.textContent = t().unicoderHint;
-    }
-
-    function fmtWhen(iso) {
-      if (!iso) return "";
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return String(iso).slice(0, 16).replace("T", " ");
-      const loc = replyLang === "ne" ? "ne-NP" : "en-GB";
-      const sameDay = d.toDateString() === new Date().toDateString();
-      try {
-        return sameDay
-          ? d.toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit" })
-          : d.toLocaleDateString(loc, { day: "numeric", month: "short" });
-      } catch {
-        return String(iso).slice(0, 16).replace("T", " ");
-      }
-    }
-
-    function paintRoomHead() {
-      const c = t();
-      const titleEl = document.getElementById("room-title");
-      const subEl = document.getElementById("room-sub");
-      if (!chatId) {
-        titleEl.textContent = c.roomNew;
-        subEl.textContent = c.roomNewSub;
-        return;
-      }
-      const turns = log.querySelectorAll(".turn:not(#pending)").length;
-      const meta = convoMeta[chatId] || {};
-      let sub = turns + " " + c.roomMsgs;
-      if (meta.created_at) sub += " · " + c.roomSince + " " + fmtWhen(meta.created_at);
-      titleEl.textContent = c.roomThread + " " + chatId.slice(0, 8).toUpperCase();
-      subEl.textContent = sub;
-    }
-
-    function growBox() {
-      box.style.height = "auto";
-      box.style.height = Math.min(box.scrollHeight, 168) + "px";
-    }
-
-    async function toUnicoder(text) {
-      const raw = text || "";
-      if (!raw || !hasLatin(raw)) return raw;
-      const res = await fetch("/v1/support/unicoder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: raw })
-      });
-      const data = await res.json();
-      return (res.ok && data.nepali) ? data.nepali : raw;
-    }
-
-    function pendingLatin(value) {
-      const match = value.match(/[A-Za-z']+$/);
-      return match ? match[0] : "";
-    }
-
-    async function convertComposer(commitCurrent) {
-      const typed = box.value;
-      if (!hasLatin(typed)) {
-        paintUnicoderHint();
-        return typed;
-      }
-      const req = ++unicoderReq;
-      const converted = await toUnicoder(typed);
-      if (req !== unicoderReq) return typed;
-      paintUnicoderHint(converted);
-      const shouldReplace = commitCurrent || !pendingLatin(typed);
-      if (replyLang === "ne" && shouldReplace && converted && converted !== typed && box.value === typed) {
-        box.value = converted;
-        growBox();
-        paintUnicoderHint();
-      }
-      return converted;
-    }
-
-    function showWelcome() {
-      log.innerHTML = "";
-      const el = document.createElement("div");
-      el.className = "welcome";
-      el.innerHTML = "<h2>" + t().welcomeTitle + "</h2><p>" + t().welcomeBody + "</p>";
-      log.appendChild(el);
-      started = false;
-      chatId = null;
-      paintRoomHead();
-    }
-
-    function addTurn(host, role, text, isErr) {
-      if (host === log && !started) { host.innerHTML = ""; started = true; }
-      const wrap = document.createElement("div");
-      wrap.className = "turn " + (role === "user" || role === "member" ? "member" : "agent") + (isErr ? " err" : "");
-      wrap.innerHTML = '<div class="who">' + (wrap.classList.contains("member") ? t().member : t().agent) + "</div>";
-      const bubble = document.createElement("div");
-      bubble.className = "bubble";
-      bubble.textContent = text;
-      wrap.appendChild(bubble);
-      host.appendChild(wrap);
-      host.scrollTop = host.scrollHeight;
-      return bubble;
-    }
-
-    function addAgent(text, isErr, meta) {
-      const bubble = addTurn(log, "agent", text, isErr);
-      if (meta && meta.tickets && meta.tickets.length) {
-        const note = document.createElement("div");
-        note.className = "who";
-        note.textContent = t().ticketPrefix + meta.tickets.join(", ");
-        bubble.parentNode.appendChild(note);
-      }
-      if (!isErr) {
-        const play = document.createElement("button");
-        play.type = "button";
-        play.className = "play";
-        play.textContent = t().play;
-        play.addEventListener("click", () => speakReply(text, false));
-        bubble.parentNode.appendChild(play);
-        speakReply(text, false);
-      }
-    }
-
-    function showLoading(host) {
-      const el = document.createElement("div");
-      el.className = "turn agent";
-      el.id = host === callLog ? "call-pending" : "pending";
-      el.innerHTML = '<div class="who">' + t().agent + '</div><div class="bubble loading"><span class="dots"><span></span><span></span><span></span></span></div>';
-      host.appendChild(el);
-      host.scrollTop = host.scrollHeight;
-    }
-
-    function clearLoading(id) {
-      const pending = document.getElementById(id);
-      if (pending) pending.remove();
-    }
-
-    async function speakReply(text, wait) {
-      if (!text) return;
-      if (!wait && !speakOn) return;
-      try {
-        const res = await fetch("/v1/support/speak", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, locale: replyLang })
-        });
-        const data = await res.json();
-        if (res.ok && data.audio_base64) {
-          if (lastAudio) lastAudio.pause();
-          lastAudio = new Audio("data:" + (data.mime || "audio/mpeg") + ";base64," + data.audio_base64);
-          const done = lastAudio.play().catch(() => {});
-          if (wait) await new Promise((resolve) => { lastAudio.onended = resolve; lastAudio.onerror = resolve; });
-          await done;
-        }
-      } catch {}
-    }
-
-    async function playPayload(data) {
-      if (!data || !data.audio_base64) return;
-      if (lastAudio) lastAudio.pause();
-      lastAudio = new Audio("data:" + (data.mime || "audio/mpeg") + ";base64," + data.audio_base64);
-      try { await lastAudio.play(); } catch {}
-      await new Promise((resolve) => { lastAudio.onended = resolve; lastAudio.onerror = resolve; });
-    }
-
-    async function sendText(message) {
-      if (!message || send.disabled) return;
-      let shown = message;
-      if (hasLatin(message)) shown = await toUnicoder(message);
-      lastMemberBubble = addTurn(log, "member", shown);
-      send.disabled = true;
-      mic.disabled = true;
-      showLoading(log);
-      try {
-        const res = await fetch("/v1/support/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: shown, conversation_id: chatId, locale: replyLang, channel: "chat" })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
-        chatId = data.conversation_id;
-        if (data.transliterated && lastMemberBubble) lastMemberBubble.textContent = data.transliterated;
-        clearLoading("pending");
-        addAgent(data.reply, false, data);
-        paintRoomHead();
-        loadInbox("chat");
-        loadTickets();
-        loadHome();
-      } catch (err) {
-        clearLoading("pending");
-        addAgent(String(err.message || err), true);
-      } finally {
-        send.disabled = false;
-        mic.disabled = false;
-        box.focus();
-      }
-    }
-
-    function listenChat() {
-      const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!Rec) { addAgent(t().micErr, true); return; }
-      const rec = new Rec();
-      rec.lang = replyLang === "ne" ? "ne-NP" : "en-US";
-      rec.interimResults = false;
-      rec.onresult = (event) => {
-        const text = event.results[0][0].transcript;
-        if (text) sendText(text);
-      };
-      rec.onerror = () => addAgent(t().hearErr, true);
-      rec.start();
-      mic.classList.add("hot");
-      rec.onend = () => mic.classList.remove("hot");
-    }
-
-    async function loadInbox(channel) {
-      const kind = channel || (view === "call" ? "call" : "chat");
-      const res = await fetch("/v1/support/conversations?channel=" + encodeURIComponent(kind));
-      const rows = await res.json();
-      if (kind === "chat") { paintChatInbox(Array.isArray(rows) ? rows : []); return; }
-      const list = document.getElementById("inbox-list");
-      list.innerHTML = "";
-      if (!Array.isArray(rows) || !rows.length) {
-        list.innerHTML = '<div class="empty">' + t().emptyInbox + "</div>";
-        return;
-      }
-      const active = kind === "call" ? callId : chatId;
-      rows.forEach((row) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "thread" + (row.id === active ? " on" : "");
-        const when = (row.updated_at || "").slice(0, 16).replace("T", " ");
-        btn.innerHTML = '<div class="meta">' + when + '</div><div class="preview"></div>';
-        btn.querySelector(".preview").textContent = row.preview || row.id.slice(0, 8);
-        btn.addEventListener("click", () => openThread(row.id, kind));
-        list.appendChild(btn);
-      });
-    }
-
-    function paintChatInbox(rows) {
-      const c = t();
-      const list = document.getElementById("chat-list");
-      document.getElementById("chat-inbox-count").textContent = rows.length;
-      list.innerHTML = "";
-      convoMeta = {};
-      rows.forEach((row) => { convoMeta[row.id] = row; });
-      if (!rows.length) {
-        list.innerHTML = '<div class="empty">' + c.emptyInbox + "</div>";
-        paintRoomHead();
-        return;
-      }
-      rows.forEach((row) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "convo" + (row.id === chatId ? " on" : "");
-        btn.innerHTML =
-          '<div class="convo__top"><span class="convo__name"></span><span class="convo__time"></span></div>' +
-          '<div class="convo__preview"></div>' +
-          '<div class="convo__meta"><span class="convo__count"></span></div>';
-        btn.querySelector(".convo__name").textContent = c.memberRow + " · " + row.id.slice(0, 8).toUpperCase();
-        btn.querySelector(".convo__time").textContent = fmtWhen(row.updated_at);
-        btn.querySelector(".convo__preview").textContent = row.preview || "—";
-        btn.querySelector(".convo__count").textContent = (row.message_count || 0) + " " + c.roomMsgs + (row.locale ? " · " + row.locale : "");
-        btn.addEventListener("click", () => openThread(row.id, "chat"));
-        list.appendChild(btn);
-      });
-      paintRoomHead();
-    }
-
-    async function openThread(id, kind) {
-      const res = await fetch("/v1/support/conversations/" + id);
-      const data = await res.json();
-      if (kind === "call") {
-        callId = id;
-        callLog.innerHTML = "";
-        (data.messages || []).forEach((msg) => addTurn(callLog, msg.role, msg.content));
-        loadInbox("call");
-        return;
-      }
-      chatId = id;
-      started = true;
-      log.innerHTML = "";
-      (data.messages || []).forEach((msg) => addTurn(log, msg.role === "user" ? "member" : "agent", msg.content));
-      paintRoomHead();
-      loadInbox("chat");
-      box.focus();
-    }
-
-    async function loadTickets() {
-      const res = await fetch("/v1/support/tickets");
-      const rows = await res.json();
-      const boxEl = document.getElementById("ticket-list");
-      boxEl.innerHTML = "";
-      const open = (Array.isArray(rows) ? rows : []).filter((row) => row.status !== "resolved");
-      if (!open.length) {
-        boxEl.innerHTML = '<div class="empty">' + t().emptyTickets + "</div>";
-        return open.length;
-      }
-      open.slice(0, 8).forEach((row) => {
-        const el = document.createElement("div");
-        el.className = "ticket";
-        el.textContent = (row.id || "") + " · " + (row.subject || row.status);
-        boxEl.appendChild(el);
-      });
-      return open.length;
-    }
-
-    async function loadHome() {
-      try {
-        const [chats, calls, tickets] = await Promise.all([
-          fetch("/v1/support/conversations?channel=chat").then((r) => r.json()),
-          fetch("/v1/support/conversations?channel=call").then((r) => r.json()),
-          fetch("/v1/support/tickets").then((r) => r.json())
-        ]);
-        document.getElementById("stat-chat").textContent = Array.isArray(chats) ? chats.length : 0;
-        document.getElementById("stat-call").textContent = Array.isArray(calls) ? calls.length : 0;
-        const open = (Array.isArray(tickets) ? tickets : []).filter((row) => row.status !== "resolved");
-        document.getElementById("stat-ticket").textContent = open.length;
-      } catch {}
-    }
-
-    function setCallUi(on) {
-      callLive = on;
-      document.getElementById("ring").classList.toggle("live", on);
-      document.getElementById("status-dot").classList.toggle("busy", on);
-      document.getElementById("live").textContent = on ? t().liveOn : t().liveIdle;
-      document.getElementById("pickup").classList.toggle("hidden", on);
-      document.getElementById("hangup").classList.toggle("hidden", !on);
-    }
-
-    async function pickup() {
-      if (callLive) return;
-      setCallUi(true);
-      callLog.innerHTML = "";
-      showLoading(callLog);
-      try {
-        const res = await fetch("/v1/support/calls/start", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ locale: replyLang })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
-        callId = data.conversation_id;
-        clearLoading("call-pending");
-        addTurn(callLog, "agent", data.reply);
-        loadInbox("call");
-        loadHome();
-        await playPayload(data);
-        if (callLive) listenCall();
-      } catch (err) {
-        clearLoading("call-pending");
-        addTurn(callLog, "agent", String(err.message || err), true);
-        setCallUi(false);
-      }
-    }
-
-    function hangup() {
-      callLive = false;
-      callBusy = false;
-      if (callRec) { try { callRec.stop(); } catch {} callRec = null; }
-      if (lastAudio) { lastAudio.pause(); lastAudio = null; }
-      setCallUi(false);
-      loadInbox("call");
-    }
-
-    function listenCall() {
-      if (!callLive || callBusy) return;
-      const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!Rec) { addTurn(callLog, "agent", t().micErr, true); return; }
-      const rec = new Rec();
-      callRec = rec;
-      rec.lang = replyLang === "ne" ? "ne-NP" : "en-US";
-      rec.interimResults = false;
-      rec.onresult = async (event) => {
-        const text = event.results[0][0].transcript;
-        if (!text || !callLive) return;
-        callBusy = true;
-        try { rec.stop(); } catch {}
-        await sendCallTurn(text);
-        callBusy = false;
-        if (callLive) listenCall();
-      };
-      rec.onerror = () => {
-        if (callLive && !callBusy) addTurn(callLog, "agent", t().hearErr, true);
-      };
-      rec.onend = () => {
-        callRec = null;
-        if (callLive && !callBusy) setTimeout(() => { if (callLive && !callBusy) listenCall(); }, 500);
-      };
-      try { rec.start(); } catch {}
-    }
-
-    async function sendCallTurn(message) {
-      let shown = message;
-      if (hasLatin(message)) shown = await toUnicoder(message);
-      addTurn(callLog, "member", shown);
-      showLoading(callLog);
-      try {
-        const res = await fetch("/v1/support/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: shown, conversation_id: callId, locale: replyLang, channel: "call" })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
-        callId = data.conversation_id;
-        clearLoading("call-pending");
-        addTurn(callLog, "agent", data.reply);
-        loadInbox("call");
-        await speakReply(data.reply, true);
-      } catch (err) {
-        clearLoading("call-pending");
-        addTurn(callLog, "agent", String(err.message || err), true);
-      }
-    }
-
-    document.querySelectorAll(".sidebar nav button").forEach((btn) => {
-      btn.addEventListener("click", () => setView(btn.getAttribute("data-view")));
-    });
-    document.querySelectorAll(".door").forEach((btn) => {
-      btn.addEventListener("click", () => setView(btn.getAttribute("data-go")));
-    });
-    document.getElementById("lang-ne").addEventListener("click", () => {
-      replyLang = "ne";
-      localStorage.setItem("bhasa-lang", "ne");
-      paintChrome();
-      if (view === "chat") loadInbox("chat");
-    });
-    document.getElementById("lang-en").addEventListener("click", () => {
-      replyLang = "en";
-      localStorage.setItem("bhasa-lang", "en");
-      paintChrome();
-      if (view === "chat") loadInbox("chat");
-    });
-    document.getElementById("speak-toggle").addEventListener("click", () => {
-      speakOn = !speakOn;
-      localStorage.setItem("bhasa-speak", speakOn ? "on" : "off");
-      paintChrome();
-    });
-    themeToggle.addEventListener("click", () => setTheme(!isDark()));
-    try {
-      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
-        if (!localStorage.getItem("bhasa-theme")) {
-          document.documentElement.classList.toggle("dark", event.matches);
-          document.documentElement.style.colorScheme = event.matches ? "dark" : "light";
-          paintTheme();
-        }
-      });
-    } catch (e) {}
-    document.getElementById("new-thread").addEventListener("click", () => {
-      if (view === "call") { hangup(); callId = null; callLog.innerHTML = ""; }
-      else showWelcome();
-      loadInbox();
-    });
-    document.getElementById("chat-new").addEventListener("click", () => {
-      showWelcome();
-      loadInbox("chat");
-      box.focus();
-    });
-    mic.addEventListener("click", listenChat);
-    box.addEventListener("input", () => {
-      growBox();
-      clearTimeout(unicoderTimer);
-      const typed = box.value;
-      const commit = /[\s?؟।.!,\u0964]$/.test(typed) || !pendingLatin(typed);
-      unicoderTimer = setTimeout(() => convertComposer(commit), commit ? 40 : 90);
-    });
-    box.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
-      event.preventDefault();
-      if (typeof form.requestSubmit === "function") form.requestSubmit();
-      else form.dispatchEvent(new Event("submit", { cancelable: true }));
-    });
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const converted = await convertComposer(true);
-      const message = (converted || box.value).trim();
-      box.value = "";
-      growBox();
-      paintUnicoderHint();
-      sendText(message);
-    });
-    document.getElementById("pickup").addEventListener("click", pickup);
-    document.getElementById("hangup").addEventListener("click", hangup);
-
-    setView("home");
-  </script>
+  <script src="/static/desk-core.js"></script>
+  <script src="/static/desk-ui.js"></script>
+  <script src="/static/ime.js"></script>
+  <script src="/static/desk.js"></script>
 </body>
 </html>

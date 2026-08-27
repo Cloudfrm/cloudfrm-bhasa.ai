@@ -1,8 +1,8 @@
 """
 Devanagari normalisation for STT output, RAG queries and user input.
 
-The blueprint (§1.4) specifies NFKC "to strip Nukta/ZWJ discrepancies". NFKC
-does half that job. Measured:
+Policy (E11): NFC only. NFKC is never used on user text, passages or refusal
+strings. Measured earlier, when NFKC was still in use:
 
     क़ (U+0958)  --NFKC-->  क + ़ (U+0915 U+093C)      nukta unified   ✓
     क + ZWNJ + ख --NFKC-->  unchanged                   ZWJ survives    ✗
@@ -32,14 +32,14 @@ _DANDA_SPACE = re.compile(r"\s+([।॥])")
 def normalize(text: str, *, fold_digits: bool = False, strip_zero_width: bool = True) -> str:
     """Canonical form for embedding, retrieval and comparison.
 
-    NFKC first (unifies precomposed nukta), then NFC (recompose to the shortest
-    canonical form so string length is stable), then explicit format-character
-    removal, then whitespace and danda tidying.
+    NFC only — never NFKC (E11). NFC already decomposes the precomposed nukta
+    forms (U+0958–U+095F are composition exclusions), so nothing is lost, and
+    compatibility folding is never applied to text that must stay byte-exact.
+    Then explicit format-character removal, then whitespace and danda tidying.
     """
     if not text:
         return ""
-    out = unicodedata.normalize("NFKC", text)
-    out = unicodedata.normalize("NFC", out)
+    out = unicodedata.normalize("NFC", text)
     if strip_zero_width:
         out = _ZERO_WIDTH.sub("", out)
     if fold_digits:
@@ -77,7 +77,7 @@ def diff_report(a: str, b: str) -> dict[str, object]:
         "cause": (
             "identical" if a == b
             else "zero-width format characters" if _ZERO_WIDTH.sub("", a) == _ZERO_WIDTH.sub("", b)
-            else "nukta composition" if unicodedata.normalize("NFKC", a) == unicodedata.normalize("NFKC", b)
+            else "nukta composition" if unicodedata.normalize("NFC", a) == unicodedata.normalize("NFC", b)
             else "genuinely different text"
         ),
     }

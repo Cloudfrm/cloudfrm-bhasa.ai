@@ -5,9 +5,10 @@ from functools import lru_cache
 
 from fastapi import APIRouter, HTTPException
 
-from himalaya_support.adapt.to_nepali import unicoder
+from himalaya_support.adapt.candidates import convert_message
 from himalaya_support.api.schemas import (
     CallStartRequest,
+    CandidatesRequest,
     ChatRequest,
     ChatResponse,
     SpeakRequest,
@@ -29,13 +30,44 @@ def get_engine() -> SupportEngine:
 
 @router.get("/health")
 def health() -> dict:
-    return {"ok": True}
+    """Real check with the time of the check (E5)."""
+    return get_engine().health()
+
+
+@router.get("/capabilities")
+def capabilities() -> dict:
+    """Read at runtime by the desk. Voice controls render only when available === true (E3)."""
+    return get_engine().capabilities()
 
 
 @router.post("/support/unicoder")
 def convert_unicoder(payload: UnicoderRequest) -> dict:
-    result = unicoder(payload.text)
-    return {"nepali": result["nepali"], "mode": result["mode"]}
+    """Word-run conversion (E8). Kept for the member chat page; protected runs are never touched."""
+    result = convert_message(payload.text)
+    return {"nepali": result["text"], "mode": "word_runs", "runs": result["runs"]}
+
+
+@router.post("/support/translit/candidates")
+def translit_candidates(payload: CandidatesRequest) -> dict:
+    """Per-run decisions + ranked candidates for the IME strip (E9)."""
+    result = convert_message(payload.text, payload.choices)
+    return {"runs": result["runs"], "default_text": result["text"]}
+
+
+@router.get("/terminology")
+def terminology() -> dict:
+    """Terminology and format rules (product name, numerals, time, calendar, normalisation)."""
+    import json
+
+    path = get_settings().terminology_path
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+@router.get("/support/topics")
+def topics() -> dict:
+    """Sample questions verified answerable by the loaded corpus (E6)."""
+    engine = get_engine()
+    return {"kind": "sample_questions", "verified": engine.refusals is not None, "chips": engine.chips()}
 
 
 @router.post("/support/chat", response_model=ChatResponse)
@@ -48,17 +80,8 @@ def chat(payload: ChatRequest) -> ChatResponse:
             channel=payload.channel or "chat",
         )
     except InferenceError as exc:
-        raise HTTPException(status_code=503, detail="Support is temporarily unavailable") from exc
-    return ChatResponse(
-        conversation_id=result["conversation_id"],
-        reply=result["reply"],
-        language=result["language"],
-        transliterated=result.get("transliterated"),
-        grounded=bool(result.get("grounded", True)),
-        speech_register=result.get("register"),
-        tickets=result.get("tickets") or [],
-        pending_confirm=result.get("pending_confirm"),
-    )
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return ChatResponse(**{k: v for k, v in result.items() if k in ChatResponse.model_fields})
 
 
 @router.post("/support/calls/start")
@@ -66,7 +89,7 @@ def start_call(payload: CallStartRequest) -> dict:
     try:
         return get_engine().start_call(payload.locale)
     except InferenceError as exc:
-        raise HTTPException(status_code=503, detail="Voice is temporarily unavailable") from exc
+        raise HTTPException(status_code=503, detail="voice not_deployed") from exc
 
 
 @router.get("/support/conversations")
@@ -89,7 +112,7 @@ def speak(payload: SpeakRequest) -> dict:
     try:
         mime, audio = get_engine().speak(payload.text, payload.locale)
     except InferenceError as exc:
-        raise HTTPException(status_code=503, detail="Voice is temporarily unavailable") from exc
+        raise HTTPException(status_code=503, detail="voice not_deployed") from exc
     return {"audio_base64": base64.b64encode(audio).decode("ascii"), "mime": mime}
 
 

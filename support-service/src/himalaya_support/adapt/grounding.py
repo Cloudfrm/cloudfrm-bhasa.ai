@@ -20,7 +20,7 @@ _NUMBER_WORDS = re.compile(
     r"एघार|बाह्र|तेह्र|चौध|पन्ध्र|सोह्र|सत्र|अठार|उन्नाइस|बीस|तीस|चालीस|पचास|"
     r"साठी|सत्तरी|असी|नब्बे|सय|हजार|लाख|करोड)){0,3}(?:\s+रुपैयाँ)?")
 _ORDINALS = {"पहिलो", "दोस्रो", "तेस्रो", "चौथो", "पाँचौँ", "छैटौँ"}
-GROUNDING_FALLBACK = "माफ गर्नुहोस्, यो रकम म पक्का गर्न सक्दिनँ। एकछिन पर्खनुहोस्।"
+# The refusal strings are fetched, never retyped here (see support/refusals.py).
 
 
 def _digit_value(value: str) -> int:
@@ -80,11 +80,11 @@ def check_numeric_grounding(reply: str, context: str,
     return not failures, failures
 
 
-async def release_grounded_reply(reply: str, context: str, tool_results: list[dict], regenerate) -> str:
+async def release_grounded_reply(reply: str, context: str, tool_results: list[dict], regenerate, fallback: str) -> str:
     """Allow a reply through after one repair attempt, otherwise use fallback."""
     ok, _ = check_numeric_grounding(reply, context, tool_results)
     if ok:
         return reply
     retry = await regenerate()
     ok, _ = check_numeric_grounding(retry, context, tool_results)
-    return retry if ok else GROUNDING_FALLBACK
+    return retry if ok else fallback

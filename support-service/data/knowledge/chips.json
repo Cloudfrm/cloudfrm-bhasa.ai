@@ -1,0 +1,20 @@
+{
+  "note": "Sample questions offered as quick chips. Each one is verified at startup against the loaded corpus; a chip is shown ONLY if the extractive answerer returns a passage (not a refusal) for it.",
+  "ne": [
+    "बचत खाताको ब्याजदर कति हो?",
+    "एटिएमबाट दैनिक कति रुपैयाँसम्म झिक्न सकिन्छ?",
+    "कार्ड हराएमा के गर्नुपर्छ?",
+    "बैंक खाता खोल्न के-के कागजात चाहिन्छ?",
+    "ओटिपी कति मिनेटसम्म मान्य हुन्छ?",
+    "बैंक शाखा कति बजेदेखि कति बजेसम्म खुल्छ?",
+    "चेकबुक अनुरोध गरेपछि कति दिनमा पाइन्छ?",
+    "मोबाइल बैंकिङबाट दैनिक कति रुपैयाँसम्म कारोबार गर्न सकिन्छ?"
+  ],
+  "en": [
+    "How do I reset my mobile banking PIN?",
+    "My transfer is pending, what happens next?",
+    "When is the loan instalment due?",
+    "What documents are needed for KYC?",
+    "What should I do if my card is lost?"
+  ]
+}

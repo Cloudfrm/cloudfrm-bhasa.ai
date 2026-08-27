@@ -18,6 +18,7 @@ dependencies = [
 [project.optional-dependencies]
 local = ["torch", "transformers", "accelerate"]
 ocr = ["pillow"]
+dev = ["pytest>=8.0"]
 
 [project.scripts]
 support-api = "himalaya_support.main:run"

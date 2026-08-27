@@ -25,6 +25,7 @@ class Document:
     text: str
     source: str
     tokens: list[str]
+    language: str = "ne"
 
 
 class Retriever:
@@ -33,9 +34,14 @@ class Retriever:
     Retrieval is only for grounding. The chat model must generate a new answer.
     """
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, *, knowledge_only: bool = False) -> None:
+        """knowledge_only=True indexes ONLY the answerable bank/product documents
+        (product.json + banking_government_ne.jsonl). Training-data slices
+        (function-calling / JSON-mode / honorific examples) are never quotable."""
         self.settings = settings
+        self.knowledge_only = knowledge_only
         self.documents: list[Document] = []
+        self._by_id: dict[str, Document] = {}
         self._df: Counter[str] = Counter()
         self._avgdl = 1.0
         self.reload()
@@ -43,16 +49,26 @@ class Retriever:
     def reload(self) -> None:
         docs: list[Document] = []
         for article in load_product_articles(self.settings.knowledge_path):
-            docs.append(self._to_doc(article["id"], article["title"], article["text"], article["source"]))
-        corpus_dir = self.settings.corpus_dir
-        if corpus_dir.exists():
-            for path in sorted(corpus_dir.glob("*.jsonl")):
-                docs.extend(self._load_jsonl(path))
-        raw_honorific = self.settings.raw_dir / "nepali_honorific_alignment_devanagari.jsonl"
-        for item in load_honorific_examples(raw_honorific):
-            docs.append(self._to_doc(item["title"], item["title"], item["text"], item["source"]))
+            docs.append(
+                self._to_doc(
+                    article["id"], article["title"], article["text"], article["source"],
+                    language=str(article.get("language") or "ne"),
+                )
+            )
+        if not self.knowledge_only:
+            corpus_dir = self.settings.corpus_dir
+            if corpus_dir.exists():
+                for path in sorted(corpus_dir.glob("*.jsonl")):
+                    docs.extend(self._load_jsonl(path))
+            raw_honorific = self.settings.raw_dir / "nepali_honorific_alignment_devanagari.jsonl"
+            for item in load_honorific_examples(raw_honorific):
+                docs.append(self._to_doc(item["title"], item["title"], item["text"], item["source"]))
         self.documents = [doc for doc in docs if doc.tokens]
+        self._by_id = {doc.doc_id: doc for doc in self.documents}
         self._index()
+
+    def document(self, doc_id: str) -> Document | None:
+        return self._by_id.get(doc_id)
 
     def search(self, query: str, k: int = 5) -> list[dict]:
         if not query.strip() or not self.documents:
@@ -127,6 +143,6 @@ class Retriever:
         return docs
 
     @staticmethod
-    def _to_doc(doc_id: str, title: str, text: str, source: str) -> Document:
+    def _to_doc(doc_id: str, title: str, text: str, source: str, language: str = "ne") -> Document:
         blob = f"{title}\n{text}"
-        return Document(doc_id=doc_id, title=title, text=text, source=source, tokens=tokenize(blob))
+        return Document(doc_id=doc_id, title=title, text=text, source=source, tokens=tokenize(blob), language=language)

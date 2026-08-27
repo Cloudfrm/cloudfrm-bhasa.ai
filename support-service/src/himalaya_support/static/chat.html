@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>भाषा · Bhasa ग्राहक सेवा</title>
+  <title>bhasa · ग्राहक सेवा</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet" />
@@ -269,7 +269,7 @@
       <div class="brand">
         <div class="mark">भा</div>
         <div>
-          <h1>भाषा</h1>
+          <h1 lang="en">bhasa</h1>
           <small id="domain">bhasai.ai</small>
         </div>
       </div>
@@ -286,7 +286,7 @@
         <button type="button" data-ne="एटिएमबाट दैनिक कति झिक्न सकिन्छ?" data-en="What is the daily ATM limit?">एटीएम सीमा</button>
         <button type="button" data-ne="शाखा कति बजे खुल्छ?" data-en="What time does the branch open?">शाखा समय</button>
       </div>
-      <div class="trust" id="trust">पिन, पासवर्ड वा ओटीपी यहाँ नलेख्नुहोस्। भाषा सेवामा ती कहिल्यै मागिँदैन।</div>
+      <div class="trust" id="trust">पिन, पासवर्ड वा ओटीपी यहाँ नलेख्नुहोस्। bhasa ले ती कहिल्यै माग्दैन।</div>
     </aside>
     <section class="desk glass">
       <header class="bar">
@@ -294,13 +294,13 @@
         <div class="controls">
           <button type="button" id="lang-ne" class="active">नेपाली</button>
           <button type="button" id="lang-en">English</button>
-          <button type="button" id="speak-toggle" class="active">आवाज</button>
+          
         </div>
       </header>
       <div id="log"></div>
       <div class="composer">
         <form id="form">
-          <button id="mic" type="button" title="Speak">🎤</button>
+          
           <input id="box" autocomplete="off" />
           <button id="send" type="submit">पठाउनुहोस्</button>
         </form>
@@ -313,15 +313,15 @@
       ne: {
         aside: "सहकारी र बैंकका सदस्यका लागि नेपाली ग्राहक सेवा। च्याटबोट होइन — तपाईंको खाता, रकम र ऋणको सहयोग।",
         topics: "साझा विषय",
-        trust: "पिन, पासवर्ड वा ओटीपी यहाँ नलेख्नुहोस्। भाषा सेवामा ती कहिल्यै मागिँदैन।",
+        trust: "पिन, पासवर्ड वा ओटीपी यहाँ नलेख्नुहोस्। bhasa ले ती कहिल्यै माग्दैन।",
         live: "सेवा खुला · ग्राहक सेवा",
-        welcomeTitle: "नमस्ते, म भाषा हुँ",
+        welcomeTitle: "नमस्ते, म bhasa हुँ",
         welcomeBody: "लगइन, रकम स्थानान्तरण, ऋण किस्ता, केवाईसी वा कार्ड — बायाँबाट विषय छान्नुहोस् वा आफ्नो समस्या लेख्नुहोस्।",
         placeholder: "नेपाली वा अंग्रेजी अक्षरमा लेख्नुहोस्…",
-        unicoderHint: "अंग्रेजी अक्षर यहाँ नेपाली युनिकोडमा बदलिन्छ",
+        unicoderHint: "रोमन नेपाली शब्द-शब्द गरी देवनागरीमा बदलिन्छ; अंग्रेजी र संकेत (KYC, OTP) जस्ताको तस्तै रहन्छन्",
         unicoderLabel: "नेपालीमा: ",
         send: "पठाउनुहोस्",
-        agent: "भाषा सेवा",
+        agent: "bhasa",
         member: "तपाईं",
         play: "सुन्नुहोस्",
         listen: "आवाज",
@@ -331,15 +331,15 @@
       en: {
         aside: "Nepali customer support for cooperative and bank members. Not a chatbot — help with accounts, transfers, and loans.",
         topics: "Common issues",
-        trust: "Never type a PIN, password, or OTP here. Bhasa will never ask for them.",
+        trust: "Never type a PIN, password, or OTP here. bhasa will never ask for them.",
         live: "Open · customer support",
-        welcomeTitle: "Namaste, I am Bhasa",
+        welcomeTitle: "Namaste, I am bhasa",
         welcomeBody: "Login, transfers, loan instalments, KYC, or cards — pick a topic on the left or describe your issue.",
-        placeholder: "Type in English letters — they convert to Nepali…",
-        unicoderHint: "English letters convert to Nepali Unicode here",
+        placeholder: "Type in Nepali or English…",
+        unicoderHint: "Romanized Nepali converts word by word; English and codes (KYC, OTP) stay as typed",
         unicoderLabel: "Nepali: ",
         send: "Send",
-        agent: "Bhasa support",
+        agent: "bhasa",
         member: "You",
         play: "Listen",
         listen: "Voice",
@@ -352,8 +352,8 @@
     const form = document.getElementById("form");
     const box = document.getElementById("box");
     const send = document.getElementById("send");
-    const mic = document.getElementById("mic");
-    const speakToggle = document.getElementById("speak-toggle");
+    const mic = document.createElement("button") /* voice not deployed: no control in the DOM */;
+    const speakToggle = document.createElement("button") /* voice not deployed */;
     const unicoderHint = document.getElementById("unicoder");
     let conversationId = null;
     let replyLang = localStorage.getItem("bhasa-lang") || "ne";

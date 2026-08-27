@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     conversation_id: str | None = None
-    locale: str = Field(default="ne")
+    # "auto" = reply language follows the question (E10). "ne"/"en" force it.
+    locale: str = Field(default="auto")
     channel: str = Field(default="chat")
 
 
@@ -16,15 +17,25 @@ class ChatResponse(BaseModel):
     conversation_id: str
     reply: str
     language: str
-    transliterated: str | None = None
+    # "answer" | "refusal" | "credential_decline"
+    kind: str = "answer"
+    refusal_type: str | None = None
+    passage: dict[str, Any] | None = None
+    # What the thread should show for the member turn (redacted when a credential was detected).
+    echo: str = ""
+    credential_kinds: list[str] = Field(default_factory=list)
     grounded: bool = True
-    speech_register: str | None = None
-    tickets: list[str] = Field(default_factory=list)
-    pending_confirm: str | None = None
+    suggest_ticket: bool = False
+    considered: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class UnicoderRequest(BaseModel):
     text: str = Field(default="", max_length=4000)
+
+
+class CandidatesRequest(BaseModel):
+    text: str = Field(default="", max_length=4000)
+    choices: dict[str, str] = Field(default_factory=dict)
 
 
 class CallStartRequest(BaseModel):

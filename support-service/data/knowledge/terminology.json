@@ -1,0 +1,54 @@
+{
+  "product_name": {
+    "canonical": "bhasa",
+    "rule": "The product is written `bhasa`, lowercase Latin, in every language. The Devanagari common noun भाषा (language) is never used as the product name.",
+    "prohibited_as_product_name": [
+      "म भाषा हुँ",
+      "भाषा सेवा",
+      "भाषा डेसबोर्ड",
+      "यो भाषा",
+      "भाषा · ",
+      "भाषा हुँ",
+      "Bhasa",
+      "BHASA"
+    ],
+    "allowed_common_noun_examples": ["इन्टरफेस भाषा", "प्रश्नको भाषा", "नेपाली भाषा"]
+  },
+  "prohibited_claims": [
+    "Gemma",
+    "एआई जवाफ दिन्छ",
+    "AI replies",
+    "listens and speaks",
+    "सुन्छ र नेपालीमा बोल्छ",
+    "एआईले कल उठाउँछ",
+    "AI picks up",
+    "API keys",
+    "एपीआई की"
+  ],
+  "numerals": {
+    "rule": "UI chrome digits follow the interface language: Devanagari digits (०-९) when the interface is नेपाली, Latin digits when it is English. Quoted evidence always keeps the digits of its source, untouched.",
+    "chrome_ne": "deva",
+    "chrome_en": "latn",
+    "evidence": "as_published"
+  },
+  "time": {
+    "rule": "Message lists show relative time in the interface language (e.g. २ मिनेट अघि / 2 min ago). Absolute times are 24-hour, locale-formatted, never 12-hour AM/PM in a Nepali interface.",
+    "clock": "24h"
+  },
+  "calendar": {
+    "rule": "UI chrome timestamps are Gregorian and are labelled as such whenever an absolute date is shown (ई.सं. / AD). No Bikram Sambat conversion is performed by the UI. Document effective dates are stored and shown exactly as published, in both systems, labelled.",
+    "chrome": "gregorian_labelled",
+    "document_dates": "as_published_both_labelled",
+    "labels": {"ne": {"gregorian": "ई.सं.", "bikram": "वि.सं."}, "en": {"gregorian": "AD", "bikram": "BS"}}
+  },
+  "normalization": {"form": "NFC", "never": "NFKC"},
+  "typography": {
+    "devanagari_line_height": 1.8,
+    "latin_line_height": 1.6,
+    "devanagari_min_weight": 400
+  },
+  "refusal_strings": {
+    "rule": "The two byte-frozen refusal strings are fetched from the deployed proof document and compared after NFC normalisation. They are never typed into source.",
+    "source": "https://bhasa-api.fly.dev/proof/grounding_public.json"
+  }
+}

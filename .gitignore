@@ -19,3 +19,4 @@ support-service/data/raw/gguf_meta.json
 support-service/data/raw/sft_dataset_README.md
 *.db
 .DS_Store
+support-service/tests/_proof_table.json

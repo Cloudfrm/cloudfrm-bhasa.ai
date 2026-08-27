@@ -55,7 +55,21 @@ class Settings(BaseSettings):
     llama_port: int = Field(default=8081, alias="LLAMA_PORT")
     llama_ngl: int = Field(default=99, alias="LLAMA_NGL")
     api_key: str = Field(default="", alias="SUPPORT_API_KEY")
-    cors_origins: str = Field(default="*", alias="SUPPORT_CORS_ORIGINS")
+    # Exact-match allowlist only. A wildcard is refused at startup (E14).
+    cors_origins: str = Field(
+        default="http://127.0.0.1:8000,http://localhost:8000,http://127.0.0.1:8088,http://localhost:8088",
+        alias="SUPPORT_CORS_ORIGINS",
+    )
+    # Voice (STT/TTS) is not deployed. Controls render only when this is true
+    # AND /v1/capabilities reports available === true.
+    voice_enabled: bool = Field(default=False, alias="SUPPORT_VOICE_ENABLED")
+    # Dev-only state harness at /dev/states. Off in production.
+    dev_harness: bool = Field(default=False, alias="SUPPORT_DEV_HARNESS")
+    # Public proof document that carries the two byte-frozen refusal strings.
+    proof_url: str = Field(
+        default="https://bhasa-api.fly.dev/proof/grounding_public.json",
+        alias="BHASA_PROOF_URL",
+    )
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
     gemini_tts_model: str = Field(default="gemini-2.5-flash-preview-tts", alias="GEMINI_TTS_MODEL")
@@ -86,6 +100,18 @@ class Settings(BaseSettings):
     @property
     def db_path(self) -> Path:
         return self.store_dir / "support.db"
+
+    @property
+    def refusal_cache_path(self) -> Path:
+        return self.store_dir / "refusal_strings.json"
+
+    @property
+    def terminology_path(self) -> Path:
+        return self.data_dir / "knowledge" / "terminology.json"
+
+    @property
+    def chips_path(self) -> Path:
+        return self.data_dir / "knowledge" / "chips.json"
 
     @property
     def models_dir(self) -> Path:

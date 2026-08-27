@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ne">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>bhasa · state harness (dev)</title>
+  <link rel="icon" href="/static/cloudfrm-logo.png" type="image/png" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg:#f4fbf8; --ink:#161d1b; --muted:#3f4947; --line:#bec9c6; --line-soft:rgba(190,201,198,.55); --panel:#eff5f2; --panel-2:#e9efec; --panel-3:#e3eae7; --panel-4:#dde4e1; --well:#fff; --primary:#006a60; --on-primary:#fff; --primary-soft:#74f8e5; --on-primary-soft:#00201c; --accent-soft:#cce8e2; --on-accent-soft:#05201c; --danger:#ba1a1a; --danger-soft:#ffdad6; --on-danger-soft:#410002; --primary-30:rgba(0,106,96,.3); }
+    body { margin:0; padding:24px; font-family:"Noto Sans Devanagari","Segoe UI",system-ui,sans-serif; background:var(--bg); color:var(--ink); line-height:1.8; }
+    :lang(en), [lang="en"] { line-height: 1.6; }
+    h1 { font-size:20px; margin:0 0 4px; } h1 small { font-weight:400; color:var(--muted); font-size:13px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(420px,1fr)); gap:18px; margin-top:18px; }
+    section { background:var(--well); border:1px solid var(--line-soft); border-radius:16px; padding:14px 16px; }
+    section h2 { font-size:13px; color:var(--muted); margin:0 0 10px; font-weight:600; }
+    section h2 code { background:var(--panel-4); border-radius:6px; padding:1px 6px; font-size:12px; }
+    .turn { max-width:720px; margin-bottom:10px; } .turn.member { margin-left:auto; text-align:end; }
+    .turn .who { font-size:12px; color:var(--muted); margin:0 6px 4px; }
+    .turn.member .bubble { display:inline-block; background:var(--primary-soft); color:var(--on-primary-soft); border-radius:16px 16px 4px 16px; padding:10px 14px; text-align:start; }
+    .turn.member[data-state="pending"] .bubble { border:1px dashed var(--primary-30); }
+    .card { border-radius:4px 16px 16px 16px; padding:12px 16px 14px; border:1px solid var(--line-soft); }
+    .card.answer { background:var(--well); } .card.refusal, .card.wait { background:var(--panel-2); }
+    .card.error { background:var(--danger-soft); color:var(--on-danger-soft); }
+    .card__label { display:flex; gap:8px; align-items:center; font-size:12.5px; font-weight:600; color:var(--muted); } .card.error .card__label { color:inherit; }
+    .card__note { margin:6px 0 0; font-size:13px; color:var(--muted); } .card.error .card__note { color:inherit; }
+    .passage { margin:8px 0 0; padding:0 0 0 12px; border-left:3px solid var(--primary-30); white-space:pre-wrap; font-size:15.5px; } .passage.frozen { border-left-color:var(--line); }
+    .card__meta { margin-top:8px; font-size:12px; color:var(--muted); } .card__actions { margin-top:10px; }
+    .btn { padding:8px 14px; border-radius:999px; border:1px solid transparent; background:var(--primary); color:var(--on-primary); font:inherit; cursor:pointer; } .btn.ghost { background:var(--well); color:var(--ink); border-color:var(--line); } .btn.tiny { padding:4px 10px; font-size:12.5px; }
+    .status-line { display:flex; gap:8px; align-items:center; color:var(--muted); font-size:13.5px; padding:4px 6px; }
+    .banner { display:flex; gap:8px; align-items:center; padding:10px 14px; background:var(--danger-soft); color:var(--on-danger-soft); border-radius:10px; font-size:13.5px; }
+    .empty-thread { background:var(--panel-2); border:1px solid var(--line-soft); border-radius:18px; padding:18px 20px; } .empty-thread h2 { font-size:20px; color:var(--ink); margin:0 0 6px; } .empty-thread p { margin:0; color:var(--muted); }
+    .composer-notice { display:flex; gap:8px; align-items:flex-start; padding:8px 12px; border-radius:12px; font-size:13.5px; border:1px solid var(--line-soft); margin-bottom:8px; }
+    .composer-notice.warn { background:var(--panel-4); } .composer-notice.error { background:var(--danger-soft); color:var(--on-danger-soft); } .composer-notice.info { background:var(--panel-3); }
+    .flag { display:inline-flex; gap:8px; align-items:center; margin:8px 0 0; font-size:13px; }
+  </style>
+</head>
+<body>
+  <h1>State harness <small>dev only — served only when SUPPORT_DEV_HARNESS=true; never part of the desk build</small></h1>
+  <label class="flag"><input type="checkbox" id="voice-flag" /> <span>voice capability flag (renders the capability-gated mic states)</span></label>
+  <div class="grid" id="grid"></div>
+  <script src="/static/desk-core.js"></script>
+  <script src="/static/desk-ui.js"></script>
+  <script>
+    const ui = window.DeskUI;
+    const grid = document.getElementById("grid");
+    const REFUSAL_PLACEHOLDER = "(fetched refusal string renders here — never typed into source)";
+    function section(title, nodes) {
+      const s = document.createElement("section");
+      s.innerHTML = "<h2><code>" + title + "</code></h2>";
+      [].concat(nodes).forEach((n) => s.appendChild(n));
+      grid.appendChild(s);
+      return s;
+    }
+    function render(voice) {
+      grid.innerHTML = "";
+      for (const lang of ["ne", "en"]) {
+        section("empty-thread · " + lang, ui.emptyThread(lang));
+        section("member pending + searching · " + lang, [ui.memberTurn({ text: lang === "ne" ? "बचत खाताको ब्याजदर कति हो?" : "How do I reset my PIN?", lang, pending: true }), ui.searching(lang)]);
+        section("searching-long (taking longer) · " + lang, ui.escalateSearching(ui.searching(lang), lang, () => {}));
+        section("answer (verbatim passage) · " + lang, ui.answerCard({ reply: lang === "ne" ? "बचत खातामा वार्षिक ५ प्रतिशत ब्याज दिइन्छ।" : "Open the cooperative or bank mobile app, tap Sign in, then Forgot PIN/password.", passage: { id: lang === "ne" ? "kb-001" : "login-reset", title: lang === "ne" ? "बचत खाता ब्याजदर" : "Mobile banking login and PIN", source: "product_knowledge", language: lang }, question_language: lang }));
+        section("refusal · general (neutral surface, not an error) · " + lang, ui.refusalCard({ reply: REFUSAL_PLACEHOLDER, refusal_type: "general", question_language: lang }, { onTicket: () => {} }));
+        section("refusal · quantity · " + lang, ui.refusalCard({ reply: REFUSAL_PLACEHOLDER, refusal_type: "quantity", question_language: lang }, { onTicket: () => {} }));
+        section("credential decline · " + lang, ui.credentialDeclineCard({ reply: lang === "ne" ? "यो सन्देशमा गोप्य विवरण छ, त्यसैले प्रशोधन गरिएन।" : "This message contained a credential, so it was not processed.", language: lang }));
+        section("send failure (network) + retry · " + lang, ui.failureCard({ lang, reason: "network", onRetry: () => {} }));
+        section("send failure (timeout) + retry · " + lang, ui.failureCard({ lang, reason: "timeout", onRetry: () => {} }));
+        section("rate limit · no Retry-After (no invented number) · " + lang, ui.rateLimitCard({ lang, retryAfter: null, onRetry: () => {} }));
+        section("rate limit · Retry-After: 20 · " + lang, ui.rateLimitCard({ lang, retryAfter: 20, onRetry: () => {} }));
+        section("offline (thread header) · " + lang, ui.offlineBanner(lang, "offline"));
+        section("service unreachable (thread header) · " + lang, ui.offlineBanner(lang, "service"));
+        section("composer · credential warning · " + lang, ui.composerNotice({ kind: "credential", lang }));
+        section("composer · Devanagari font fallback · " + lang, ui.composerNotice({ kind: "font", lang }));
+        if (voice) {
+          section("composer · mic failure (capability-gated) · " + lang, ui.composerNotice({ kind: "mic-fail", lang }));
+          section("composer · mic blocked (capability-gated) · " + lang, ui.composerNotice({ kind: "mic-blocked", lang }));
+          section("composer · unsupported browser (capability-gated) · " + lang, ui.composerNotice({ kind: "unsupported", lang }));
+        }
+      }
+    }
+    const flag = document.getElementById("voice-flag");
+    flag.addEventListener("change", () => render(flag.checked));
+    render(false);
+  </script>
+</body>
+</html>
