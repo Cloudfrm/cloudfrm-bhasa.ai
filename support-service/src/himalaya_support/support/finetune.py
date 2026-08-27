@@ -18,8 +18,7 @@ class SFTRecorder:
     """
 
     def __init__(self, settings: Settings) -> None:
-        self.dir = settings.data_dir / "finetune"
-        self.dir.mkdir(parents=True, exist_ok=True)
+        self.dir = settings.finetune_dir
         self.path = self.dir / "sft_pairs.jsonl"
         self.gold_path = self.dir / "gold.jsonl"
         self.train_path = self.dir / "train.jsonl"

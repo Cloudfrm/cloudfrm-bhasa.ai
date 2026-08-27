@@ -84,6 +84,12 @@ class Settings(BaseSettings):
         return path
 
     @property
+    def finetune_dir(self) -> Path:
+        path = _WRITABLE_DATA_ROOT / "finetune"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @property
     def db_path(self) -> Path:
         return self.store_dir / "support.db"
 
