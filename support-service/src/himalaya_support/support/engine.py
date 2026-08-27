@@ -4,6 +4,7 @@ import base64
 import json
 import logging
 import re
+import threading
 from typing import Any
 
 from himalaya_support.config import Settings
@@ -65,6 +66,7 @@ class SupportEngine:
         self.sft = SFTRecorder(settings)
         self._stt_failures: dict[str, int] = {}
         self._pending_ticket: dict[str, dict[str, Any]] = {}
+        self._call_lock = threading.Lock()
 
     def chat(
         self,
@@ -305,13 +307,16 @@ class SupportEngine:
             if language == "ne"
             else "Namaste, I am Bhasa. The call is connected. Login, transfer, loan, KYC, or a card — how can I help?"
         )
-        conversation_id = self.store.get_or_create_conversation(None, None, language, channel="call")
-        self.store.add_message(
-            conversation_id,
-            "assistant",
-            greeting,
-            {"language": language, "channel": "call", "kind": "greeting"},
-        )
+        with self._call_lock:
+            # One live call max: a new pickup ends whatever was left open (retry-safe).
+            self.store.end_open_calls()
+            conversation_id = self.store.get_or_create_conversation(None, None, language, channel="call")
+            self.store.add_message(
+                conversation_id,
+                "assistant",
+                greeting,
+                {"language": language, "channel": "call", "kind": "greeting"},
+            )
         audio_b64 = None
         mime = None
         try:
@@ -319,13 +324,34 @@ class SupportEngine:
             audio_b64 = base64.b64encode(audio).decode("ascii")
         except InferenceError as exc:
             logger.info("Call greeting TTS skipped: %s", exc)
+        with self._call_lock:
+            open_call = self.store.get_open_call()
+            live = bool(open_call and open_call["id"] == conversation_id)
         return {
             "conversation_id": conversation_id,
             "reply": greeting,
             "language": language,
             "audio_base64": audio_b64,
             "mime": mime,
+            "status": "live" if live else "ended",
         }
+
+    def end_call(self, conversation_id: str | None = None) -> dict[str, Any]:
+        with self._call_lock:
+            if conversation_id:
+                status = self.store.end_conversation(conversation_id)
+                return {
+                    "ok": True,
+                    "conversation_id": conversation_id,
+                    "status": status,
+                }
+            ended_ids = self.store.end_open_calls()
+            return {
+                "ok": True,
+                "conversation_id": ended_ids[0] if ended_ids else None,
+                "ended": ended_ids,
+                "status": "ended",
+            }
 
     def voice_chat(
         self,

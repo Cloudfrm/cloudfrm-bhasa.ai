@@ -155,6 +155,7 @@
     .status { display: flex; align-items: center; gap: 8px; color: var(--leaf); font-weight: 600; font-size: 14px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #3fd19a; box-shadow: 0 0 10px #3fd19a; }
     .dot.busy { background: var(--crimson); box-shadow: 0 0 10px var(--crimson); }
+    .dot.err { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
     .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .stage { flex: 1; min-height: 0; display: grid; }
     .stage.home, .stage.settings { grid-template-columns: 1fr; }
@@ -330,6 +331,7 @@
       box-shadow: 0 0 40px rgba(224, 192, 120, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.3);
     }
     .ring.live { border-color: var(--crimson); box-shadow: 0 0 0 10px rgba(255, 107, 122, 0.18), 0 0 40px rgba(255, 107, 122, 0.28); }
+    .ring.err { border-color: var(--gold); box-shadow: 0 0 0 10px rgba(224, 192, 120, 0.18), 0 0 40px rgba(224, 192, 120, 0.22); }
     .call-copy { text-align: center; margin: 16px 24px 0; }
     .call-copy h3 { margin: 0 0 6px; font-family: "Source Serif 4", Georgia, serif; font-size: 24px; }
     .call-copy p { margin: 0; color: var(--muted); }
@@ -482,6 +484,7 @@
         liveChat: "सेवा खुला · च्याट",
         liveIdle: "निष्क्रिय · कल",
         liveOn: "लाइनमा · एआईले उठायो",
+        liveErr: "त्रुटि · फेरि उठाउन सकिन्छ",
         voice: "आवाज",
         homeTitle: "नमस्ते, यो भाषा डेसबोर्ड हो",
         homeLede: "सदस्यलाई च्याट वा कलबाट सहयोग गर्नुहोस्। एउटै Gemma दिमाग दुवैमा जवाफ दिन्छ।",
@@ -516,7 +519,8 @@
         settingsBody: "एपीआई की, फोन नम्बर र ज्ञान भण्डार यहीँ आउँछ। अहिले च्याट र कल मात्र खुला छन्।",
         ticketPrefix: "टिकट: ",
         micErr: "आवाजका लागि Chrome वा Edge प्रयोग गर्नुहोस्।",
-        hearErr: "सुनिएन। फेरि बोल्नुहोस्।"
+        hearErr: "सुनिएन। फेरि बोल्नुहोस्।",
+        micDenied: "माइक्रोफोन रोकियो। Chrome मा अनुमति दिनुहोस्, अनि फेरि उठाउनुहोस्।"
       },
       en: {
         title: "Bhasa · Dashboard",
@@ -533,6 +537,7 @@
         liveChat: "Open · chat",
         liveIdle: "Idle · call",
         liveOn: "On a call · AI picked up",
+        liveErr: "Error · ready to retry",
         voice: "Voice",
         homeTitle: "Namaste, this is the Bhasa dashboard",
         homeLede: "Help members by chat or call. The same Gemma brain answers both.",
@@ -567,7 +572,8 @@
         settingsBody: "API keys, phone numbers, and knowledge will live here. Chat and Call are open now.",
         ticketPrefix: "Ticket: ",
         micErr: "Voice needs Chrome or Edge.",
-        hearErr: "Could not hear that. Speak again."
+        hearErr: "Could not hear that. Speak again.",
+        micDenied: "Microphone is blocked. Allow it in Chrome, then pick up again."
       }
     };
     const topics = [
@@ -591,19 +597,24 @@
     let speakOn = localStorage.getItem("bhasa-speak") !== "off";
     let chatId = null;
     let callId = null;
-    let callLive = false;
+    let callState = "idle";
+    let callEpoch = 0;
     let lastAudio = null;
+    let audioDone = null;
     let started = false;
     let lastMemberBubble = null;
     let unicoderTimer = null;
     let unicoderReq = 0;
     let callRec = null;
     let callBusy = false;
+    let callStream = null;
+    let callFetch = null;
 
     function t() { return copy[replyLang]; }
     function hasLatin(text) { return /[A-Za-z]/.test(text || ""); }
 
     function setView(name) {
+      if (view === "call" && name !== "call") hangup();
       view = name;
       const work = name === "chat" || name === "call";
       document.getElementById("stage").className = "stage " + (work ? "work" : name);
@@ -637,7 +648,7 @@
         home: c.pageHome, chat: c.pageChat, call: c.pageCall, settings: c.pageSettings
       })[view];
       document.getElementById("live").textContent = view === "call"
-        ? (callLive ? c.liveOn : c.liveIdle)
+        ? callLiveLabel()
         : (view === "chat" ? c.liveChat : c.liveHome);
       document.getElementById("speak-toggle").textContent = c.voice;
       document.getElementById("speak-toggle").classList.toggle("active", speakOn);
@@ -794,9 +805,10 @@
       if (pending) pending.remove();
     }
 
-    async function speakReply(text, wait) {
+    async function speakReply(text, wait, epoch) {
       if (!text) return;
       if (!wait && !speakOn) return;
+      if (epoch != null && !isCallEpoch(epoch)) return;
       try {
         const res = await fetch("/v1/support/speak", {
           method: "POST",
@@ -804,22 +816,44 @@
           body: JSON.stringify({ text, locale: replyLang })
         });
         const data = await res.json();
+        if (epoch != null && !isCallEpoch(epoch)) return;
         if (res.ok && data.audio_base64) {
-          if (lastAudio) lastAudio.pause();
-          lastAudio = new Audio("data:" + (data.mime || "audio/mpeg") + ";base64," + data.audio_base64);
-          const done = lastAudio.play().catch(() => {});
-          if (wait) await new Promise((resolve) => { lastAudio.onended = resolve; lastAudio.onerror = resolve; });
-          await done;
+          await playBytes(data.mime, data.audio_base64, epoch);
         }
       } catch {}
     }
 
-    async function playPayload(data) {
+    async function playPayload(data, epoch) {
       if (!data || !data.audio_base64) return;
-      if (lastAudio) lastAudio.pause();
-      lastAudio = new Audio("data:" + (data.mime || "audio/mpeg") + ";base64," + data.audio_base64);
-      try { await lastAudio.play(); } catch {}
-      await new Promise((resolve) => { lastAudio.onended = resolve; lastAudio.onerror = resolve; });
+      await playBytes(data.mime, data.audio_base64, epoch);
+    }
+
+    async function playBytes(mime, audioB64, epoch) {
+      if (epoch != null && !isCallEpoch(epoch)) return;
+      stopAudio();
+      const audio = new Audio("data:" + (mime || "audio/mpeg") + ";base64," + audioB64);
+      lastAudio = audio;
+      try {
+        await audio.play();
+      } catch {
+        return;
+      }
+      if (epoch != null && !isCallEpoch(epoch)) {
+        stopAudio();
+        return;
+      }
+      await new Promise((resolve) => {
+        const done = () => {
+          if (audioDone === done) audioDone = null;
+          audio.onended = null;
+          audio.onerror = null;
+          resolve();
+        };
+        audioDone = done;
+        audio.onended = done;
+        audio.onerror = done;
+        if (epoch != null && !isCallEpoch(epoch)) done();
+      });
     }
 
     async function sendText(message) {
@@ -944,99 +978,253 @@
       } catch {}
     }
 
-    function setCallUi(on) {
-      callLive = on;
+    function callLiveLabel() {
+      const c = t();
+      if (callState === "live" || callState === "starting") return c.liveOn;
+      if (callState === "error") return c.liveErr;
+      return c.liveIdle;
+    }
+
+    function isCallEpoch(epoch) {
+      return epoch === callEpoch;
+    }
+
+    function isCallLive(epoch) {
+      return isCallEpoch(epoch) && callState === "live";
+    }
+
+    function setCallState(state) {
+      callState = state;
+      const on = state === "live" || state === "starting";
+      const err = state === "error";
       document.getElementById("ring").classList.toggle("live", on);
+      document.getElementById("ring").classList.toggle("err", err);
       document.getElementById("status-dot").classList.toggle("busy", on);
-      document.getElementById("live").textContent = on ? t().liveOn : t().liveIdle;
+      document.getElementById("status-dot").classList.toggle("err", err);
+      document.getElementById("live").textContent = view === "call" ? callLiveLabel() : document.getElementById("live").textContent;
       document.getElementById("pickup").classList.toggle("hidden", on);
       document.getElementById("hangup").classList.toggle("hidden", !on);
     }
 
+    function stopAudio() {
+      const finish = audioDone;
+      audioDone = null;
+      const audio = lastAudio;
+      lastAudio = null;
+      if (audio) {
+        audio.onended = null;
+        audio.onerror = null;
+        try { audio.pause(); } catch {}
+        try { audio.removeAttribute("src"); audio.load(); } catch {}
+      }
+      if (finish) finish();
+    }
+
+    function stopListen() {
+      const rec = callRec;
+      callRec = null;
+      if (!rec) return;
+      rec.onresult = null;
+      rec.onerror = null;
+      rec.onend = null;
+      try { rec.abort(); } catch {}
+      try { rec.stop(); } catch {}
+    }
+
+    function releaseMic() {
+      const stream = callStream;
+      callStream = null;
+      if (!stream) return;
+      stream.getTracks().forEach((track) => {
+        try { track.stop(); } catch {}
+      });
+    }
+
+    function abortCallFetch() {
+      const controller = callFetch;
+      callFetch = null;
+      if (controller) {
+        try { controller.abort(); } catch {}
+      }
+    }
+
+    function releaseCallMedia() {
+      stopListen();
+      stopAudio();
+      releaseMic();
+      abortCallFetch();
+      callBusy = false;
+    }
+
+    function notifyHangup(conversationId) {
+      const body = JSON.stringify({ conversation_id: conversationId || null });
+      fetch("/v1/support/calls/hangup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body,
+        keepalive: true
+      }).catch(() => {});
+    }
+
+    async function acquireMic() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        const err = new Error(t().micErr);
+        err.code = "unsupported";
+        throw err;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      callStream = stream;
+      return stream;
+    }
+
+    function micDenied(err) {
+      const name = (err && err.name) || "";
+      return name === "NotAllowedError" || name === "PermissionDeniedError" || (err && err.code === "unsupported");
+    }
+
     async function pickup() {
-      if (callLive) return;
-      setCallUi(true);
+      if (callState === "starting" || callState === "live") return;
+      const epoch = ++callEpoch;
+      callBusy = false;
+      setCallState("starting");
       callLog.innerHTML = "";
       showLoading(callLog);
       try {
+        await acquireMic();
+        if (!isCallEpoch(epoch)) { releaseCallMedia(); return; }
+        const controller = new AbortController();
+        callFetch = controller;
         const res = await fetch("/v1/support/calls/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ locale: replyLang })
+          body: JSON.stringify({ locale: replyLang }),
+          signal: controller.signal
         });
         const data = await res.json();
+        if (!isCallEpoch(epoch)) {
+          if (data.conversation_id) notifyHangup(data.conversation_id);
+          return;
+        }
         if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
         callId = data.conversation_id;
         clearLoading("call-pending");
         addTurn(callLog, "agent", data.reply);
         loadInbox("call");
         loadHome();
-        await playPayload(data);
-        if (callLive) listenCall();
+        if (data.status === "ended") {
+          hangup();
+          return;
+        }
+        await playPayload(data, epoch);
+        if (!isCallEpoch(epoch)) return;
+        setCallState("live");
+        listenCall(epoch);
       } catch (err) {
+        if (!isCallEpoch(epoch)) return;
+        if (err && err.name === "AbortError") return;
         clearLoading("call-pending");
-        addTurn(callLog, "agent", String(err.message || err), true);
-        setCallUi(false);
+        addTurn(callLog, "agent", micDenied(err) ? t().micDenied : String(err.message || err), true);
+        const id = callId;
+        releaseCallMedia();
+        setCallState("error");
+        if (id) notifyHangup(id);
       }
     }
 
     function hangup() {
-      callLive = false;
-      callBusy = false;
-      if (callRec) { try { callRec.stop(); } catch {} callRec = null; }
-      if (lastAudio) { lastAudio.pause(); lastAudio = null; }
-      setCallUi(false);
-      loadInbox("call");
+      const wasActive = callState === "starting" || callState === "live";
+      const id = callId;
+      callEpoch += 1;
+      releaseCallMedia();
+      clearLoading("call-pending");
+      setCallState("idle");
+      if (wasActive) notifyHangup(id);
+      if (view === "call") loadInbox("call");
     }
 
-    function listenCall() {
-      if (!callLive || callBusy) return;
+    function failCall(message, epoch) {
+      if (epoch != null && !isCallEpoch(epoch)) return;
+      const id = callId;
+      callEpoch += 1;
+      releaseCallMedia();
+      clearLoading("call-pending");
+      if (message) addTurn(callLog, "agent", message, true);
+      setCallState("error");
+      notifyHangup(id);
+    }
+
+    function listenCall(epoch) {
+      if (!isCallLive(epoch) || callBusy) return;
+      stopListen();
       const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!Rec) { addTurn(callLog, "agent", t().micErr, true); return; }
+      if (!Rec) { failCall(t().micErr, epoch); return; }
       const rec = new Rec();
       callRec = rec;
       rec.lang = replyLang === "ne" ? "ne-NP" : "en-US";
       rec.interimResults = false;
+      rec.continuous = false;
       rec.onresult = async (event) => {
         const text = event.results[0][0].transcript;
-        if (!text || !callLive) return;
+        if (!text || !isCallLive(epoch)) return;
         callBusy = true;
-        try { rec.stop(); } catch {}
-        await sendCallTurn(text);
+        stopListen();
+        await sendCallTurn(text, epoch);
         callBusy = false;
-        if (callLive) listenCall();
+        if (isCallLive(epoch)) listenCall(epoch);
       };
-      rec.onerror = () => {
-        if (callLive && !callBusy) addTurn(callLog, "agent", t().hearErr, true);
+      rec.onerror = (event) => {
+        const code = (event && event.error) || "";
+        if (code === "aborted" || code === "no-speech") return;
+        if (!isCallLive(epoch) || callBusy) return;
+        if (code === "not-allowed" || code === "service-not-allowed" || code === "audio-capture") {
+          failCall(t().micDenied, epoch);
+          return;
+        }
+        addTurn(callLog, "agent", t().hearErr, true);
       };
       rec.onend = () => {
-        callRec = null;
-        if (callLive && !callBusy) setTimeout(() => { if (callLive && !callBusy) listenCall(); }, 500);
+        if (callRec === rec) callRec = null;
+        if (!isCallLive(epoch) || callBusy) return;
+        setTimeout(() => { if (isCallLive(epoch) && !callBusy) listenCall(epoch); }, 400);
       };
-      try { rec.start(); } catch {}
+      try {
+        rec.start();
+      } catch {
+        callRec = null;
+      }
     }
 
-    async function sendCallTurn(message) {
+    async function sendCallTurn(message, epoch) {
+      if (!isCallLive(epoch)) return;
       let shown = message;
       if (hasLatin(message)) shown = await toUnicoder(message);
+      if (!isCallLive(epoch)) return;
       addTurn(callLog, "member", shown);
       showLoading(callLog);
+      const controller = new AbortController();
+      callFetch = controller;
       try {
         const res = await fetch("/v1/support/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: shown, conversation_id: callId, locale: replyLang, channel: "call" })
+          body: JSON.stringify({ message: shown, conversation_id: callId, locale: replyLang, channel: "call" }),
+          signal: controller.signal
         });
         const data = await res.json();
+        if (!isCallLive(epoch)) return;
         if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
         callId = data.conversation_id;
         clearLoading("call-pending");
         addTurn(callLog, "agent", data.reply);
         loadInbox("call");
-        await speakReply(data.reply, true);
+        await speakReply(data.reply, true, epoch);
       } catch (err) {
+        if (err && err.name === "AbortError") return;
+        if (!isCallLive(epoch)) return;
         clearLoading("call-pending");
         addTurn(callLog, "agent", String(err.message || err), true);
+      } finally {
+        if (callFetch === controller) callFetch = null;
       }
     }
 
@@ -1083,6 +1271,8 @@
     });
     document.getElementById("pickup").addEventListener("click", pickup);
     document.getElementById("hangup").addEventListener("click", hangup);
+    window.addEventListener("pagehide", hangup);
+    window.addEventListener("beforeunload", hangup);
 
     setView("home");
   </script>

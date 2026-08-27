@@ -32,6 +32,7 @@ class SupportStore:
                     user_id TEXT,
                     locale TEXT,
                     channel TEXT,
+                    status TEXT,
                     created_at TEXT,
                     updated_at TEXT
                 );
@@ -58,6 +59,7 @@ class SupportStore:
                 """
             )
             self._ensure_column(conn, "conversations", "channel", "TEXT")
+            self._ensure_column(conn, "conversations", "status", "TEXT")
 
     def _ensure_column(self, conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:
         rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
@@ -82,14 +84,15 @@ class SupportStore:
         stamp = _now()
         with self._connect() as conn:
             conn.execute(
-                "INSERT INTO conversations (id, user_id, locale, channel, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (new_id, user_id, locale, kind, stamp, stamp),
+                "INSERT INTO conversations (id, user_id, locale, channel, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (new_id, user_id, locale, kind, "open", stamp, stamp),
             )
         return new_id
 
     def list_conversations(self, channel: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         sql = """
             SELECT c.id, c.user_id, c.locale, COALESCE(c.channel, 'chat') AS channel,
+                   COALESCE(c.status, 'open') AS status,
                    c.created_at, c.updated_at,
                    (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) AS preview,
                    (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) AS message_count
@@ -139,6 +142,57 @@ class SupportStore:
                 (conversation_id, limit),
             ).fetchall()
         return [{"role": row["role"], "content": row["content"]} for row in reversed(rows)]
+
+    def get_open_call(self) -> dict[str, Any] | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT id, user_id, locale, COALESCE(channel, 'call') AS channel,
+                       COALESCE(status, 'open') AS status, created_at, updated_at
+                FROM conversations
+                WHERE COALESCE(channel, 'chat') = 'call'
+                  AND COALESCE(status, 'open') != 'ended'
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """
+            ).fetchone()
+        return dict(row) if row else None
+
+    def end_conversation(self, conversation_id: str) -> str:
+        """Mark a conversation ended. Unknown or already-ended ids still return 'ended'."""
+        stamp = _now()
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT id, COALESCE(status, 'open') AS status FROM conversations WHERE id = ?",
+                (conversation_id,),
+            ).fetchone()
+            if not row:
+                return "ended"
+            if row["status"] == "ended":
+                return "ended"
+            conn.execute(
+                "UPDATE conversations SET status = ?, updated_at = ? WHERE id = ?",
+                ("ended", stamp, conversation_id),
+            )
+        return "ended"
+
+    def end_open_calls(self) -> list[str]:
+        stamp = _now()
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id FROM conversations
+                WHERE COALESCE(channel, 'chat') = 'call'
+                  AND COALESCE(status, 'open') != 'ended'
+                """
+            ).fetchall()
+            ids = [row["id"] for row in rows]
+            for conversation_id in ids:
+                conn.execute(
+                    "UPDATE conversations SET status = ?, updated_at = ? WHERE id = ?",
+                    ("ended", stamp, conversation_id),
+                )
+        return ids
 
     def create_ticket(self, payload: dict[str, Any]) -> dict[str, Any]:
         ticket_id = "TCK-" + uuid.uuid4().hex[:8].upper()

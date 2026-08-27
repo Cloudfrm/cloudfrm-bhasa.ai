@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from himalaya_support.adapt.to_nepali import unicoder
 from himalaya_support.api.schemas import (
+    CallHangupRequest,
     CallStartRequest,
     ChatRequest,
     ChatResponse,
@@ -67,6 +68,12 @@ def start_call(payload: CallStartRequest) -> dict:
         return get_engine().start_call(payload.locale)
     except InferenceError as exc:
         raise HTTPException(status_code=503, detail="Voice is temporarily unavailable") from exc
+
+
+@router.post("/support/calls/hangup")
+def hangup_call(payload: CallHangupRequest | None = None) -> dict:
+    conversation_id = payload.conversation_id if payload else None
+    return get_engine().end_call(conversation_id)
 
 
 @router.get("/support/conversations")
