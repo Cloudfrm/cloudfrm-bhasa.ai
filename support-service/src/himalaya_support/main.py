@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import traceback
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -7,6 +9,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+
+logger = logging.getLogger(__name__)
 
 from himalaya_support.api.routes import router
 from himalaya_support.config import get_settings
@@ -40,6 +44,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router, prefix="/v1")
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
+    logger.error("Unhandled error: %s\n%s", exc, traceback.format_exc())
+    return JSONResponse({"detail": f"{type(exc).__name__}: {exc}"}, status_code=500)
 
 CHAT_PAGE = Path(__file__).with_name("static") / "chat.html"
 DASHBOARD_PAGE = Path(__file__).with_name("static") / "dashboard.html"
