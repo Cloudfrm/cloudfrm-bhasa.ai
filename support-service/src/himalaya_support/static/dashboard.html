@@ -444,6 +444,20 @@
     }
     .chat-inbox__head h3 { margin: 0; min-width: 0; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--bhasa-text); }
     .chat-inbox__head h3 > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* The way back to the list below 1024px — never a dead end */
+    .inbox-toggle {
+      display: none;
+      align-items: center;
+      border: 1px solid var(--bhasa-line);
+      background: var(--bhasa-raised);
+      color: var(--bhasa-text);
+      border-radius: var(--r-sm);
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      min-height: 32px;
+    }
     .chat-inbox__count {
       min-width: 22px; height: 22px; padding: 0 7px; border-radius: var(--r-sm);
       background: var(--bhasa-raised); border: 1px solid var(--bhasa-line-soft);
@@ -705,6 +719,12 @@
     }
     .room .welcome h2 { margin: 0 0 8px; font-size: 22px; line-height: 1.5; font-weight: 700; color: var(--bhasa-text); }
     .room .welcome p { margin: 0; color: var(--bhasa-text-muted); line-height: 1.75; }
+    .room .welcome__hint {
+      margin-top: 12px !important;
+      padding-top: 12px;
+      border-top: 1px solid var(--bhasa-line-soft);
+      font-size: 13.5px;
+    }
 
     /* Jump to latest — quiet, keyboard reachable, sits above the bar */
     .jump-latest {
@@ -846,13 +866,40 @@
       .inbox { max-height: 180px; border-right: 0; border-bottom: 1px solid var(--line-soft); }
       .stats, .doors { grid-template-columns: 1fr; }
       .home, .settings { padding: 20px 16px; }
-      .stage.chat-room { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
-      .chat-inbox { max-height: 240px; border-right: 0; border-bottom: 1px solid var(--line-soft); }
-      .chat-inbox__foot { display: none; }
-      .room { min-height: 70vh; }
+      .stage.work { grid-template-columns: 1fr; }
+      .inbox { max-height: 180px; border-right: 0; border-bottom: 1px solid var(--line-soft); }
+    }
+
+    /* ------------------------------------------------------------------
+       A0.5 breakpoints. A 1280px laptop at 125% OS scaling is 1024 CSS
+       px and at 150% is 853 — the real cause of "smashed layout" in
+       branch offices, so both are held rather than hidden.
+       ------------------------------------------------------------------ */
+    @media (max-width: 1279px) and (min-width: 1024px) {
+      .stage.chat-room { grid-template-columns: 288px minmax(0, 1fr); }
+      .room #log { padding: 20px 20px 16px; }
+      .room__topics, .desk-bar, .conn-banner { padding-left: 20px; padding-right: 20px; }
+    }
+    /* Below 1024 the inbox collapses to a panel with a persistent
+       control. The thread and the composer never leave the screen. */
+    @media (max-width: 1023px) {
+      .stage.chat-room {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+      .chat-inbox {
+        max-height: 46vh;
+        border-right: 0;
+        border-bottom: 1px solid var(--bhasa-line);
+      }
+      .chat-inbox[data-collapsed="true"] .chat-inbox__list,
+      .chat-inbox[data-collapsed="true"] .chat-inbox__foot,
+      .chat-inbox[data-collapsed="true"] .chat-inbox__new { display: none; }
+      .chat-inbox[data-collapsed="true"] { max-height: none; }
+      .inbox-toggle { display: inline-flex; }
       .room #log { padding: 16px; }
-      .desk-bar { padding: 10px 12px 12px; }
-      .desk-bar #send { min-width: 96px; padding: 0 14px; }
+      .room__topics, .desk-bar, .conn-banner { padding-left: 16px; padding-right: 16px; }
+      .desk-bar #send { min-width: 104px; padding: 0 16px; }
     }
   </style>
 </head>
@@ -925,6 +972,7 @@
         <aside class="chat-inbox hidden" id="chat-inbox" aria-label="Conversations">
           <div class="chat-inbox__head">
             <h3><span id="chat-inbox-title"></span><span class="chat-inbox__count" id="chat-inbox-count">0</span></h3>
+            <button type="button" class="inbox-toggle" id="inbox-toggle" aria-expanded="true"></button>
           </div>
           <button type="button" class="chat-inbox__new" id="chat-new"></button>
           <div class="chat-inbox__list" id="chat-list"></div>
@@ -1066,7 +1114,7 @@
         pageCall: "AI call",
         pageSettings: "Settings",
         liveHome: "Service open",
-        liveChat: "Service open · chat",
+        liveChat: "Open · chat",
         liveIdle: "Idle · call",
         liveOn: "On a call · AI picked up",
         voice: "Voice",
@@ -1385,21 +1433,55 @@
       document.getElementById("hangup").textContent = c.hangup;
       box.placeholder = c.placeholder;
       send.textContent = c.send;
+      box.setAttribute("aria-label", c.placeholder);
+      /* WO6 — Speak carries a word, not a mystery icon, and stays
+         quieter than Send. D4: when the browser has no recognition at
+         all, hide it rather than offer a button that only errors. */
       mic.textContent = c.mic;
+      mic.hidden = !(window.SpeechRecognition || window.webkitSpeechRecognition);
       paintTheme();
       paintChips();
+      paintInboxToggle();
       paintUnicoderHint();
       if (view === "chat" && !started) showWelcome();
+    }
+
+    /* WO7 — all seven ship, in both languages. The chip label is what
+       the officer reads; the sentence is what enters the chat. A0.18
+       asks for roving tabindex: the strip is one tab stop and ←/→ move
+       between chips. */
+    function paintInboxToggle() {
+      const pane = document.getElementById("chat-inbox");
+      const btn = document.getElementById("inbox-toggle");
+      const collapsed = pane.dataset.collapsed === "true";
+      btn.textContent = t().chatInbox;
+      btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
     }
 
     function paintChips() {
       const wrap = document.getElementById("chips");
       wrap.innerHTML = "";
-      topics.forEach((row) => {
+      topics.forEach((row, index) => {
         const btn = document.createElement("button");
         btn.type = "button";
+        btn.lang = replyLang;
+        btn.tabIndex = index === 0 ? 0 : -1;
         btn.textContent = replyLang === "ne" ? row.ne : row.en;
-        btn.addEventListener("click", () => sendText(replyLang === "ne" ? row.neMsg : row.enMsg));
+        btn.addEventListener("click", () => {
+          track("chat_chip_clicked", { chipId: row.en, lang: replyLang });
+          logStick = true;
+          sendText(replyLang === "ne" ? row.neMsg : row.enMsg, { viaChip: true, asTyped: true });
+        });
+        btn.addEventListener("keydown", (event) => {
+          const step = event.key === "ArrowRight" ? 1 : (event.key === "ArrowLeft" ? -1 : 0);
+          if (!step) return;
+          event.preventDefault();
+          const chips = Array.from(wrap.querySelectorAll("button"));
+          const next = chips[(chips.indexOf(btn) + step + chips.length) % chips.length];
+          chips.forEach((chip) => { chip.tabIndex = -1; });
+          next.tabIndex = 0;
+          next.focus();
+        });
         wrap.appendChild(btn);
       });
     }
@@ -1786,20 +1868,49 @@
       if (note) note.remove();
     }
 
+    /* WO5 states 3–5 — voice problems belong in the write-bar area, not
+       in a Bhasa bubble and not in a popup over Chat. A failure here
+       never costs the officer the inbox or the composer. */
+    function speakError(message) {
+      unicoderHint.className = "unicoder err";
+      unicoderHint.textContent = message;
+    }
+
     function listenChat() {
       const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!Rec) { addAgent(t().micErr, true); return; }
+      if (!Rec) {
+        speakError(t().micErr);
+        track("chat_speak_used", { outcome: "unsupported" });
+        return;
+      }
       const rec = new Rec();
       rec.lang = replyLang === "ne" ? "ne-NP" : "en-US";
       rec.interimResults = false;
       rec.onresult = (event) => {
         const text = event.results[0][0].transcript;
-        if (text) sendText(text);
+        if (!text) return;
+        track("chat_speak_used", { outcome: "ok" });
+        paintUnicoderHint();
+        logStick = true;
+        sendText(text);
       };
-      rec.onerror = () => addAgent(t().hearErr, true);
+      rec.onerror = (event) => {
+        const kind = event && event.error;
+        if (kind === "not-allowed" || kind === "service-not-allowed") {
+          speakError(t().micBlocked);
+          track("chat_speak_used", { outcome: "blocked" });
+          return;
+        }
+        speakError(t().hearErr);
+        track("chat_speak_used", { outcome: "no_speech" });
+      };
       rec.start();
       mic.classList.add("hot");
-      rec.onend = () => mic.classList.remove("hot");
+      mic.setAttribute("aria-pressed", "true");
+      rec.onend = () => {
+        mic.classList.remove("hot");
+        mic.setAttribute("aria-pressed", "false");
+      };
     }
 
     async function loadInbox(channel) {
@@ -2035,18 +2146,23 @@
     document.querySelectorAll(".door").forEach((btn) => {
       btn.addEventListener("click", () => setView(btn.getAttribute("data-go")));
     });
-    document.getElementById("lang-ne").addEventListener("click", () => {
-      replyLang = "ne";
-      localStorage.setItem("bhasa-lang", "ne");
+    /* A0.3 — the switch changes chrome only. Message bodies already in
+       the thread are never re-rendered or re-transliterated: a Nepali
+       answer stays Nepali when the officer switches to English. */
+    function setLang(lang) {
+      replyLang = lang;
+      try { localStorage.setItem("bhasa-lang", lang); } catch (e) {}
+      track("chat_lang_switched", { to: lang });
       paintChrome();
-      if (view === "chat") loadInbox("chat");
-    });
-    document.getElementById("lang-en").addEventListener("click", () => {
-      replyLang = "en";
-      localStorage.setItem("bhasa-lang", "en");
-      paintChrome();
-      if (view === "chat") loadInbox("chat");
-    });
+      if (view === "chat") {
+        loadInbox("chat");
+        loadTickets();
+        setConnection(connection);
+        paintJump();
+      }
+    }
+    document.getElementById("lang-ne").addEventListener("click", () => setLang("ne"));
+    document.getElementById("lang-en").addEventListener("click", () => setLang("en"));
     document.getElementById("speak-toggle").addEventListener("click", () => {
       speakOn = !speakOn;
       localStorage.setItem("bhasa-speak", speakOn ? "on" : "off");
@@ -2067,8 +2183,18 @@
       else showWelcome();
       loadInbox();
     });
+    /* WO8 / D2 — New chat is a client-side draft. Nothing is written to
+       the server until the first send, so the inbox never fills with
+       empty conversations that lie about the officer's day. The middle
+       returns to the welcome and focus moves to the composer (A0.18);
+       the row appears on first send, not on the button press. */
     document.getElementById("chat-new").addEventListener("click", () => {
+      track("chat_new_chat", {});
       showWelcome();
+      box.value = "";
+      growBox();
+      paintSendEnabled();
+      paintUnicoderHint();
       loadInbox("chat");
       box.focus();
     });
@@ -2145,6 +2271,20 @@
     });
     window.addEventListener("online", () => setConnection("online"));
     window.addEventListener("offline", () => setConnection("offline"));
+    document.getElementById("inbox-toggle").addEventListener("click", () => {
+      const pane = document.getElementById("chat-inbox");
+      const collapsed = pane.dataset.collapsed === "true";
+      pane.dataset.collapsed = collapsed ? "false" : "true";
+      paintInboxToggle();
+    });
+    /* Below 1024px the officer opens a chat from a panel that then
+       collapses, so the thread is never buried under the list. */
+    document.getElementById("chat-list").addEventListener("click", () => {
+      if (window.innerWidth < 1024) {
+        document.getElementById("chat-inbox").dataset.collapsed = "true";
+        paintInboxToggle();
+      }
+    });
     document.getElementById("pickup").addEventListener("click", pickup);
     document.getElementById("hangup").addEventListener("click", hangup);
 
