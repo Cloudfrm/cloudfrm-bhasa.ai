@@ -483,9 +483,9 @@
       padding: 10px 12px;
       cursor: pointer;
       color: var(--bhasa-text);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: 8px;
       flex-shrink: 0;
       transition: background .15s, border-color .15s;
     }
@@ -494,10 +494,19 @@
       background: var(--bhasa-gold-quiet);
       border-color: var(--bhasa-gold-edge);
     }
-    .convo__top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-    .convo__name { font-size: 12px; font-weight: 700; color: var(--bhasa-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .convo__time { font-size: 12px; color: var(--bhasa-text-muted); font-weight: 600; flex-shrink: 0; }
+    .convo__time {
+      grid-column: 2;
+      grid-row: 1;
+      align-self: start;
+      font-size: 12px;
+      color: var(--bhasa-text-muted);
+      font-weight: 600;
+      white-space: nowrap;
+      padding-top: 2px;
+    }
     .convo__preview {
+      grid-column: 1;
+      grid-row: 1 / span 2;
       font-size: 13.5px;
       line-height: 1.6;
       color: var(--bhasa-text);
@@ -508,7 +517,24 @@
       overflow-wrap: anywhere;
       min-height: calc(13.5px * 1.6 * 2);
     }
-    .chat-inbox__list .empty,
+    .chat-inbox__empty {
+      padding: 32px 20px;
+      text-align: center;
+    }
+    .chat-inbox__empty strong {
+      display: block;
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--bhasa-text);
+      margin-bottom: 6px;
+      line-height: 1.6;
+    }
+    .chat-inbox__empty span {
+      display: block;
+      font-size: 13px;
+      color: var(--bhasa-text-muted);
+      line-height: 1.7;
+    }
     .chat-inbox__foot .empty { color: var(--bhasa-text-muted); }
     .chat-inbox__foot {
       border-top: 1px solid var(--bhasa-line);
@@ -856,19 +882,20 @@
         member: "तपाईं",
         play: "सुन्नुहोस्",
         newThread: "नयाँ",
-        tickets: "टिकट",
+        tickets: "खुला टिकट",
         emptyInbox: "अहिले संवाद छैन",
         emptyTickets: "खुला टिकट छैन",
-        chatInbox: "संवादहरू",
-        chatNew: "+ नयाँ संवाद",
-        topics: "छिटो विषय",
-        roomNew: "नयाँ संवाद",
-        roomNewSub: "सदस्यको पहिलो सन्देश लेख्नुहोस्, वा तलबाट विषय छान्नुहोस्।",
-        roomThread: "संवाद",
-        roomMsgs: "सन्देश",
-        roomSince: "सुरु",
-        roomTag: "एआई जवाफ दिन्छ",
-        memberRow: "सदस्य",
+        chatInbox: "कुराकानीहरू",
+        chatNew: "नयाँ कुराकानी",
+        inboxEmptyLine: "अहिले कुनै कुराकानी छैन। नयाँ कुराकानी सुरु गर्नुहोस्।",
+        inboxEmptyTitle: "अहिले कुनै कुराकानी छैन",
+        inboxEmptyHelp: "सदस्यलाई सहयोग गर्न नयाँ कुराकानी सुरु गर्नुहोस्।",
+        inboxNewRowLabel: "नयाँ कुराकानी",
+        timeNow: "अहिले",
+        timeMinutes: "{n} मिनेट",
+        timeToday: "आज",
+        timeYesterday: "हिजो",
+        topics: "धेरै सोधिने",
         callTitle: "एआईले कल उठाउँछ",
         callBody: "उठ्नुहोस् थिच्नुहोस् — भाषा सेवा जवाफ दिन्छ। यो ब्राउजर कल हो, फोन लाइन पछि जोडिन्छ।",
         pickup: "कल उठाउनुहोस्",
@@ -920,19 +947,20 @@
         member: "You",
         play: "Listen",
         newThread: "New",
-        tickets: "Tickets",
+        tickets: "Open tickets",
         emptyInbox: "No conversations yet",
         emptyTickets: "No open tickets",
         chatInbox: "Conversations",
-        chatNew: "+ New chat",
-        topics: "Quick topics",
-        roomNew: "New conversation",
-        roomNewSub: "Type the member's first message, or pick a topic below.",
-        roomThread: "Conversation",
-        roomMsgs: "messages",
-        roomSince: "started",
-        roomTag: "AI replies",
-        memberRow: "Member",
+        chatNew: "New chat",
+        inboxEmptyLine: "No conversations yet. Start a new chat.",
+        inboxEmptyTitle: "No conversations yet",
+        inboxEmptyHelp: "Start a new chat to help a member.",
+        inboxNewRowLabel: "New chat",
+        timeNow: "Just now",
+        timeMinutes: "{n} min",
+        timeToday: "Today",
+        timeYesterday: "Yesterday",
+        topics: "Common questions",
         callTitle: "AI picks up the call",
         callBody: "Press pick up — Bhasa answers. This is a browser call; a phone line comes later.",
         pickup: "Pick up",
@@ -976,7 +1004,6 @@
     let unicoderReq = 0;
     let callRec = null;
     let callBusy = false;
-    let convoMeta = {};
 
     function t() { return copy[replyLang]; }
     function hasLatin(text) { return /[A-Za-z]/.test(text || ""); }
@@ -1104,18 +1131,24 @@
       unicoderHint.textContent = t().unicoderHint;
     }
 
-    function fmtWhen(iso) {
+    const NE_DIGITS = ["०", "१", "२", "३", "४", "५", "६", "७", "८", "९"];
+    function neNum(value) { return String(value).replace(/\d/g, (d) => NE_DIGITS[d]); }
+    function hasDevanagari(text) { return /[ऀ-ॿ]/.test(text || ""); }
+
+    function humanTime(iso) {
       if (!iso) return "";
       const d = new Date(iso);
-      if (isNaN(d.getTime())) return String(iso).slice(0, 16).replace("T", " ");
-      const loc = replyLang === "ne" ? "ne-NP" : "en-GB";
-      const sameDay = d.toDateString() === new Date().toDateString();
+      if (isNaN(d.getTime())) return "";
+      const now = new Date();
+      const mins = Math.floor((now.getTime() - d.getTime()) / 60000);
+      if (mins < 1) return t().timeNow;
+      if (mins < 60) return t().timeMinutes.replace("{n}", replyLang === "ne" ? neNum(mins) : String(mins));
+      if (d.toDateString() === now.toDateString()) return t().timeToday;
+      if (d.toDateString() === new Date(now.getTime() - 86400000).toDateString()) return t().timeYesterday;
       try {
-        return sameDay
-          ? d.toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit" })
-          : d.toLocaleDateString(loc, { day: "numeric", month: "short" });
+        return d.toLocaleDateString(replyLang === "ne" ? "ne-NP" : "en-GB", { day: "numeric", month: "short" });
       } catch {
-        return String(iso).slice(0, 16).replace("T", " ");
+        return String(iso).slice(0, 10);
       }
     }
 
@@ -1321,26 +1354,32 @@
     function paintChatInbox(rows) {
       const c = t();
       const list = document.getElementById("chat-list");
-      document.getElementById("chat-inbox-count").textContent = rows.length;
+      document.getElementById("chat-inbox-count").textContent =
+        replyLang === "ne" ? neNum(rows.length) : String(rows.length);
       list.innerHTML = "";
-      convoMeta = {};
-      rows.forEach((row) => { convoMeta[row.id] = row; });
       if (!rows.length) {
-        list.innerHTML = '<div class="empty">' + c.emptyInbox + "</div>";
+        const empty = document.createElement("div");
+        empty.className = "chat-inbox__empty";
+        const title = document.createElement("strong");
+        title.textContent = c.inboxEmptyTitle;
+        const help = document.createElement("span");
+        help.textContent = c.inboxEmptyHelp;
+        empty.append(title, help);
+        list.appendChild(empty);
         return;
       }
       rows.forEach((row) => {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "convo" + (row.id === chatId ? " on" : "");
-        btn.innerHTML =
-          '<div class="convo__top"><span class="convo__name"></span><span class="convo__time"></span></div>' +
-          '<div class="convo__preview"></div>' +
-          '<div class="convo__meta"><span class="convo__count"></span></div>';
-        btn.querySelector(".convo__name").textContent = c.memberRow + " · " + row.id.slice(0, 8).toUpperCase();
-        btn.querySelector(".convo__time").textContent = fmtWhen(row.updated_at);
-        btn.querySelector(".convo__preview").textContent = row.preview || "—";
-        btn.querySelector(".convo__count").textContent = (row.message_count || 0) + " " + c.roomMsgs + (row.locale ? " · " + row.locale : "");
+        const preview = document.createElement("span");
+        preview.className = "convo__preview";
+        preview.textContent = row.preview || c.inboxNewRowLabel;
+        preview.lang = hasDevanagari(preview.textContent) ? "ne" : "en";
+        const time = document.createElement("span");
+        time.className = "convo__time";
+        time.textContent = humanTime(row.updated_at);
+        btn.append(time, preview);
         btn.addEventListener("click", () => openThread(row.id, "chat"));
         list.appendChild(btn);
       });
