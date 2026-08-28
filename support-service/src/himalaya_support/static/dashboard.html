@@ -139,6 +139,10 @@
       --bhasa-member-line: rgba(168, 129, 26, 0.38);
       --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 18px;
       /* spacing rhythm: 4 8 12 16 20 24 32 40 */
+      --motion-fast: 120ms;
+      --motion-base: 180ms;
+      --motion-slow: 260ms;
+      --ease-out: cubic-bezier(0.2, 0, 0, 1);
     }
     html.dark {
       --bhasa-room:        #0A130F;
@@ -551,12 +555,16 @@
     .chat-inbox__foot .empty { padding: 4px 0; }
 
     /* Zone 2 — conversation */
+    /* A0.5 — grid rows (chips · thread · composer). min-height:0 is the
+       critical line: without it the thread never scrolls and the
+       composer is pushed off-screen at long thread lengths. */
     .room {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
       min-height: 0;
       min-width: 0;
       background: var(--bhasa-room);
+      position: relative;
     }
     .room__topics {
       flex-shrink: 0;
@@ -586,7 +594,6 @@
     }
     #chips button:hover { background: var(--bhasa-hover); border-color: var(--bhasa-gold-edge); }
     .room #log {
-      flex: 1;
       min-height: 0;
       overflow-y: auto;
       overscroll-behavior: contain;
@@ -594,22 +601,30 @@
       gap: 16px;
       scrollbar-width: thin;
     }
+    /* A0.5 corrects the main prompt's 68–72ch: `ch` derives from the
+       width of "0" and reads far too narrow for Devanagari. */
     .room .turn,
     .room .welcome {
       width: 100%;
-      max-width: min(72ch, 100%);
+      max-width: 760px;
       margin-inline: auto;
       align-self: center;
     }
-    .room .turn { max-width: min(72ch, 100%); }
     .room .turn.agent { align-items: flex-start; }
     .room .turn.member + .turn.member,
     .room .turn.agent + .turn.agent { margin-top: -8px; }
     .room .bubble {
-      max-width: 85%;
+      max-width: min(78%, 640px);
       border-radius: var(--r-lg);
       line-height: 1.75;
       color: var(--bhasa-text);
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      animation: turn-enter var(--motion-base) var(--ease-out);
+    }
+    @keyframes turn-enter {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: none; }
     }
     .room .agent .bubble {
       background: var(--bhasa-raised);
@@ -623,6 +638,54 @@
       border-top-right-radius: var(--r-sm);
     }
     .room .who { font-size: 11.5px; padding: 0 4px; color: var(--bhasa-text-muted); }
+    /* WO9 — a failed send stays on the right and stays readable. The
+       icon carries the meaning alongside the colour (WCAG 1.4.1). */
+    .room .err .bubble {
+      background: var(--bhasa-error-bg);
+      border-color: var(--bhasa-error);
+      color: var(--bhasa-text);
+    }
+    .fail-note {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 4px;
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: var(--bhasa-error);
+      font-weight: 600;
+    }
+    .fail-note__icon {
+      width: 16px; height: 16px; flex-shrink: 0;
+      border-radius: 50%;
+      border: 1.5px solid currentColor;
+      display: inline-grid; place-items: center;
+      font-size: 11px; font-weight: 700;
+    }
+    .fail-note__retry {
+      border: 0;
+      background: transparent;
+      color: var(--bhasa-text-muted);
+      font: inherit;
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      cursor: pointer;
+      padding: 4px;
+      min-height: 32px;
+    }
+    .fail-note__retry:hover { color: var(--bhasa-text); }
+    .room .writing .bubble { gap: 10px; }
+    .writing__label { font-size: 13.5px; }
+    .as-typed {
+      border: 0; background: transparent;
+      color: var(--bhasa-text-muted);
+      font: inherit; font-size: 12.5px; font-weight: 600;
+      text-decoration: underline; text-underline-offset: 3px;
+      cursor: pointer; margin-left: 12px; padding: 2px 4px;
+    }
+    .as-typed.on { color: var(--bhasa-text); }
+    .char-count { margin-left: 12px; color: var(--bhasa-text-muted); font-size: 12px; font-weight: 600; }
     .room .play {
       color: var(--bhasa-text-muted);
       text-decoration: underline;
@@ -642,6 +705,52 @@
     }
     .room .welcome h2 { margin: 0 0 8px; font-size: 22px; line-height: 1.5; font-weight: 700; color: var(--bhasa-text); }
     .room .welcome p { margin: 0; color: var(--bhasa-text-muted); line-height: 1.75; }
+
+    /* Jump to latest — quiet, keyboard reachable, sits above the bar */
+    .jump-latest {
+      position: absolute;
+      left: 50%;
+      bottom: 8px;
+      transform: translateX(-50%);
+      z-index: 3;
+      border: 1px solid var(--bhasa-line);
+      background: var(--bhasa-raised);
+      color: var(--bhasa-text);
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+    }
+    .jump-latest:hover { background: var(--bhasa-hover); }
+    .jump-latest[hidden] { display: none; }
+
+    /* A0.8 connection banner — a strip above the composer. Never a
+       modal, never covering the inbox. */
+    .conn-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 10px 24px;
+      border-top: 1px solid var(--bhasa-line);
+      background: var(--bhasa-error-bg);
+      color: var(--bhasa-error);
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 1.6;
+    }
+    .conn-banner[hidden] { display: none; }
+    .conn-banner button {
+      border: 1px solid currentColor;
+      background: transparent;
+      color: inherit;
+      border-radius: var(--r-sm);
+      padding: 5px 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
 
     /* Zone 3 — write bar */
     .desk-bar {
@@ -698,12 +807,33 @@
     }
     .desk-bar #send:hover:not(:disabled) { background: var(--bhasa-gold-btn-hover); }
     .desk-bar #send:disabled { opacity: .45; cursor: default; }
-    .desk-bar .unicoder { min-height: 24px; margin-top: 8px; color: var(--bhasa-text); font-weight: 600; font-size: 15px; line-height: 1.6; }
+    /* Height is reserved whether or not a preview is showing, so the
+       composer never shifts when it appears (A0.6 rule 3). */
+    .desk-bar .unicoder {
+      min-height: 26px;
+      margin-top: 8px;
+      color: var(--bhasa-text);
+      font-weight: 600;
+      font-size: 15px;
+      line-height: 1.6;
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+    }
     .desk-bar .unicoder.idle { color: var(--bhasa-text-muted); font-weight: 500; font-size: 13px; }
     .desk-bar .unicoder.err { color: var(--bhasa-error); font-weight: 600; font-size: 13.5px; }
 
     @media (prefers-reduced-motion: reduce) {
       .door, .convo, .pill { transition: none; }
+      .stage.chat-room *,
+      .stage.chat-room *::before,
+      .stage.chat-room *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      /* A0.15 — the typing dots become a static line, not a freeze-frame */
+      .room .dots span { opacity: 1; transform: none; }
     }
     @media (max-width: 960px) {
       body { overflow: auto; }
@@ -808,14 +938,19 @@
             <span class="room__topics-label" id="topics-label"></span>
             <div id="chips"></div>
           </div>
-          <div id="log" role="log" aria-live="polite"></div>
+          <div id="log" role="log" aria-live="polite" aria-label="Conversation"></div>
+          <button type="button" class="jump-latest" id="jump-latest" hidden></button>
+          <div class="conn-banner" id="conn-banner" role="status" hidden>
+            <span id="conn-text"></span>
+            <button type="button" id="conn-action" hidden></button>
+          </div>
           <div class="desk-bar">
             <form id="form">
               <button id="mic" type="button"></button>
-              <textarea id="box" rows="1" autocomplete="off"></textarea>
+              <textarea id="box" rows="1" autocomplete="off" maxlength="2000" aria-describedby="unicoder"></textarea>
               <button id="send" type="submit"></button>
             </form>
-            <div id="unicoder" class="unicoder idle"></div>
+            <div id="unicoder" class="unicoder idle" aria-live="polite"></div>
           </div>
         </section>
         <section class="desk hidden" id="view-call">
@@ -871,10 +1006,12 @@
         doorCallKicker: "बोलेर",
         doorCallTitle: "एआईले कल उठाउँछ",
         doorCallBody: "उठ्नुहोस् थिच्नुहोस्। भाषा सेवा सुन्छ र नेपालीमा बोल्छ। फोन लाइन पछि।",
-        welcomeTitle: "नमस्ते, म भाषा हुँ",
-        welcomeBody: "लगइन, रकम, ऋण, केवाईसी वा कार्ड — विषय छान्नुहोस् वा समस्या लेख्नुहोस्।",
-        placeholder: "नेपाली वा अंग्रेजी अक्षरमा लेख्नुहोस्…",
-        unicoderHint: "अंग्रेजी अक्षर यहाँ नेपाली युनिकोडमा बदलिन्छ · Enter ले पठाउँछ, Shift+Enter ले नयाँ लाइन",
+        welcomeTitle: "नमस्ते। म भाषा हुँ।",
+        welcomeBody: "म सहकारी र बैंकका सदस्यलाई सहयोग गर्छु। बचत, ऋण, पिन, कार्ड, केवाईसी वा शाखा समय सोध्नुहोस्। तल विषय छान्नुहोस् वा बाकसमा लेख्नुहोस्।",
+        welcomeHint: "अंग्रेजी अक्षरमा लेख्न सकिन्छ। नेपालीमा बदलिन्छ।",
+        placeholder: "नेपाली वा अंग्रेजी अक्षरमा लेख्नुहोस्",
+        unicoderHint: "अंग्रेजी अक्षर यहाँ नेपालीमा बदलिन्छ।",
+        unicoderHintEn: "आफ्नो प्रश्न लेख्नुहोस्। भाषालाई पठाउनुहोस्।",
         unicoderLabel: "नेपालीमा: ",
         send: "पठाउनुहोस्",
         mic: "बोल्नुहोस्",
@@ -904,7 +1041,18 @@
         settingsBody: "एपीआई की, फोन नम्बर र ज्ञान भण्डार यहीँ आउँछ। अहिले च्याट र कल मात्र खुला छन्।",
         ticketPrefix: "टिकट: ",
         micErr: "आवाजका लागि Chrome वा Edge प्रयोग गर्नुहोस्।",
-        hearErr: "सुनिएन। फेरि बोल्नुहोस्।"
+        hearErr: "सुनिएन। फेरि बोल्नुहोस्।",
+        micBlocked: "माइक्रोफोन रोकियो। ब्राउजरमा अनुमति दिनुहोस्, अनि फेरि बोल्नुहोस्।",
+        writing: "भाषा लेख्दै छ",
+        sendFailed: "पठाउन सकिएन। फेरि प्रयास गर्नुहोस्।",
+        retry: "फेरि प्रयास",
+        // TODO: nepali review — A0.9 drafts, not from the Notion cards
+        offline: "तपाईं अफलाइन हुनुहुन्छ। सन्देश पठाउन सकिँदैन।",
+        sessionEnded: "तपाईंको सत्र सकियो। काम जारी राख्न फेरि साइन इन गर्नुहोस्।",
+        signIn: "साइन इन",
+        jumpLatest: "पछिल्लोमा जानुहोस्",
+        sendAsTyped: "जस्तो लेखियो त्यस्तै पठाउनुहोस्",
+        tooLong: "सन्देश धेरै लामो भयो।"
       },
       en: {
         title: "Bhasa · Dashboard",
@@ -936,10 +1084,12 @@
         doorCallKicker: "Speak",
         doorCallTitle: "AI picks up the call",
         doorCallBody: "Press pick up. Bhasa listens and speaks. A phone line comes later.",
-        welcomeTitle: "Namaste, I am Bhasa",
-        welcomeBody: "Login, transfers, loans, KYC, or cards — pick a topic or type the issue.",
-        placeholder: "Type in English letters — they convert to Nepali…",
-        unicoderHint: "English letters convert to Nepali Unicode here · Enter sends, Shift+Enter adds a line",
+        welcomeTitle: "Namaste. I am Bhasa.",
+        welcomeBody: "I help cooperative and bank members. Ask about savings, loans, PIN, cards, KYC, or branch hours. Pick a topic below or type in the box.",
+        welcomeHint: "You can type in English letters. They become Nepali.",
+        placeholder: "Type in English letters. They become Nepali.",
+        unicoderHint: "English letters convert to Nepali here.",
+        unicoderHintEn: "Type your question. Send to Bhasa.",
         unicoderLabel: "Nepali: ",
         send: "Send",
         mic: "Speak",
@@ -969,7 +1119,17 @@
         settingsBody: "API keys, phone numbers, and knowledge will live here. Chat and Call are open now.",
         ticketPrefix: "Ticket: ",
         micErr: "Voice needs Chrome or Edge.",
-        hearErr: "Could not hear that. Speak again."
+        hearErr: "Could not hear that. Speak again.",
+        micBlocked: "Microphone is blocked. Allow it in the browser, then tap Speak again.",
+        writing: "Bhasa is writing",
+        sendFailed: "Could not send. Try again.",
+        retry: "Try again",
+        offline: "You are offline. Messages will not send.",
+        sessionEnded: "Your session ended. Sign in again to keep working.",
+        signIn: "Sign in",
+        jumpLatest: "Jump to latest",
+        sendAsTyped: "Send as typed",
+        tooLong: "Message is too long."
       }
     };
     const topics = [
@@ -982,6 +1142,134 @@
       { ne: "ब्याजदर", en: "Interest rate", neMsg: "बचत खाताको ब्याजदर कति हो?", enMsg: "What is the savings interest rate?" }
     ];
     const THEME_COLORS = { light: "#f4fbf8", dark: "#0e1513" };
+
+    /* ==================================================================
+       A0 — Chat foundations. Types, telemetry, time, and the single API
+       adapter. This app is one static page served by FastAPI, so the
+       addendum's file tree lands here as named sections rather than
+       modules. The boundaries it asks for still hold: one adapter owns
+       every fetch, one time module owns every timestamp, and no message
+       body is ever logged.
+       ==================================================================
+
+       @typedef {'ne'|'en'} Lang
+       @typedef {'member'|'bhasa'} MessageAuthor
+       @typedef {'sending'|'sent'|'failed'} MessageStatus
+         (no 'streaming' — /v1/support/chat returns one whole response)
+       @typedef {'offline'|'timeout'|'unauthorized'|'rate_limited'|'server'|'unknown'} FailureCode
+       @typedef {'online'|'offline'|'session_expired'} ConnectionState
+
+       Message  { clientId, id, conversationId, author, body, romanSource,
+                  createdAt, status, failureCode, canListen }
+       Conversation { id, preview, updatedAt, isDraft }
+       Ticket   { id, subject, openedAt }
+    */
+
+    const SEND_TIMEOUT_MS = 20000;
+    const MAX_MESSAGE_CHARS = 2000;
+    const COUNTER_AT = 1800;
+    const STICK_THRESHOLD_PX = 120;
+
+    /* A0.19 — telemetry. No analytics client exists in this repo, so
+       track() is a no-op behind the interface. Message text never
+       enters an event; length is bucketed (A0.12). */
+    function track(event, props) {
+      void event; void props;
+    }
+    function lengthBucket(text) {
+      const n = (text || "").length;
+      return n < 40 ? "<40" : (n <= 160 ? "40-160" : ">160");
+    }
+
+    /* A0.10 — the one adapter. Every Chat fetch goes through here, and
+       this is the only place that maps transport failures onto a
+       FailureCode. Server-supplied error strings are never rendered
+       (they arrive in English and would break the WO10 language pass). */
+    const api = {
+      async request(path, options) {
+        const opts = options || {};
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort("timeout"), opts.timeoutMs || SEND_TIMEOUT_MS);
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+          clearTimeout(timer);
+          throw { failureCode: "offline" };
+        }
+        try {
+          const res = await fetch(path, {
+            method: opts.method || "GET",
+            headers: opts.headers,
+            body: opts.body,
+            signal: controller.signal
+          });
+          let data = null;
+          try { data = await res.json(); } catch { data = null; }
+          if (!res.ok) throw { failureCode: api.codeForStatus(res.status) };
+          return data;
+        } catch (err) {
+          if (err && err.failureCode) throw err;
+          if (err && (err.name === "AbortError" || err === "timeout")) throw { failureCode: "timeout" };
+          throw { failureCode: navigator.onLine === false ? "offline" : "unknown" };
+        } finally {
+          clearTimeout(timer);
+        }
+      },
+      codeForStatus(status) {
+        if (status === 401 || status === 403) return "unauthorized";
+        if (status === 429) return "rate_limited";
+        if (status >= 500) return "server";
+        return "unknown";
+      },
+      json(path, body, extraHeaders) {
+        return api.request(path, {
+          method: "POST",
+          headers: Object.assign({ "Content-Type": "application/json" }, extraHeaders || {}),
+          body: JSON.stringify(body)
+        });
+      },
+      /* The backend creates the conversation implicitly on first chat,
+         which is exactly the D2 default: New chat is a client-side
+         draft and writes nothing until the officer sends. */
+      sendMessage(payload, clientId) {
+        return api.json("/v1/support/chat", payload, { "Idempotency-Key": clientId });
+      },
+      unicoder(text) {
+        return api.request("/v1/support/unicoder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+          timeoutMs: 6000
+        });
+      },
+      speak(text, locale) {
+        return api.json("/v1/support/speak", { text, locale });
+      },
+      /* Adapter shim: the store returns `preview`/`updated_at`, not
+         `lastMessagePreview`/`lastMessageAt`, and has no unreadCount.
+         Normalised here so no component sees the raw row. */
+      async conversations(channel) {
+        const rows = await api.request("/v1/support/conversations?channel=" + encodeURIComponent(channel));
+        return (Array.isArray(rows) ? rows : []).map((row) => ({
+          id: row.id,
+          preview: row.preview || "",
+          updatedAt: row.updated_at || row.created_at || null,
+          messageCount: row.message_count || 0,
+          isDraft: false
+        }));
+      },
+      async messages(conversationId) {
+        const data = await api.request("/v1/support/conversations/" + conversationId);
+        return (data && data.messages) || [];
+      },
+      /* SYNTHESISED: the endpoint has no ?status=open filter and no
+         `reference` field, so open tickets are filtered client-side and
+         the id doubles as the reference. Real rows, not mock data. */
+      async openTickets() {
+        const rows = await api.request("/v1/support/tickets");
+        return (Array.isArray(rows) ? rows : [])
+          .filter((row) => row.status !== "resolved")
+          .map((row) => ({ id: row.id, subject: row.subject || row.status, openedAt: row.created_at || null }));
+      }
+    };
 
     const log = document.getElementById("log");
     const callLog = document.getElementById("call-log");
@@ -999,11 +1287,15 @@
     let callLive = false;
     let lastAudio = null;
     let started = false;
-    let lastMemberBubble = null;
     let unicoderTimer = null;
     let unicoderReq = 0;
     let callRec = null;
     let callBusy = false;
+    let sendInFlight = false;
+    let logStick = true;
+    let connection = "online";
+    let sendAsTyped = false;
+    let isComposing = false;
 
     function t() { return copy[replyLang]; }
     function hasLatin(text) { return /[A-Za-z]/.test(text || ""); }
@@ -1112,23 +1404,54 @@
       });
     }
 
+    /* The helper line has one reserved height (see .unicoder in CSS) so
+       the composer never jumps when the preview appears — A0.6 rule 3
+       satisfies WO6 by reservation, not animation. */
     function paintUnicoderHint(preview) {
-      if (replyLang !== "ne") {
-        unicoderHint.textContent = t().unicoderHint;
-        unicoderHint.className = "unicoder idle";
-        if (preview && preview !== box.value) {
-          unicoderHint.className = "unicoder";
-          unicoderHint.textContent = t().unicoderLabel + preview;
-        }
+      unicoderHint.innerHTML = "";
+      const over = box.value.length > MAX_MESSAGE_CHARS;
+      const near = box.value.length >= COUNTER_AT;
+      if (over) {
+        unicoderHint.className = "unicoder err";
+        unicoderHint.textContent = t().tooLong;
         return;
       }
-      if (preview && preview !== box.value) {
+      if (replyLang === "ne" && preview && preview !== box.value) {
         unicoderHint.className = "unicoder";
-        unicoderHint.textContent = t().unicoderLabel + preview;
+        const label = document.createElement("span");
+        label.textContent = t().unicoderLabel;
+        const value = document.createElement("span");
+        value.lang = "ne";
+        value.textContent = preview;
+        unicoderHint.append(label, value);
+        /* A0.6 rule 6 — a quiet escape hatch when conversion guesses
+           wrong. Deliberately a text toggle, not a second gold button. */
+        const asTyped = document.createElement("button");
+        asTyped.type = "button";
+        asTyped.className = "as-typed" + (sendAsTyped ? " on" : "");
+        asTyped.setAttribute("aria-pressed", sendAsTyped ? "true" : "false");
+        asTyped.textContent = t().sendAsTyped;
+        asTyped.addEventListener("click", () => {
+          sendAsTyped = !sendAsTyped;
+          convertComposer();
+        });
+        unicoderHint.append(asTyped);
+        if (near) unicoderHint.append(counterEl());
         return;
       }
       unicoderHint.className = "unicoder idle";
-      unicoderHint.textContent = t().unicoderHint;
+      unicoderHint.textContent = replyLang === "ne" ? t().unicoderHint : t().unicoderHintEn;
+      if (near) unicoderHint.append(counterEl());
+    }
+
+    function counterEl() {
+      const el = document.createElement("span");
+      el.className = "char-count";
+      const shown = replyLang === "ne"
+        ? neNum(box.value.length) + " / " + neNum(MAX_MESSAGE_CHARS)
+        : box.value.length + " / " + MAX_MESSAGE_CHARS;
+      el.textContent = shown;
+      return el;
     }
 
     const NE_DIGITS = ["०", "१", "२", "३", "४", "५", "६", "७", "८", "९"];
@@ -1157,26 +1480,27 @@
       box.style.height = Math.min(box.scrollHeight, 168) + "px";
     }
 
+    /* A0.6 rule 4 — a broken transliterator must never become a broken
+       product. Any failure falls back to the roman as typed. */
     async function toUnicoder(text) {
       const raw = text || "";
       if (!raw || !hasLatin(raw)) return raw;
-      const res = await fetch("/v1/support/unicoder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: raw })
-      });
-      const data = await res.json();
-      return (res.ok && data.nepali) ? data.nepali : raw;
+      try {
+        const data = await api.unicoder(raw);
+        return (data && data.nepali) ? data.nepali : raw;
+      } catch {
+        return raw;
+      }
     }
 
-    function pendingLatin(value) {
-      const match = value.match(/[A-Za-z']+$/);
-      return match ? match[0] : "";
-    }
-
-    async function convertComposer(commitCurrent) {
+    /* A0.6 rule 1 — the textarea always holds exactly what the officer
+       typed. Rewriting it in place destroys the cursor position and
+       makes the box unusable, so the Nepali only ever appears on the
+       read-only preview line below. Stale responses are discarded by
+       sequence number (rule 2). */
+    async function convertComposer() {
       const typed = box.value;
-      if (!hasLatin(typed)) {
+      if (!hasLatin(typed) || replyLang !== "ne") {
         paintUnicoderHint();
         return typed;
       }
@@ -1184,12 +1508,6 @@
       const converted = await toUnicoder(typed);
       if (req !== unicoderReq) return typed;
       paintUnicoderHint(converted);
-      const shouldReplace = commitCurrent || !pendingLatin(typed);
-      if (replyLang === "ne" && shouldReplace && converted && converted !== typed && box.value === typed) {
-        box.value = converted;
-        growBox();
-        paintUnicoderHint();
-      }
       return converted;
     }
 
@@ -1197,23 +1515,41 @@
       log.innerHTML = "";
       const el = document.createElement("div");
       el.className = "welcome";
-      el.innerHTML = "<h2>" + t().welcomeTitle + "</h2><p>" + t().welcomeBody + "</p>";
+      const title = document.createElement("h2");
+      title.textContent = t().welcomeTitle;
+      const body = document.createElement("p");
+      body.textContent = t().welcomeBody;
+      const hint = document.createElement("p");
+      hint.className = "welcome__hint";
+      hint.textContent = t().welcomeHint;
+      el.append(title, body, hint);
       log.appendChild(el);
       started = false;
       chatId = null;
+      logStick = true;
     }
 
     function addTurn(host, role, text, isErr) {
       if (host === log && !started) { host.innerHTML = ""; started = true; }
+      const isMember = role === "user" || role === "member";
       const wrap = document.createElement("div");
-      wrap.className = "turn " + (role === "user" || role === "member" ? "member" : "agent") + (isErr ? " err" : "");
-      wrap.innerHTML = '<div class="who">' + (wrap.classList.contains("member") ? t().member : t().agent) + "</div>";
+      wrap.className = "turn " + (isMember ? "member" : "agent") + (isErr ? " err" : "");
+      const who = document.createElement("div");
+      who.className = "who";
+      /* WO9 — You never sits on the left, Bhasa never on the right, and
+         the label follows the language switch. */
+      who.textContent = isMember ? t().member : t().agent;
       const bubble = document.createElement("div");
       bubble.className = "bubble";
       bubble.textContent = text;
-      wrap.appendChild(bubble);
+      /* A0.3 — tag the run so the right font applies. Historical
+         bodies are never re-rendered when the officer switches
+         language; only the chrome around them changes. */
+      bubble.lang = hasDevanagari(text) ? "ne" : "en";
+      wrap.append(who, bubble);
       host.appendChild(wrap);
-      host.scrollTop = host.scrollHeight;
+      if (host === log) stickToBottom();
+      else host.scrollTop = host.scrollHeight;
       return bubble;
     }
 
@@ -1230,10 +1566,14 @@
         play.type = "button";
         play.className = "play";
         play.textContent = t().play;
-        play.addEventListener("click", () => speakReply(text, false));
+        play.addEventListener("click", () => {
+          track("chat_listen_used", {});
+          speakReply(text, false);
+        });
         bubble.parentNode.appendChild(play);
         speakReply(text, false);
       }
+      stickToBottom();
     }
 
     function showLoading(host) {
@@ -1243,6 +1583,74 @@
       el.innerHTML = '<div class="who">' + t().agent + '</div><div class="bubble loading"><span class="dots"><span></span><span></span><span></span></span></div>';
       host.appendChild(el);
       host.scrollTop = host.scrollHeight;
+    }
+
+    /* WO5 State 1 — dots plus the line, on the left where Bhasa's
+       bubble will land. Announced once via aria-live, not per frame:
+       the label is inside the live region, the dots are not. */
+    function showWriting() {
+      const el = document.createElement("div");
+      el.className = "turn agent writing";
+      el.id = "pending";
+      const who = document.createElement("div");
+      who.className = "who";
+      who.textContent = t().agent;
+      const row = document.createElement("div");
+      row.className = "bubble loading";
+      const dots = document.createElement("span");
+      dots.className = "dots";
+      dots.setAttribute("aria-hidden", "true");
+      dots.innerHTML = "<span></span><span></span><span></span>";
+      const label = document.createElement("span");
+      label.className = "writing__label";
+      label.textContent = t().writing;
+      row.append(dots, label);
+      el.append(who, row);
+      log.appendChild(el);
+      stickToBottom();
+    }
+
+    /* A0.5 — follow new messages only when the officer is already at
+       the end. If they scrolled up to read, hold their place and offer
+       a quiet way back. */
+    function atBottom() {
+      return log.scrollHeight - log.scrollTop - log.clientHeight <= STICK_THRESHOLD_PX;
+    }
+    function stickToBottom(force) {
+      if (force || logStick) log.scrollTop = log.scrollHeight;
+      paintJump();
+    }
+    function paintJump() {
+      const jump = document.getElementById("jump-latest");
+      jump.textContent = t().jumpLatest;
+      jump.hidden = logStick || !started;
+    }
+
+    /* A0.8 — connection banner. Sits above the composer; the inbox and
+       the write bar stay usable behind it. */
+    function setConnection(state) {
+      connection = state;
+      const banner = document.getElementById("conn-banner");
+      const text = document.getElementById("conn-text");
+      const action = document.getElementById("conn-action");
+      if (state === "online") {
+        banner.hidden = true;
+        paintSendEnabled();
+        return;
+      }
+      banner.hidden = false;
+      text.textContent = state === "offline" ? t().offline : t().sessionEnded;
+      action.hidden = state !== "session_expired";
+      action.textContent = t().signIn;
+      paintSendEnabled();
+    }
+
+    /* WO6 — Send is faded when there is nothing to send, when a send is
+       in flight, or when the line is down. One rule, one place. */
+    function paintSendEnabled() {
+      const text = box.value.trim();
+      const tooLong = box.value.length > MAX_MESSAGE_CHARS;
+      send.disabled = !text || tooLong || sendInFlight || connection !== "online";
     }
 
     function clearLoading(id) {
@@ -1278,37 +1686,104 @@
       await new Promise((resolve) => { lastAudio.onended = resolve; lastAudio.onerror = resolve; });
     }
 
-    async function sendText(message) {
-      if (!message || send.disabled) return;
+    /* A0.7 — one in-flight send at a time, never a queue. `clientId` is
+       generated once and reused by every retry, so a retry can never
+       duplicate a message in front of a member. */
+    function newClientId() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    }
+
+    function setBusy(busy) {
+      sendInFlight = busy;
+      log.setAttribute("aria-busy", busy ? "true" : "false");
+      paintSendEnabled();
+      mic.disabled = busy;
+    }
+
+    async function sendText(message, options) {
+      const opts = options || {};
+      if (!message || sendInFlight) return;
+      const clientId = opts.clientId || newClientId();
       let shown = message;
-      if (hasLatin(message)) shown = await toUnicoder(message);
-      lastMemberBubble = addTurn(log, "member", shown);
-      send.disabled = true;
-      mic.disabled = true;
-      showLoading(log);
+      const romanSource = opts.romanSource || (hasLatin(message) ? message : undefined);
+      if (!opts.asTyped && hasLatin(message)) shown = await toUnicoder(message);
+
+      const turn = opts.retryTurn || addTurn(log, "member", shown);
+      const wrap = turn.closest(".turn");
+      wrap.classList.remove("err");
+      clearFailure(wrap);
+      wrap.dataset.clientId = clientId;
+      wrap.dataset.body = "";
+      setBusy(true);
+      showWriting();
+      track("chat_message_sent", {
+        lang: replyLang,
+        viaChip: !!opts.viaChip,
+        lengthBucket: lengthBucket(shown)
+      });
       try {
-        const res = await fetch("/v1/support/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: shown, conversation_id: chatId, locale: replyLang, channel: "chat" })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
+        const data = await api.sendMessage(
+          { message: shown, conversation_id: chatId, locale: replyLang, channel: "chat" },
+          clientId
+        );
         chatId = data.conversation_id;
-        if (data.transliterated && lastMemberBubble) lastMemberBubble.textContent = data.transliterated;
+        if (data.transliterated) turn.textContent = data.transliterated;
         clearLoading("pending");
+        setConnection("online");
         addAgent(data.reply, false, data);
         loadInbox("chat");
         loadTickets();
         loadHome();
       } catch (err) {
+        const code = (err && err.failureCode) || "unknown";
         clearLoading("pending");
-        addAgent(String(err.message || err), true);
+        /* Never render a server string — map the code to our own copy,
+           so Nepali mode stays Nepali when the backend fails. */
+        markFailed(wrap, { clientId, body: shown, romanSource, code });
+        track("chat_send_failed", { failureCode: code });
+        if (code === "offline") setConnection("offline");
+        else if (code === "unauthorized") setConnection("session_expired");
       } finally {
-        send.disabled = false;
-        mic.disabled = false;
+        setBusy(false);
         box.focus();
       }
+    }
+
+    /* WO9 + WO5 State 2 — the failed member bubble keeps its place in
+       the thread and carries a quiet text retry, never a second gold
+       Send. The icon is the non-colour cue required by A0.18. */
+    function markFailed(wrap, info) {
+      wrap.classList.add("err");
+      const note = document.createElement("div");
+      note.className = "fail-note";
+      note.setAttribute("role", "alert");
+      const icon = document.createElement("span");
+      icon.className = "fail-note__icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = "!";
+      const text = document.createElement("span");
+      text.textContent = t().sendFailed;
+      const again = document.createElement("button");
+      again.type = "button";
+      again.className = "fail-note__retry";
+      again.textContent = t().retry;
+      again.addEventListener("click", () => {
+        const bubble = wrap.querySelector(".bubble");
+        sendText(info.body, {
+          clientId: info.clientId,
+          romanSource: info.romanSource,
+          retryTurn: bubble,
+          asTyped: true
+        });
+      });
+      note.append(icon, text, again);
+      wrap.appendChild(note);
+    }
+
+    function clearFailure(wrap) {
+      const note = wrap.querySelector(".fail-note");
+      if (note) note.remove();
     }
 
     function listenChat() {
@@ -1329,9 +1804,16 @@
 
     async function loadInbox(channel) {
       const kind = channel || (view === "call" ? "call" : "chat");
+      if (kind === "chat") {
+        try {
+          paintChatInbox(await api.conversations("chat"));
+        } catch {
+          paintChatInbox([]);
+        }
+        return;
+      }
       const res = await fetch("/v1/support/conversations?channel=" + encodeURIComponent(kind));
       const rows = await res.json();
-      if (kind === "chat") { paintChatInbox(Array.isArray(rows) ? rows : []); return; }
       const list = document.getElementById("inbox-list");
       list.innerHTML = "";
       if (!Array.isArray(rows) || !rows.length) {
@@ -1378,7 +1860,7 @@
         preview.lang = hasDevanagari(preview.textContent) ? "ne" : "en";
         const time = document.createElement("span");
         time.className = "convo__time";
-        time.textContent = humanTime(row.updated_at);
+        time.textContent = humanTime(row.updatedAt);
         btn.append(time, preview);
         btn.addEventListener("click", () => openThread(row.id, "chat"));
         list.appendChild(btn);
@@ -1386,6 +1868,19 @@
     }
 
     async function openThread(id, kind) {
+      if (kind !== "call") {
+        let messages = [];
+        try { messages = await api.messages(id); } catch { messages = []; }
+        chatId = id;
+        started = true;
+        log.innerHTML = "";
+        messages.forEach((msg) => addTurn(log, msg.role === "user" ? "member" : "agent", msg.content));
+        logStick = true;
+        stickToBottom(true);
+        loadInbox("chat");
+        box.focus();
+        return;
+      }
       const res = await fetch("/v1/support/conversations/" + id);
       const data = await res.json();
       if (kind === "call") {
@@ -1404,19 +1899,21 @@
     }
 
     async function loadTickets() {
-      const res = await fetch("/v1/support/tickets");
-      const rows = await res.json();
       const boxEl = document.getElementById("ticket-list");
       boxEl.innerHTML = "";
-      const open = (Array.isArray(rows) ? rows : []).filter((row) => row.status !== "resolved");
+      let open = [];
+      try { open = await api.openTickets(); } catch { open = []; }
       if (!open.length) {
-        boxEl.innerHTML = '<div class="empty">' + t().emptyTickets + "</div>";
-        return open.length;
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = t().emptyTickets;
+        boxEl.appendChild(empty);
+        return 0;
       }
       open.slice(0, 8).forEach((row) => {
         const el = document.createElement("div");
         el.className = "ticket";
-        el.textContent = (row.id || "") + " · " + (row.subject || row.status);
+        el.textContent = row.id + " · " + row.subject;
         boxEl.appendChild(el);
       });
       return open.length;
@@ -1576,31 +2073,87 @@
       box.focus();
     });
     mic.addEventListener("click", listenChat);
+    /* A0.6 rule 7 — while an IME is composing, do not transliterate and
+       do not send. Without this guard a real Nepali keyboard fires
+       Enter mid-word and sends half a sentence. */
+    box.addEventListener("compositionstart", () => { isComposing = true; });
+    box.addEventListener("compositionend", () => { isComposing = false; scheduleConvert(); });
+    function scheduleConvert() {
+      clearTimeout(unicoderTimer);
+      unicoderTimer = setTimeout(() => { if (!isComposing) convertComposer(); }, 120);
+    }
     box.addEventListener("input", () => {
       growBox();
-      clearTimeout(unicoderTimer);
-      const typed = box.value;
-      const commit = /[\s?؟।.!,\u0964]$/.test(typed) || !pendingLatin(typed);
-      unicoderTimer = setTimeout(() => convertComposer(commit), commit ? 40 : 90);
+      paintSendEnabled();
+      paintUnicoderHint();
+      if (!isComposing) scheduleConvert();
     });
     box.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+      if (event.key !== "Enter" || event.shiftKey) return;
+      if (isComposing || event.isComposing || event.keyCode === 229) return;
       event.preventDefault();
+      if (send.disabled) return;
       if (typeof form.requestSubmit === "function") form.requestSubmit();
       else form.dispatchEvent(new Event("submit", { cancelable: true }));
     });
+    box.addEventListener("paste", (event) => {
+      const clip = event.clipboardData || window.clipboardData;
+      const pasted = clip ? clip.getData("text") || "" : "";
+      const selected = box.selectionEnd - box.selectionStart;
+      const room = MAX_MESSAGE_CHARS - (box.value.length - selected);
+      if (pasted.length <= room) return;
+      /* A0.11 — cap an over-long paste visibly rather than dropping
+         text silently under the officer's cursor. */
+      event.preventDefault();
+      const start = box.selectionStart;
+      const end = box.selectionEnd;
+      const kept = pasted.slice(0, Math.max(0, room));
+      box.value = box.value.slice(0, start) + kept + box.value.slice(end);
+      box.selectionStart = box.selectionEnd = start + kept.length;
+      growBox();
+      paintSendEnabled();
+      unicoderHint.className = "unicoder err";
+      unicoderHint.textContent = t().tooLong;
+    });
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const converted = await convertComposer(true);
-      const message = (converted || box.value).trim();
+      if (send.disabled || isComposing) return;
+      const typed = box.value.trim();
+      if (!typed) return;
+      /* The converted Devanagari is the message body; the roman the
+         officer typed is kept as romanSource. */
+      const converted = sendAsTyped ? typed : ((await convertComposer()) || typed).trim();
       box.value = "";
+      sendAsTyped = false;
       growBox();
+      paintSendEnabled();
       paintUnicoderHint();
-      sendText(message);
+      logStick = true;
+      sendText(converted, { romanSource: typed, asTyped: true });
     });
+    log.addEventListener("scroll", () => {
+      logStick = atBottom();
+      paintJump();
+    });
+    document.getElementById("jump-latest").addEventListener("click", () => {
+      logStick = true;
+      stickToBottom(true);
+      box.focus();
+    });
+    document.getElementById("conn-action").addEventListener("click", () => {
+      window.location.reload();
+    });
+    window.addEventListener("online", () => setConnection("online"));
+    window.addEventListener("offline", () => setConnection("offline"));
     document.getElementById("pickup").addEventListener("click", pickup);
     document.getElementById("hangup").addEventListener("click", hangup);
 
+    /* A0.17 — relative labels refresh on a single interval, not on
+       every render, so "५ मिनेट" does not go stale in a quiet inbox. */
+    setInterval(() => { if (view === "chat") loadInbox("chat"); }, 60000);
+
+    setConnection(navigator.onLine === false ? "offline" : "online");
+    paintSendEnabled();
     setView("home");
   </script>
 </body>
