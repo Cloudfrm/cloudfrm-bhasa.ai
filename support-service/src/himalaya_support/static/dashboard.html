@@ -108,6 +108,60 @@
       --primary-45: color-mix(in srgb, var(--md-sys-color-primary) 45%, transparent);
     }
 
+    /* ------------------------------------------------------------------
+       भाषा Chat tokens — the Chat room only. One room, one gold, one
+       rhythm. Gold marks exactly two things: Send and the selected
+       conversation. Dark is the canonical desk; light maps the same
+       roles onto the brand's paper-green so the theme toggle holds.
+       ------------------------------------------------------------------ */
+    :root {
+      --bhasa-room:        #E9F0EA;
+      --bhasa-surface:     #F2F7F2;
+      --bhasa-raised:      #FBFDFB;
+      --bhasa-hover:       #E1EAE3;
+      --bhasa-line:        #C2D1C6;
+      --bhasa-line-soft:   #D8E2DA;
+      --bhasa-gold:        #A8811A;
+      --bhasa-gold-hover:  #8F6D13;
+      --bhasa-gold-quiet:  rgba(168, 129, 26, 0.12);
+      --bhasa-gold-edge:   rgba(168, 129, 26, 0.65);
+      --bhasa-gold-ink:    #241B04;
+      /* Send keeps the same gold in both themes; ink stays dark on it */
+      --bhasa-gold-btn:       #C9A227;
+      --bhasa-gold-btn-hover: #DDB63A;
+      --bhasa-text:        #182420;
+      --bhasa-text-muted:  #44594D;
+      --bhasa-text-faint:  #7D9488;
+      --bhasa-error:       #B3372A;
+      --bhasa-error-bg:    rgba(179, 55, 42, 0.10);
+      --bhasa-listening:   #B04A3C;
+      --bhasa-member-bg:   rgba(201, 162, 39, 0.16);
+      --bhasa-member-line: rgba(168, 129, 26, 0.38);
+      --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 18px;
+      /* spacing rhythm: 4 8 12 16 20 24 32 40 */
+    }
+    html.dark {
+      --bhasa-room:        #0A130F;
+      --bhasa-surface:     #101C16;
+      --bhasa-raised:      #17271F;
+      --bhasa-hover:       #1D3128;
+      --bhasa-line:        #24382E;
+      --bhasa-line-soft:   #1B2A22;
+      --bhasa-gold:        #C9A227;
+      --bhasa-gold-hover:  #DDB63A;
+      --bhasa-gold-quiet:  rgba(201, 162, 39, 0.14);
+      --bhasa-gold-edge:   rgba(201, 162, 39, 0.55);
+      --bhasa-gold-ink:    #241B04;
+      --bhasa-text:        #ECF2ED;
+      --bhasa-text-muted:  #A9BEB2;
+      --bhasa-text-faint:  #7D9488;
+      --bhasa-error:       #E4776A;
+      --bhasa-error-bg:    rgba(228, 119, 106, 0.12);
+      --bhasa-listening:   #D06A5A;
+      --bhasa-member-bg:   rgba(201, 162, 39, 0.16);
+      --bhasa-member-line: rgba(201, 162, 39, 0.40);
+    }
+
     * { box-sizing: border-box; }
     html, body { height: 100%; width: 100%; margin: 0; }
     body {
@@ -358,7 +412,12 @@
        Chat room — three zones: inbox (left) · conversation (middle) ·
        write bar (planted at the bottom of the conversation).
        ------------------------------------------------------------------ */
-    .stage.chat-room { grid-template-columns: clamp(288px, 25%, 360px) minmax(0, 1fr); }
+    .stage.chat-room {
+      grid-template-columns: clamp(288px, 25%, 360px) minmax(0, 1fr);
+      background: var(--bhasa-room);
+      color: var(--bhasa-text);
+    }
+    .stage.chat-room :focus-visible { outline: 2px solid var(--bhasa-gold-edge); outline-offset: 2px; }
 
     /* Zone 1 — inbox */
     .chat-inbox {
@@ -366,8 +425,8 @@
       flex-direction: column;
       min-height: 0;
       min-width: 0;
-      background: var(--panel);
-      border-right: 1px solid var(--line);
+      background: var(--bhasa-surface);
+      border-right: 1px solid var(--bhasa-line);
       position: relative;
       z-index: 1;
     }
@@ -375,93 +434,93 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      padding: 14px 14px 12px 16px;
-      border-bottom: 1px solid var(--line-soft);
+      gap: 12px;
+      padding: 16px 16px 12px;
       flex-shrink: 0;
     }
-    .chat-inbox__head h3 { margin: 0; min-width: 0; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--ink); }
+    .chat-inbox__head h3 { margin: 0; min-width: 0; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--bhasa-text); }
     .chat-inbox__head h3 > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .chat-inbox__head .chat-inbox__new { flex-shrink: 0; }
     .chat-inbox__count {
-      min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px;
-      background: var(--panel-4); color: var(--muted);
+      min-width: 22px; height: 22px; padding: 0 7px; border-radius: var(--r-sm);
+      background: var(--bhasa-raised); border: 1px solid var(--bhasa-line-soft);
+      color: var(--bhasa-text-muted);
       font-size: 12px; font-weight: 700; display: inline-grid; place-items: center;
     }
     .chat-inbox__new {
-      border: 1px solid var(--line);
-      background: transparent;
-      color: var(--ink);
-      border-radius: 10px;
-      padding: 7px 12px;
-      font-size: 13px;
-      font-weight: 600;
+      display: block;
+      width: calc(100% - 32px);
+      margin: 0 16px 12px;
+      border: 1px solid var(--bhasa-line);
+      background: var(--bhasa-raised);
+      color: var(--bhasa-text);
+      border-radius: var(--r-md);
+      padding: 10px 12px;
+      font-size: 14px;
+      font-weight: 700;
       cursor: pointer;
-      white-space: nowrap;
+      text-align: center;
       transition: background .15s, border-color .15s;
     }
-    .chat-inbox__new:hover { background: var(--panel-3); border-color: var(--primary); }
+    .chat-inbox__new:hover { background: var(--bhasa-hover); border-color: var(--bhasa-text-muted); }
     .chat-inbox__list {
       flex: 1;
       min-height: 0;
       overflow-y: auto;
-      padding: 8px;
+      padding: 4px 8px 12px;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 4px;
       scrollbar-width: thin;
+      border-top: 1px solid var(--bhasa-line-soft);
     }
-    .chat-inbox__list .empty { padding: 22px 12px; text-align: center; line-height: 1.7; }
     .convo {
       position: relative;
       width: 100%;
       text-align: left;
       border: 1px solid transparent;
       background: transparent;
-      border-radius: 12px;
-      padding: 11px 12px 11px 18px;
+      border-radius: var(--r-md);
+      padding: 10px 12px;
       cursor: pointer;
-      color: inherit;
+      color: var(--bhasa-text);
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 4px;
       flex-shrink: 0;
       transition: background .15s, border-color .15s;
     }
-    .convo::before {
-      content: "";
-      position: absolute;
-      left: 7px; top: 13px; bottom: 13px; width: 3px;
-      border-radius: 3px;
-      background: transparent;
+    .convo:hover { background: var(--bhasa-hover); }
+    .convo.on {
+      background: var(--bhasa-gold-quiet);
+      border-color: var(--bhasa-gold-edge);
     }
-    .convo:hover { background: var(--panel-3); }
-    .convo.on { background: var(--panel-3); border-color: var(--line-soft); }
-    .convo.on::before { background: var(--primary); }
     .convo__top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-    .convo__name { font-size: 13.5px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .convo__time { font-size: 11.5px; color: var(--muted); font-weight: 600; flex-shrink: 0; }
+    .convo__name { font-size: 12px; font-weight: 700; color: var(--bhasa-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .convo__time { font-size: 12px; color: var(--bhasa-text-muted); font-weight: 600; flex-shrink: 0; }
     .convo__preview {
       font-size: 13.5px;
-      line-height: 1.7;
-      color: var(--ink);
-      opacity: .85;
+      line-height: 1.6;
+      color: var(--bhasa-text);
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
       overflow-wrap: anywhere;
+      min-height: calc(13.5px * 1.6 * 2);
     }
-    .convo__meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 6px; }
+    .chat-inbox__list .empty,
+    .chat-inbox__foot .empty { color: var(--bhasa-text-muted); }
     .chat-inbox__foot {
-      border-top: 1px solid var(--line-soft);
-      padding: 10px 16px 12px;
+      border-top: 1px solid var(--bhasa-line);
+      padding: 12px 16px;
       max-height: 34%;
       overflow: auto;
       flex-shrink: 0;
-      background: var(--panel-2);
+      background: var(--bhasa-surface);
     }
-    .chat-inbox__foot .ticket { color: var(--ink); padding: 5px 0; line-height: 1.5; border-bottom: 1px solid var(--line-soft); }
+    /* Devanagari headings must never get uppercase or letter-spacing */
+    .chat-inbox__foot h4 { color: var(--bhasa-text-muted); text-transform: none; letter-spacing: normal; font-size: 12px; font-weight: 700; }
+    .chat-inbox__foot .ticket { color: var(--bhasa-text); font-size: 13px; padding: 5px 0; line-height: 1.6; border-bottom: 1px solid var(--bhasa-line-soft); }
     .chat-inbox__foot .ticket:last-child { border-bottom: 0; }
     .chat-inbox__foot .empty { padding: 4px 0; }
 
@@ -471,25 +530,41 @@
       flex-direction: column;
       min-height: 0;
       min-width: 0;
-      background: var(--bg);
+      background: var(--bhasa-room);
     }
     .room__topics {
       flex-shrink: 0;
-      padding: 14px 28px 12px;
-      border-bottom: 1px solid var(--line-soft);
-      background: var(--panel);
+      padding: 16px 28px 12px;
+      border-bottom: 1px solid var(--bhasa-line-soft);
+      background: var(--bhasa-room);
     }
     .room__topics-label {
       display: block;
-      font-size: 12px; font-weight: 700; color: var(--muted);
+      font-size: 12px; font-weight: 700; color: var(--bhasa-text-muted);
       margin-bottom: 8px;
     }
+    #chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    #chips button {
+      flex-shrink: 0;
+      border: 1px solid var(--bhasa-line);
+      background: var(--bhasa-raised);
+      color: var(--bhasa-text);
+      border-radius: var(--r-md);
+      padding: 8px 14px;
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 1.6;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s, border-color .15s;
+    }
+    #chips button:hover { background: var(--bhasa-hover); border-color: var(--bhasa-gold-edge); }
     .room #log {
       flex: 1;
       min-height: 0;
       overflow-y: auto;
       overscroll-behavior: contain;
-      padding: 24px 28px 18px;
+      padding: 24px 28px 20px;
       gap: 16px;
       scrollbar-width: thin;
     }
@@ -500,47 +575,58 @@
       margin-inline: auto;
       align-self: center;
     }
+    .room .turn { max-width: min(72ch, 100%); }
     .room .turn.agent { align-items: flex-start; }
-    .room .bubble { max-width: 85%; }
-    .room .who { font-size: 11.5px; padding: 0 4px; }
-    .room .welcome {
-      background: var(--panel-2);
-      border: 1px solid var(--line-soft);
-      border-radius: 16px;
-      margin: 6px 0 0;
-      max-width: 560px;
-      padding: 20px 22px;
-      flex-shrink: 0;
+    .room .turn.member + .turn.member,
+    .room .turn.agent + .turn.agent { margin-top: -8px; }
+    .room .bubble {
+      max-width: 85%;
+      border-radius: var(--r-lg);
+      line-height: 1.75;
+      color: var(--bhasa-text);
     }
-    .room .welcome h2 { margin: 0 0 6px; font-size: 22px; line-height: 1.4; font-weight: 700; }
-    .room .welcome p { margin: 0; color: var(--muted); line-height: 1.75; }
+    .room .agent .bubble {
+      background: var(--bhasa-raised);
+      border: 1px solid var(--bhasa-line-soft);
+      border-top-left-radius: var(--r-sm);
+    }
+    .room .member .bubble {
+      background: var(--bhasa-member-bg);
+      border: 1px solid var(--bhasa-member-line);
+      color: var(--bhasa-text);
+      border-top-right-radius: var(--r-sm);
+    }
+    .room .who { font-size: 11.5px; padding: 0 4px; color: var(--bhasa-text-muted); }
+    .room .play {
+      color: var(--bhasa-text-muted);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .room .play:hover { color: var(--bhasa-text); }
+    .room .loading { color: var(--bhasa-text-muted); }
+    .room .dots span { background: var(--bhasa-gold); }
+    .room .welcome {
+      background: var(--bhasa-surface);
+      border: 1px solid var(--bhasa-line);
+      border-radius: var(--r-xl);
+      margin-top: 8px;
+      padding: 24px;
+      flex-shrink: 0;
+      color: var(--bhasa-text);
+    }
+    .room .welcome h2 { margin: 0 0 8px; font-size: 22px; line-height: 1.5; font-weight: 700; color: var(--bhasa-text); }
+    .room .welcome p { margin: 0; color: var(--bhasa-text-muted); line-height: 1.75; }
 
     /* Zone 3 — write bar */
     .desk-bar {
       flex-shrink: 0;
-      background: var(--panel-2);
-      border-top: 1px solid var(--line);
-      box-shadow: var(--shadow-bar);
-      padding: 14px 24px 14px;
+      background: var(--bhasa-surface);
+      border-top: 1px solid var(--bhasa-line);
+      padding: 14px 24px;
       position: relative;
       z-index: 1;
     }
-    #chips { display: flex; flex-wrap: wrap; gap: 8px; }
-    #chips button {
-      flex-shrink: 0;
-      border: 1px solid var(--line);
-      background: transparent;
-      color: var(--ink);
-      border-radius: 999px;
-      padding: 5px 12px;
-      font-size: 12.5px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background .15s, border-color .15s;
-    }
-    #chips button:hover { border-color: var(--primary); background: var(--primary-12); }
-    .desk-bar form { display: flex; align-items: flex-end; gap: 10px; }
+    .desk-bar form { display: flex; align-items: flex-end; gap: 8px; }
     .desk-bar textarea {
       flex: 1;
       min-width: 0;
@@ -548,43 +634,47 @@
       max-height: 168px;
       resize: none;
       padding: 13px 16px;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: var(--well);
-      color: var(--ink);
+      border-radius: var(--r-lg);
+      border: 1px solid var(--bhasa-line);
+      background: var(--bhasa-raised);
+      color: var(--bhasa-text);
+      caret-color: var(--bhasa-gold);
       font: inherit;
       font-size: 15px;
-      line-height: 1.7;
+      line-height: 1.75;
       overflow-y: auto;
     }
-    .desk-bar textarea::placeholder { color: var(--md-sys-color-outline); }
-    .desk-bar textarea:focus { outline: 2px solid var(--primary-45); outline-offset: 1px; border-color: var(--primary); }
+    .desk-bar textarea::placeholder { color: var(--bhasa-text-muted); opacity: 1; }
+    .desk-bar textarea:focus { outline: 2px solid var(--bhasa-gold-edge); outline-offset: 1px; border-color: var(--bhasa-gold); }
     .desk-bar #mic, .desk-bar #send {
       height: 52px;
-      border-radius: 12px;
+      border-radius: var(--r-lg);
       font-weight: 700;
       cursor: pointer;
       flex-shrink: 0;
+      font-size: 15px;
     }
     .desk-bar #mic {
       min-width: 52px;
-      padding: 0 14px;
-      background: transparent;
-      border: 1px solid var(--line);
-      color: var(--ink);
-      font-size: 18px;
+      padding: 0 16px;
+      background: var(--bhasa-raised);
+      border: 1px solid var(--bhasa-line);
+      color: var(--bhasa-text);
     }
-    .desk-bar #mic:hover { background: var(--panel-3); }
-    .desk-bar #mic.hot { background: var(--danger); color: var(--on-danger); border-color: var(--danger); }
+    .desk-bar #mic:hover { background: var(--bhasa-hover); }
+    .desk-bar #mic.hot { background: var(--bhasa-listening); color: #FFF6F2; border-color: var(--bhasa-listening); }
     .desk-bar #send {
       min-width: 136px;
       padding: 0 20px;
       border: 0;
-      background: var(--primary);
-      color: var(--on-primary);
-      font-size: 15px;
+      background: var(--bhasa-gold-btn);
+      color: var(--bhasa-gold-ink);
     }
-    .desk-bar #send:hover { filter: brightness(1.08); }
+    .desk-bar #send:hover:not(:disabled) { background: var(--bhasa-gold-btn-hover); }
+    .desk-bar #send:disabled { opacity: .45; cursor: default; }
+    .desk-bar .unicoder { min-height: 24px; margin-top: 8px; color: var(--bhasa-text); font-weight: 600; font-size: 15px; line-height: 1.6; }
+    .desk-bar .unicoder.idle { color: var(--bhasa-text-muted); font-weight: 500; font-size: 13px; }
+    .desk-bar .unicoder.err { color: var(--bhasa-error); font-weight: 600; font-size: 13.5px; }
 
     @media (prefers-reduced-motion: reduce) {
       .door, .convo, .pill { transition: none; }
@@ -679,8 +769,8 @@
         <aside class="chat-inbox hidden" id="chat-inbox" aria-label="Conversations">
           <div class="chat-inbox__head">
             <h3><span id="chat-inbox-title"></span><span class="chat-inbox__count" id="chat-inbox-count">0</span></h3>
-            <button type="button" class="chat-inbox__new" id="chat-new"></button>
           </div>
+          <button type="button" class="chat-inbox__new" id="chat-new"></button>
           <div class="chat-inbox__list" id="chat-list"></div>
           <div class="chat-inbox__foot tickets" id="ticket-box">
             <h4 id="tickets-label"></h4>
