@@ -465,6 +465,19 @@
       flex-shrink: 0;
       background: var(--panel-2);
     }
+    /* A failed load has to read as a problem, not as "nothing here". The
+       empty state is quiet grey; this is not. */
+    .load-error {
+      color: var(--danger);
+      text-align: center;
+      padding: 18px 12px;
+      line-height: 1.6;
+    }
+    .load-error__line { font-weight: 600; }
+    .chat-inbox[data-state="error"] .chat-inbox__count {
+      background: var(--danger-soft);
+      color: var(--on-danger-soft);
+    }
     .chat-inbox__foot .ticket { color: var(--ink); padding: 5px 0; line-height: 1.5; border-bottom: 1px solid var(--line-soft); }
     .chat-inbox__foot .ticket:last-child { border-bottom: 0; }
     .chat-inbox__foot .empty { padding: 4px 0; }
@@ -1385,14 +1398,29 @@
 
     /* A failed load must never look like an empty inbox. It used to throw,
        leaving the sidebar showing "0" and no rows — indistinguishable from a
-       desk with no conversations, which is exactly how a restarting server
-       read on screen. */
+       desk that genuinely has no conversations.
+       The count is the part that lies loudest, so it shows a dash rather than
+       asserting zero, and the message is announced, not just drawn. */
     function paintInboxError() {
+      const pane = document.getElementById("chat-inbox");
+      if (pane) pane.dataset.state = "error";
+
+      const countEl = document.getElementById("chat-inbox-count");
+      if (countEl) {
+        countEl.textContent = "—";
+        countEl.setAttribute("aria-hidden", "true");
+        const heading = countEl.closest("h3");
+        if (heading) heading.setAttribute("aria-label", t().chatInbox + ": " + t().listFailed);
+      }
+
       const list = document.getElementById("chat-list");
       list.innerHTML = "";
       const box = document.createElement("div");
-      box.className = "empty";
+      box.className = "empty load-error";
+      box.setAttribute("role", "status");
+      box.setAttribute("aria-live", "polite");
       const line = document.createElement("div");
+      line.className = "load-error__line";
       line.textContent = t().listFailed;
       const retry = document.createElement("button");
       retry.type = "button";
@@ -1404,16 +1432,35 @@
       list.appendChild(box);
     }
 
+    function clearInboxError() {
+      const pane = document.getElementById("chat-inbox");
+      if (pane) delete pane.dataset.state;
+    }
+
+    /* One silent retry first. A single-worker server, a restart, or a relay
+       hiccup all present as one dropped request, and recovering from that
+       without showing the officer anything is better than making them press a
+       button. Only a second failure is worth their attention. */
+    async function getListWithRetry(url) {
+      try {
+        return await getJSON(url);
+      } catch (first) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        return await getJSON(url);
+      }
+    }
+
     async function loadInbox(channel) {
       const kind = channel || (view === "call" ? "call" : "chat");
       let rows;
       try {
-        rows = await getJSON("/v1/support/conversations?channel=" + encodeURIComponent(kind));
+        rows = await getListWithRetry("/v1/support/conversations?channel=" + encodeURIComponent(kind));
       } catch (err) {
         if (kind === "chat") paintInboxError();
         return;
       }
       if (kind === "chat") {
+        clearInboxError();
         conversations = Array.isArray(rows) ? rows : [];
         paintChatInbox(conversations);
         return;
@@ -1504,14 +1551,21 @@
     async function loadTickets() {
       let rows;
       try {
-        rows = await getJSON("/v1/support/tickets");
+        rows = await getListWithRetry("/v1/support/tickets");
       } catch (err) {
         const boxEl = document.getElementById("ticket-list");
         boxEl.innerHTML = "";
         const line = document.createElement("div");
-        line.className = "empty";
+        line.className = "empty load-error";
+        line.setAttribute("role", "status");
         line.textContent = t().listFailed;
-        boxEl.appendChild(line);
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "new";
+        retry.style.marginTop = "6px";
+        retry.textContent = t().retry;
+        retry.addEventListener("click", loadTickets);
+        boxEl.append(line, retry);
         return 0;
       }
       const boxEl = document.getElementById("ticket-list");
