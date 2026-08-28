@@ -225,3 +225,79 @@ def test_forgotten_pin_retrieves_the_reset_article():
     hits = Retriever(get_settings()).search("मेरो पिन बिर्सें", k=3)
     assert hits, "no retrieval hits for a forgotten PIN"
     assert "लगइन" in hits[0]["title"] or "पिन" in hits[0]["text"][:200]
+
+
+def test_behavioural_rows_are_never_shown_as_answers():
+    """The greeting row is an instruction to Bhasa, not a fact for the member.
+
+    Shown verbatim it handed the member our own directions: "when the member
+    says नमस्ते ... reply respectfully ... offer help with login, transfers".
+    It carries none of the प्रश्न:/जवाफ: markers, which is why the first
+    cleanup pass missed it entirely.
+    """
+    from himalaya_support.adapt.pipeline import compose_from_knowledge, is_directive_row
+
+    greeting = (
+        "सदस्यले नमस्ते, सञ्चै, sanchai वा hello भने भाषा ग्राहक सेवाबाट "
+        "सम्मानपूर्वक जवाफ दिनुहोस्। लगइन, रकम, ऋण, केवाईसी वा कार्डमा सहयोग प्रस्ताब गर्नुहोस्"
+    )
+    assert is_directive_row(greeting)
+    assert is_directive_row("anything", ["greeting"])
+    # a genuine procedure written in the imperative is not a directive row
+    assert not is_directive_row(
+        "सहकारी वा बैंकको मोबाइल एप खोल्नुहोस्, साइन इन > पिन/पासवर्ड बिर्सनुभयो।"
+    )
+
+    reply = compose_from_knowledge("नमस्ते", [{"text": greeting, "tags": ["greeting"]}], "ne")
+    assert "सम्मानपूर्वक जवाफ दिनुहोस्" not in reply
+    assert "सदस्यले" not in reply
+
+
+def test_finish_reply_never_returns_a_directive_as_the_answer():
+    """The property that matters is that a behavioural rule never reaches an
+    officer. finish_reply may either replace it or reject it outright —
+    both are safe, and which one fires depends on the grounding check — so
+    assert the outcome rather than the mechanism.
+    """
+    from himalaya_support.adapt.pipeline import (
+        ReplyGenerationError,
+        finish_reply,
+        is_directive_row,
+    )
+
+    directive = (
+        "सदस्यले नमस्ते वा hello भने भाषा ग्राहक सेवाबाट सम्मानपूर्वक जवाफ दिनुहोस्। "
+        "लगइन, रकम, ऋण, केवाईसी वा कार्डमा सहयोग प्रस्ताब गर्नुहोस् र विनम्र रहनुहोस्।"
+    )
+    try:
+        reply, _ = finish_reply(directive, [], "ne", user_message="नमस्ते")
+    except ReplyGenerationError:
+        return  # rejected outright, which is also correct
+    assert not is_directive_row(reply)
+    assert "सम्मानपूर्वक जवाफ दिनुहोस्" not in reply
+
+
+def test_identical_text_dedupes_across_different_client_keys():
+    """Two clicks whose first response was lost send the same text under two
+    different keys. Keying only on the client key cannot catch that."""
+    from himalaya_support.api import routes
+
+    routes._idempotency.clear()
+    routes._content_keys.clear()
+
+    payload = routes.ChatRequest(message="कार्ड हरायो, के गर्ने?", conversation_id=None)
+    content = routes._content_key(payload)
+
+    first, owns_first = routes._claim("key-attempt-1", content)
+    assert owns_first
+    second, owns_second = routes._claim("key-attempt-2", content)
+    assert not owns_second, "a duplicate with a new key must join the first request"
+    assert second is first
+
+    # A different message is unaffected.
+    other = routes.ChatRequest(message="मेरो पिन बिर्सें", conversation_id=None)
+    _, owns_other = routes._claim("key-attempt-3", routes._content_key(other))
+    assert owns_other
+
+    routes._idempotency.clear()
+    routes._content_keys.clear()

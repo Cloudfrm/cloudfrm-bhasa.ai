@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import threading
 import time
 from collections import OrderedDict
@@ -44,8 +45,22 @@ def get_engine() -> SupportEngine:
 # --------------------------------------------------------------------------
 _IDEMPOTENCY_TTL = 300.0
 _IDEMPOTENCY_MAX = 512
+# A client key only dedupes a retry that reuses it. It cannot catch the case
+# that actually produced duplicates in QA: a send that reached the server but
+# whose response never got back, so the client still has no conversation id
+# and the next click sends the same text again under a brand-new key. Identical
+# text into the same conversation within this window is treated as one message.
+_CONTENT_TTL = 12.0
 _idempotency_lock = threading.Lock()
 _idempotency: OrderedDict[str, dict] = OrderedDict()
+_content_keys: OrderedDict[str, tuple[float, str]] = OrderedDict()
+
+
+def _content_key(payload: ChatRequest) -> str:
+    body = " ".join((payload.message or "").split())
+    return hashlib.sha1(
+        f"{payload.conversation_id or 'new'}|{payload.channel or 'chat'}|{body}".encode("utf-8")
+    ).hexdigest()
 
 
 def _purge_expired(now: float) -> None:
@@ -55,16 +70,35 @@ def _purge_expired(now: float) -> None:
         _idempotency.popitem(last=False)
 
 
-def _claim(key: str) -> tuple[dict, bool]:
-    """Return (entry, is_owner). The owner does the work; others wait on it."""
+def _claim(key: str, content: str | None = None) -> tuple[dict, bool]:
+    """Return (entry, is_owner). The owner does the work; others wait on it.
+
+    `content` lets a duplicate with a different client key still find the
+    first request, as long as it arrives inside the content window.
+    """
     now = time.monotonic()
     with _idempotency_lock:
         _purge_expired(now)
+        for stale in [k for k, (ts, _) in _content_keys.items() if now - ts > _CONTENT_TTL]:
+            _content_keys.pop(stale, None)
+
         entry = _idempotency.get(key)
         if entry is not None:
             return entry, False
+
+        if content:
+            seen = _content_keys.get(content)
+            if seen is not None:
+                existing = _idempotency.get(seen[1])
+                if existing is not None:
+                    return existing, False
+
         entry = {"created": now, "done": threading.Event(), "result": None, "error": None}
         _idempotency[key] = entry
+        if content:
+            _content_keys[content] = (now, key)
+            while len(_content_keys) > _IDEMPOTENCY_MAX:
+                _content_keys.popitem(last=False)
         return entry, True
 
 
@@ -106,11 +140,9 @@ def chat(
     payload: ChatRequest,
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> ChatResponse:
-    key = (idempotency_key or payload.client_id or "").strip()
-    if not key:
-        return _run_chat(payload)
-
-    entry, is_owner = _claim(key)
+    content = _content_key(payload)
+    key = (idempotency_key or payload.client_id or "").strip() or ("auto-" + content)
+    entry, is_owner = _claim(key, content)
     if not is_owner:
         # A duplicate of a request already running or finished: wait for the
         # first result and return it, rather than creating a second
@@ -129,12 +161,14 @@ def chat(
         entry["error"] = exc
         with _idempotency_lock:
             _idempotency.pop(key, None)
+            _content_keys.pop(content, None)
         entry["done"].set()
         raise
     except Exception as exc:
         entry["error"] = exc
         with _idempotency_lock:
             _idempotency.pop(key, None)
+            _content_keys.pop(content, None)
         entry["done"].set()
         raise
     entry["done"].set()

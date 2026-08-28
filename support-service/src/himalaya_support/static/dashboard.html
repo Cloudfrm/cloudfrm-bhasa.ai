@@ -796,6 +796,8 @@
         timeMinutes: "{n} मिनेट",
         timeToday: "आज",
         timeYesterday: "हिजो",
+        listFailed: "सूची ल्याउन सकिएन।",
+        retry: "फेरि प्रयास",
         chatInbox: "संवादहरू",
         chatNew: "+ नयाँ संवाद",
         topics: "छिटो विषय",
@@ -864,6 +866,8 @@
         timeMinutes: "{n} min",
         timeToday: "Today",
         timeYesterday: "Yesterday",
+        listFailed: "Could not load the list.",
+        retry: "Try again",
         chatInbox: "Conversations",
         chatNew: "+ New chat",
         topics: "Quick topics",
@@ -1367,9 +1371,36 @@
       rec.onend = () => mic.classList.remove("hot");
     }
 
+    /* A failed load must never look like an empty inbox. It used to throw,
+       leaving the sidebar showing "0" and no rows — indistinguishable from a
+       desk with no conversations, which is exactly how a restarting server
+       read on screen. */
+    function paintInboxError() {
+      const list = document.getElementById("chat-list");
+      list.innerHTML = "";
+      const box = document.createElement("div");
+      box.className = "empty";
+      const line = document.createElement("div");
+      line.textContent = t().listFailed;
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "new";
+      retry.style.marginTop = "8px";
+      retry.textContent = t().retry;
+      retry.addEventListener("click", () => loadInbox("chat"));
+      box.append(line, retry);
+      list.appendChild(box);
+    }
+
     async function loadInbox(channel) {
       const kind = channel || (view === "call" ? "call" : "chat");
-      const rows = await getJSON("/v1/support/conversations?channel=" + encodeURIComponent(kind));
+      let rows;
+      try {
+        rows = await getJSON("/v1/support/conversations?channel=" + encodeURIComponent(kind));
+      } catch (err) {
+        if (kind === "chat") paintInboxError();
+        return;
+      }
       if (kind === "chat") {
         conversations = Array.isArray(rows) ? rows : [];
         paintChatInbox(conversations);
@@ -1401,12 +1432,15 @@
       const c = t();
       const list = document.getElementById("chat-list");
       /* Recomputed from the live list on every render, so the badge follows
-         new conversations instead of freezing at the page-load value. The
-         label reads it out separately, since "कुराकानीहरू13" run together is
-         what a screen reader would otherwise announce. */
+         new conversations instead of freezing at the page-load value.
+         The badge is the visual count and is hidden from assistive tech; the
+         heading carries the whole name instead. Labelling both made a screen
+         reader announce "संवादहरू" and then "२८ संवादहरू" back to back. */
       const countEl = document.getElementById("chat-inbox-count");
       countEl.textContent = localNum(rows.length);
-      countEl.setAttribute("aria-label", localNum(rows.length) + " " + c.chatInbox);
+      countEl.setAttribute("aria-hidden", "true");
+      const heading = countEl.closest("h3");
+      if (heading) heading.setAttribute("aria-label", c.chatInbox + ": " + localNum(rows.length));
       list.innerHTML = "";
       convoMeta = {};
       rows.forEach((row) => { convoMeta[row.id] = row; });
@@ -1456,7 +1490,18 @@
     }
 
     async function loadTickets() {
-      const rows = await getJSON("/v1/support/tickets");
+      let rows;
+      try {
+        rows = await getJSON("/v1/support/tickets");
+      } catch (err) {
+        const boxEl = document.getElementById("ticket-list");
+        boxEl.innerHTML = "";
+        const line = document.createElement("div");
+        line.className = "empty";
+        line.textContent = t().listFailed;
+        boxEl.appendChild(line);
+        return 0;
+      }
       const boxEl = document.getElementById("ticket-list");
       boxEl.innerHTML = "";
       const open = (Array.isArray(rows) ? rows : []).filter((row) => row.status !== "resolved");

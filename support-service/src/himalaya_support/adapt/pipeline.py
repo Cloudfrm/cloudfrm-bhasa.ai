@@ -23,6 +23,21 @@ _LABEL = re.compile(r"^\s*(?:प्रश्न|जवाफ)\s*:\s*", re.M)
 # their presence in an outgoing answer means the reply was assembled wrong.
 TEMPLATE_MARKERS = ("हजुर, यसरी पूरा गर्नुहोस्", "प्रश्न:", "जवाफ:")
 
+# Some knowledge rows are behavioural rules aimed at Bhasa, not facts for the
+# member — the greeting row reads "when the member says नमस्ते ... reply
+# respectfully ... offer help with login, transfers". Shown verbatim it hands
+# the member our own instructions. These rows carry a tag, but the phrasing is
+# checked too so a corpus without tags is still covered: a row that says what
+# to do *when the member says something* is a rule, never an answer.
+DIRECTIVE_TAGS = {"greeting", "smalltalk", "instruction", "style", "persona"}
+_DIRECTIVE_RULE = re.compile(r"सदस्यले.{0,80}?भने", re.S)
+
+
+def is_directive_row(text: str, tags: list[str] | tuple[str, ...] | None = None) -> bool:
+    if tags and DIRECTIVE_TAGS.intersection({str(t).lower() for t in tags}):
+        return True
+    return bool(_DIRECTIVE_RULE.search(text or ""))
+
 _STOPWORDS_NE = {
     "हो", "हुन्छ", "छ", "छैन", "के", "कति", "कसरी", "मेरो", "मलाई", "गर्ने",
     "गर्न", "भएमा", "पनि", "वा", "र", "यो", "त्यो", "म", "तपाईं",
@@ -95,7 +110,11 @@ def compose_from_knowledge(message: str, snippets: list[dict], language: str) ->
     asked = re.sub(r"\s+", " ", (message or "").strip())[:180]
     facts = ""
     for item in snippets[:1]:
-        question, answer = split_knowledge_row(item.get("text") or "")
+        raw = item.get("text") or ""
+        # A rule about how to answer is not an answer.
+        if is_directive_row(raw, item.get("tags")):
+            continue
+        question, answer = split_knowledge_row(raw)
         # Only use the row when it actually addresses what was asked; a
         # confident answer to a different question is worse than none.
         if answer and snippet_answers(question, asked):
@@ -178,6 +197,8 @@ def finish_reply(
         raise ReplyGenerationError(
             "reply contained template markers: " + ", ".join(leaked)
         )
+    if is_directive_row(text):
+        raise ReplyGenerationError("reply was a behavioural instruction, not an answer")
     honorific = check_honorific(text, "high") if language == "ne" else {"ok": True, "reason": "english"}
     register = classify(text) if language == "ne" else {"register": "english"}
     return text, {

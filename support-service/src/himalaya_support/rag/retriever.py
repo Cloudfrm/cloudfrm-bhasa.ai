@@ -55,6 +55,7 @@ class Document:
     text: str
     source: str
     tokens: list[str]
+    tags: tuple[str, ...] = ()
 
 
 class Retriever:
@@ -73,7 +74,12 @@ class Retriever:
     def reload(self) -> None:
         docs: list[Document] = []
         for article in load_product_articles(self.settings.knowledge_path):
-            docs.append(self._to_doc(article["id"], article["title"], article["text"], article["source"]))
+            docs.append(
+                self._to_doc(
+                    article["id"], article["title"], article["text"],
+                    article["source"], tuple(article.get("tags") or ()),
+                )
+            )
         corpus_dir = self.settings.corpus_dir
         if corpus_dir.exists():
             for path in sorted(corpus_dir.glob("*.jsonl")):
@@ -102,6 +108,7 @@ class Retriever:
                     "title": doc.title,
                     "text": doc.text[:1200],
                     "source": doc.source,
+                    "tags": list(doc.tags),
                     "score": round(score, 4),
                 }
             )
@@ -157,11 +164,14 @@ class Retriever:
         return docs
 
     @staticmethod
-    def _to_doc(doc_id: str, title: str, text: str, source: str) -> Document:
+    def _to_doc(doc_id: str, title: str, text: str, source: str, tags: tuple[str, ...] = ()) -> Document:
         # The title says what an article is about, so a query matching it is a
         # stronger signal than the same words buried in the body. Without this
         # a "cannot log in" question matched the daily-limit article, which
         # merely repeats "मोबाइल बैंकिङ", ahead of the login article whose
         # title actually carries "लगइन".
         blob = f"{title}\n{title}\n{text}"
-        return Document(doc_id=doc_id, title=title, text=text, source=source, tokens=tokenize(blob))
+        return Document(
+            doc_id=doc_id, title=title, text=text, source=source,
+            tokens=tokenize(blob), tags=tuple(tags or ()),
+        )

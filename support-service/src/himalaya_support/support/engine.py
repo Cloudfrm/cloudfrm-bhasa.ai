@@ -24,6 +24,7 @@ from himalaya_support.adapt.conversation_repair import repair_message
 from himalaya_support.adapt.pipeline import (
     ReplyGenerationError,
     finish_reply,
+    is_directive_row,
     prepare_user_text,
 )
 from himalaya_support.adapt.speech import normalize_for_speech
@@ -289,6 +290,10 @@ class SupportEngine:
         for hit in hits:
             source = str(hit.get("source") or "")
             if "honorific" in source.lower():
+                continue
+            # Behavioural rules ground nothing — they only describe how to
+            # reply, and were being shown to members as the reply.
+            if is_directive_row(hit.get("text") or "", hit.get("tags")):
                 continue
             usable.append(hit)
         preferred: list[dict] = []
