@@ -13,7 +13,11 @@
     (function () {
       try {
         var saved = localStorage.getItem("bhasa-theme");
-        var dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+        /* Dark is the designed look: the visual brief specifies one room —
+           deep green / near-black with gold reserved for two things — and no
+           light-mode palette has been designed against those contrast rules.
+           An officer's own choice still wins; only the default changed. */
+        var dark = saved ? saved === "dark" : true;
         document.documentElement.classList.toggle("dark", dark);
         document.documentElement.style.colorScheme = dark ? "dark" : "light";
       } catch (e) {}
@@ -788,6 +792,10 @@
         tickets: "टिकट",
         emptyInbox: "अहिले संवाद छैन",
         emptyTickets: "खुला टिकट छैन",
+        timeNow: "अहिले",
+        timeMinutes: "{n} मिनेट",
+        timeToday: "आज",
+        timeYesterday: "हिजो",
         chatInbox: "संवादहरू",
         chatNew: "+ नयाँ संवाद",
         topics: "छिटो विषय",
@@ -852,6 +860,10 @@
         tickets: "Tickets",
         emptyInbox: "No conversations yet",
         emptyTickets: "No open tickets",
+        timeNow: "Just now",
+        timeMinutes: "{n} min",
+        timeToday: "Today",
+        timeYesterday: "Yesterday",
         chatInbox: "Conversations",
         chatNew: "+ New chat",
         topics: "Quick topics",
@@ -894,18 +906,36 @@
     const themeToggle = document.getElementById("theme-toggle");
     let view = "home";
     let replyLang = localStorage.getItem("bhasa-lang") || "ne";
-    let speakOn = localStorage.getItem("bhasa-speak") !== "off";
+    // Opt-in: was on by default, which narrated every reply unasked.
+    let speakOn = localStorage.getItem("bhasa-speak") === "on";
     let chatId = null;
     let callId = null;
     let callLive = false;
     let lastAudio = null;
     let started = false;
     let lastMemberBubble = null;
-    let unicoderTimer = null;
-    let unicoderReq = 0;
+    let isComposing = false;
     let callRec = null;
     let callBusy = false;
     let convoMeta = {};
+    let sendBusy = false;
+    let conversations = [];
+    let unicoderSeq = 0;
+    let unicoderAbort = null;
+    let previewTimer = null;
+
+    /* Opening one conversation used to fire four identical conversation
+       fetches and two ticket fetches. Concurrent callers for the same URL now
+       share one request instead of each starting their own. */
+    const inflightGets = new Map();
+    function getJSON(url) {
+      if (inflightGets.has(url)) return inflightGets.get(url);
+      const pending = fetch(url)
+        .then((res) => res.json())
+        .finally(() => { inflightGets.delete(url); });
+      inflightGets.set(url, pending);
+      return pending;
+    }
 
     function t() { return copy[replyLang]; }
     function hasLatin(text) { return /[A-Za-z]/.test(text || ""); }
@@ -1035,19 +1065,33 @@
       unicoderHint.textContent = t().unicoderHint;
     }
 
+    const NE_DIGITS = ["०", "१", "२", "३", "४", "५", "६", "७", "८", "९"];
+    function neNum(value) {
+      return String(value).replace(/[0-9]/g, (d) => NE_DIGITS[Number(d)]);
+    }
+    function localNum(value) {
+      return replyLang === "ne" ? neNum(value) : String(value);
+    }
+
+    /* The single time formatter for the whole app.
+       toLocaleDateString("ne-NP", {month:"short"}) silently falls back to
+       English month names in the browser, which is how a raw "Aug 26" was
+       appearing while the UI was in Nepali. Older dates are therefore
+       formatted by hand as AD YYYY-MM-DD with localized numerals. */
     function fmtWhen(iso) {
-      if (!iso) return "";
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return String(iso).slice(0, 16).replace("T", " ");
-      const loc = replyLang === "ne" ? "ne-NP" : "en-GB";
-      const sameDay = d.toDateString() === new Date().toDateString();
-      try {
-        return sameDay
-          ? d.toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit" })
-          : d.toLocaleDateString(loc, { day: "numeric", month: "short" });
-      } catch {
-        return String(iso).slice(0, 16).replace("T", " ");
-      }
+      const stamp = iso || "";
+      if (!stamp) return "";
+      const d = new Date(stamp);
+      if (isNaN(d.getTime())) return "";
+      const now = new Date();
+      const mins = Math.floor((now.getTime() - d.getTime()) / 60000);
+      const c = t();
+      if (mins < 1) return c.timeNow;
+      if (mins < 60) return c.timeMinutes.replace("{n}", localNum(mins));
+      if (d.toDateString() === now.toDateString()) return c.timeToday;
+      if (d.toDateString() === new Date(now.getTime() - 86400000).toDateString()) return c.timeYesterday;
+      const pad = (n) => String(n).padStart(2, "0");
+      return localNum(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
     }
 
     function paintRoomHead() {
@@ -1072,40 +1116,66 @@
       box.style.height = Math.min(box.scrollHeight, 168) + "px";
     }
 
-    async function toUnicoder(text) {
+    /* A broken or slow transliterator must never become a broken send: every
+       failure path returns the roman exactly as typed. */
+    async function toUnicoder(text, signal) {
       const raw = text || "";
       if (!raw || !hasLatin(raw)) return raw;
-      const res = await fetch("/v1/support/unicoder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: raw })
-      });
-      const data = await res.json();
-      return (res.ok && data.nepali) ? data.nepali : raw;
+      try {
+        const res = await fetch("/v1/support/unicoder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: raw }),
+          signal
+        });
+        const data = await res.json();
+        return (res.ok && data.nepali) ? data.nepali : raw;
+      } catch {
+        return raw;
+      }
     }
 
-    function pendingLatin(value) {
-      const match = value.match(/[A-Za-z']+$/);
-      return match ? match[0] : "";
+    /* The preview the officer is currently looking at, and the exact roman
+       that produced it. Sending reuses this instead of asking the endpoint to
+       convert the same string a second and third time. */
+    let previewSource = "";
+    let previewValue = "";
+
+    async function resolveOutgoing(text) {
+      const raw = (text || "").trim();
+      if (replyLang !== "ne" || !hasLatin(raw)) return raw;
+      if (previewSource === raw && previewValue) return previewValue;
+      return await toUnicoder(raw);
     }
 
-    async function convertComposer(commitCurrent) {
+
+    /* Live preview only. The textarea keeps exactly what the officer typed —
+       the old code rewrote box.value mid-typing, which moved the cursor to
+       the end of the line on every conversion. */
+    async function updatePreview() {
       const typed = box.value;
-      if (!hasLatin(typed)) {
+      if (replyLang !== "ne" || !hasLatin(typed)) {
+        previewSource = "";
+        previewValue = "";
         paintUnicoderHint();
-        return typed;
+        return;
       }
-      const req = ++unicoderReq;
-      const converted = await toUnicoder(typed);
-      if (req !== unicoderReq) return typed;
+      const seq = ++unicoderSeq;
+      if (unicoderAbort) unicoderAbort.abort();
+      unicoderAbort = new AbortController();
+      const converted = await toUnicoder(typed, unicoderAbort.signal);
+      // A slower earlier response must never overwrite a newer preview.
+      if (seq !== unicoderSeq) return;
+      previewSource = typed;
+      previewValue = converted;
       paintUnicoderHint(converted);
-      const shouldReplace = commitCurrent || !pendingLatin(typed);
-      if (replyLang === "ne" && shouldReplace && converted && converted !== typed && box.value === typed) {
-        box.value = converted;
-        growBox();
-        paintUnicoderHint();
-      }
-      return converted;
+    }
+
+    function schedulePreview() {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(() => {
+        if (!isComposing) updatePreview();
+      }, 120);
     }
 
     function showWelcome() {
@@ -1146,9 +1216,12 @@
         play.type = "button";
         play.className = "play";
         play.textContent = t().play;
-        play.addEventListener("click", () => speakReply(text, false));
+        play.addEventListener("click", () => speakReply(text, true));
         bubble.parentNode.appendChild(play);
-        speakReply(text, false);
+        /* Auto-narration now only happens when the officer has switched the
+           Voice toggle on, and that toggle defaults to off. It used to fetch
+           a full MP3 for every reply whether or not anyone was listening. */
+        if (speakOn) speakReply(text, false);
       }
     }
 
@@ -1194,19 +1267,45 @@
       await new Promise((resolve) => { lastAudio.onended = resolve; lastAudio.onerror = resolve; });
     }
 
+    function newClientId() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    }
+
+    /* One in-flight send at a time. The guard has to be set synchronously:
+       the old code awaited transliteration before disabling Send, so two
+       fast chip clicks both passed the check and created two conversations. */
+    function setSendBusy(busy) {
+      sendBusy = busy;
+      send.disabled = busy;
+      mic.disabled = busy;
+      document.querySelectorAll("#chips button").forEach((btn) => { btn.disabled = busy; });
+    }
+
     async function sendText(message) {
-      if (!message || send.disabled) return;
+      if (!message || sendBusy) return;
+      setSendBusy(true);
+      /* Generated once for this message and reused if it is ever retried, so
+         the server can recognise a duplicate and return the first result. */
+      const clientId = newClientId();
       let shown = message;
-      if (hasLatin(message)) shown = await toUnicoder(message);
-      lastMemberBubble = addTurn(log, "member", shown);
-      send.disabled = true;
-      mic.disabled = true;
-      showLoading(log);
       try {
+        /* Only Nepali mode transliterates, and only if this text has not
+           already been resolved from the preview. English-mode messages were
+           being converted to Devanagari against the officer's intent. */
+        if (replyLang === "ne" && hasLatin(message)) shown = await resolveOutgoing(message);
+        lastMemberBubble = addTurn(log, "member", shown);
+        showLoading(log);
         const res = await fetch("/v1/support/chat", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: shown, conversation_id: chatId, locale: replyLang, channel: "chat" })
+          headers: { "Content-Type": "application/json", "Idempotency-Key": clientId },
+          body: JSON.stringify({
+            message: shown,
+            conversation_id: chatId,
+            locale: replyLang,
+            channel: "chat",
+            client_id: clientId
+          })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
@@ -1215,17 +1314,41 @@
         clearLoading("pending");
         addAgent(data.reply, false, data);
         paintRoomHead();
-        loadInbox("chat");
-        loadTickets();
-        loadHome();
+        /* Update the row we already know about instead of re-fetching every
+           list: one send used to trigger five full refetches. */
+        touchConversation(chatId, shown);
+        if (data.tickets && data.tickets.length) loadTickets();
       } catch (err) {
         clearLoading("pending");
         addAgent(String(err.message || err), true);
       } finally {
-        send.disabled = false;
-        mic.disabled = false;
+        setSendBusy(false);
         box.focus();
       }
+    }
+
+    /* Move a conversation to the top of the local list with its new preview,
+       creating the row if this was the first message. */
+    function touchConversation(id, preview) {
+      if (!id) return;
+      const now = new Date().toISOString();
+      const existing = conversations.find((row) => row.id === id);
+      if (existing) {
+        existing.preview = preview;
+        existing.updated_at = now;
+        existing.message_count = (existing.message_count || 0) + 2;
+      } else {
+        conversations.unshift({
+          id,
+          preview,
+          updated_at: now,
+          created_at: now,
+          message_count: 2,
+          locale: replyLang
+        });
+      }
+      conversations.sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
+      paintChatInbox(conversations);
     }
 
     function listenChat() {
@@ -1246,9 +1369,12 @@
 
     async function loadInbox(channel) {
       const kind = channel || (view === "call" ? "call" : "chat");
-      const res = await fetch("/v1/support/conversations?channel=" + encodeURIComponent(kind));
-      const rows = await res.json();
-      if (kind === "chat") { paintChatInbox(Array.isArray(rows) ? rows : []); return; }
+      const rows = await getJSON("/v1/support/conversations?channel=" + encodeURIComponent(kind));
+      if (kind === "chat") {
+        conversations = Array.isArray(rows) ? rows : [];
+        paintChatInbox(conversations);
+        return;
+      }
       const list = document.getElementById("inbox-list");
       list.innerHTML = "";
       if (!Array.isArray(rows) || !rows.length) {
@@ -1260,8 +1386,11 @@
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "thread" + (row.id === active ? " on" : "");
-        const when = (row.updated_at || "").slice(0, 16).replace("T", " ");
-        btn.innerHTML = '<div class="meta">' + when + '</div><div class="preview"></div>';
+        /* Was a raw ISO slice — the second time-formatting path FIX 6 asks
+           to remove, so it goes through the one formatter too. */
+        const when = fmtWhen(row.updated_at || row.created_at);
+        btn.innerHTML = '<div class="meta"></div><div class="preview"></div>';
+        btn.querySelector(".meta").textContent = when;
         btn.querySelector(".preview").textContent = row.preview || row.id.slice(0, 8);
         btn.addEventListener("click", () => openThread(row.id, kind));
         list.appendChild(btn);
@@ -1271,7 +1400,13 @@
     function paintChatInbox(rows) {
       const c = t();
       const list = document.getElementById("chat-list");
-      document.getElementById("chat-inbox-count").textContent = rows.length;
+      /* Recomputed from the live list on every render, so the badge follows
+         new conversations instead of freezing at the page-load value. The
+         label reads it out separately, since "कुराकानीहरू13" run together is
+         what a screen reader would otherwise announce. */
+      const countEl = document.getElementById("chat-inbox-count");
+      countEl.textContent = localNum(rows.length);
+      countEl.setAttribute("aria-label", localNum(rows.length) + " " + c.chatInbox);
       list.innerHTML = "";
       convoMeta = {};
       rows.forEach((row) => { convoMeta[row.id] = row; });
@@ -1289,9 +1424,12 @@
           '<div class="convo__preview"></div>' +
           '<div class="convo__meta"><span class="convo__count"></span></div>';
         btn.querySelector(".convo__name").textContent = c.memberRow + " · " + row.id.slice(0, 8).toUpperCase();
-        btn.querySelector(".convo__time").textContent = fmtWhen(row.updated_at);
+        /* Fall back to created_at so a row without updated_at still shows a
+           time, rather than the blank label most rows were showing. */
+        btn.querySelector(".convo__time").textContent = fmtWhen(row.updated_at || row.created_at);
         btn.querySelector(".convo__preview").textContent = row.preview || "—";
-        btn.querySelector(".convo__count").textContent = (row.message_count || 0) + " " + c.roomMsgs + (row.locale ? " · " + row.locale : "");
+        btn.querySelector(".convo__count").textContent =
+          localNum(row.message_count || 0) + " " + c.roomMsgs + (row.locale ? " · " + row.locale : "");
         btn.addEventListener("click", () => openThread(row.id, "chat"));
         list.appendChild(btn);
       });
@@ -1299,8 +1437,7 @@
     }
 
     async function openThread(id, kind) {
-      const res = await fetch("/v1/support/conversations/" + id);
-      const data = await res.json();
+      const data = await getJSON("/v1/support/conversations/" + id);
       if (kind === "call") {
         callId = id;
         callLog.innerHTML = "";
@@ -1313,13 +1450,13 @@
       log.innerHTML = "";
       (data.messages || []).forEach((msg) => addTurn(log, msg.role === "user" ? "member" : "agent", msg.content));
       paintRoomHead();
-      loadInbox("chat");
+      /* Selecting a row is local state, not a reason to re-fetch the list. */
+      paintChatInbox(conversations);
       box.focus();
     }
 
     async function loadTickets() {
-      const res = await fetch("/v1/support/tickets");
-      const rows = await res.json();
+      const rows = await getJSON("/v1/support/tickets");
       const boxEl = document.getElementById("ticket-list");
       boxEl.innerHTML = "";
       const open = (Array.isArray(rows) ? rows : []).filter((row) => row.status !== "resolved");
@@ -1339,9 +1476,9 @@
     async function loadHome() {
       try {
         const [chats, calls, tickets] = await Promise.all([
-          fetch("/v1/support/conversations?channel=chat").then((r) => r.json()),
-          fetch("/v1/support/conversations?channel=call").then((r) => r.json()),
-          fetch("/v1/support/tickets").then((r) => r.json())
+          getJSON("/v1/support/conversations?channel=chat"),
+          getJSON("/v1/support/conversations?channel=call"),
+          getJSON("/v1/support/tickets")
         ]);
         document.getElementById("stat-chat").textContent = Array.isArray(chats) ? chats.length : 0;
         document.getElementById("stat-call").textContent = Array.isArray(calls) ? calls.length : 0;
@@ -1471,13 +1608,8 @@
     });
     themeToggle.addEventListener("click", () => setTheme(!isDark()));
     try {
-      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
-        if (!localStorage.getItem("bhasa-theme")) {
-          document.documentElement.classList.toggle("dark", event.matches);
-          document.documentElement.style.colorScheme = event.matches ? "dark" : "light";
-          paintTheme();
-        }
-      });
+      /* No OS-theme following: it would pull an officer who has not chosen a
+         theme back into light mode, which is the look nobody designed. */
     } catch (e) {}
     document.getElementById("new-thread").addEventListener("click", () => {
       if (view === "call") { hangup(); callId = null; callLog.innerHTML = ""; }
@@ -1490,24 +1622,35 @@
       box.focus();
     });
     mic.addEventListener("click", listenChat);
+    /* While a Nepali keyboard is mid-composition, do not convert and do not
+       send — Enter would otherwise fire on a half-formed syllable. */
+    box.addEventListener("compositionstart", () => { isComposing = true; });
+    box.addEventListener("compositionend", () => {
+      isComposing = false;
+      schedulePreview();
+    });
     box.addEventListener("input", () => {
       growBox();
-      clearTimeout(unicoderTimer);
-      const typed = box.value;
-      const commit = /[\s?؟।.!,\u0964]$/.test(typed) || !pendingLatin(typed);
-      unicoderTimer = setTimeout(() => convertComposer(commit), commit ? 40 : 90);
+      if (!isComposing) schedulePreview();
     });
     box.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+      if (event.key !== "Enter" || event.shiftKey) return;
+      if (isComposing || event.isComposing || event.keyCode === 229) return;
       event.preventDefault();
       if (typeof form.requestSubmit === "function") form.requestSubmit();
       else form.dispatchEvent(new Event("submit", { cancelable: true }));
     });
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const converted = await convertComposer(true);
-      const message = (converted || box.value).trim();
+      if (sendBusy || isComposing) return;
+      const typed = box.value.trim();
+      if (!typed) return;
+      // Reuses the preview already on screen when it matches, so sending does
+      // not convert the same text again.
+      const message = (await resolveOutgoing(typed)) || typed;
       box.value = "";
+      previewSource = "";
+      previewValue = "";
       growBox();
       paintUnicoderHint();
       sendText(message);

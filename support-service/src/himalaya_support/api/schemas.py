@@ -10,6 +10,10 @@ class ChatRequest(BaseModel):
     conversation_id: str | None = None
     locale: str = Field(default="ne")
     channel: str = Field(default="chat")
+    # Generated once per message by the client and reused on retry, so a
+    # duplicate click or a retried send cannot create a second conversation.
+    # The Idempotency-Key header takes precedence over this field.
+    client_id: str | None = None
 
 
 class ChatResponse(BaseModel):
