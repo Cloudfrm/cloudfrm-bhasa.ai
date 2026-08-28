@@ -1286,8 +1286,20 @@
       document.querySelectorAll("#chips button").forEach((btn) => { btn.disabled = busy; });
     }
 
+    /* The busy flag only covers a send that is still in flight. Clicking a
+       chip three times sent it twice: the second click landed after the first
+       had completed, so it appended a duplicate question to the thread.
+       Nobody clicks a fixed sentence twice inside a second on purpose. */
+    const REPEAT_WINDOW_MS = 1500;
+    let lastSentText = "";
+    let lastSentAt = 0;
+
     async function sendText(message) {
       if (!message || sendBusy) return;
+      const now = Date.now();
+      if (message === lastSentText && now - lastSentAt < REPEAT_WINDOW_MS) return;
+      lastSentText = message;
+      lastSentAt = now;
       setSendBusy(true);
       /* Generated once for this message and reused if it is ever retried, so
          the server can recognise a duplicate and return the first result. */
