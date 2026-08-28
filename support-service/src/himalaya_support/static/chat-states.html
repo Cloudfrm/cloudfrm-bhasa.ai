@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>भाषा · Chat states gallery</title>
+  <link rel="icon" href="/static/cloudfrm-logo.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Gallery chrome only. Every Chat style below the panel headings is
+       pulled from dashboard.html at runtime, so this page can never
+       drift from what actually ships. */
+    body {
+      margin: 0;
+      font-family: "Noto Sans Devanagari", "Segoe UI", Roboto, system-ui, sans-serif;
+      background: #0e1513;
+      color: #dde4e1;
+    }
+    .gal-head { padding: 24px 28px 8px; }
+    .gal-head h1 { margin: 0 0 6px; font-size: 22px; }
+    .gal-head p { margin: 0; color: #a9beb2; font-size: 13.5px; line-height: 1.7; max-width: 70ch; }
+    .gal-controls { display: flex; gap: 8px; flex-wrap: wrap; padding: 16px 28px; }
+    .gal-controls button {
+      border: 1px solid #24382e; background: #17271f; color: #ecf2ed;
+      border-radius: 8px; padding: 7px 14px; font: inherit; font-weight: 600; cursor: pointer;
+    }
+    .gal-controls button.on { border-color: #c9a227; color: #c9a227; }
+    .gal-grid { display: flex; flex-direction: column; gap: 28px; padding: 8px 28px 60px; }
+    .gal-case > h2 { margin: 0 0 4px; font-size: 14px; font-weight: 700; color: #ecf2ed; }
+    .gal-case > p { margin: 0 0 10px; font-size: 12.5px; color: #a9beb2; }
+    .gal-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .gal-frame {
+      border: 1px solid #24382e; border-radius: 12px; overflow: hidden;
+      resize: horizontal; min-width: 320px;
+    }
+    .gal-frame > .gal-label {
+      font-size: 11px; font-weight: 700; padding: 6px 10px;
+      background: #101c16; color: #a9beb2; border-bottom: 1px solid #24382e;
+    }
+    .gal-stage { height: 460px; display: grid; }
+    .gal-stage.inbox-only { grid-template-columns: 320px; }
+    .gal-stage.room-only { grid-template-columns: minmax(0, 1fr); }
+    .gal-stage.full { grid-template-columns: 300px minmax(0, 1fr); }
+    @media (max-width: 1100px) { .gal-pair { grid-template-columns: minmax(0, 1fr); } }
+  </style>
+</head>
+<body>
+  <div class="gal-head">
+    <h1>भाषा · Chat states gallery</h1>
+    <p>
+      Every Chat state, side by side, in both languages — the A0.20 review surface.
+      Styles are read live from <code>dashboard.html</code>, so this page shows the shipped CSS rather than a copy of it.
+      Drag the right edge of any frame to test a narrower laptop.
+    </p>
+  </div>
+  <div class="gal-controls">
+    <button type="button" id="theme-btn" class="on">Dark</button>
+    <button type="button" id="motion-btn">Reduced motion: off</button>
+  </div>
+  <div class="gal-grid" id="grid">Loading styles from dashboard.html…</div>
+
+  <script>
+    const NE = {
+      conversations: "कुराकानीहरू", newChat: "नयाँ कुराकानी", openTickets: "खुला टिकट",
+      noTickets: "खुला टिकट छैन", emptyTitle: "अहिले कुनै कुराकानी छैन",
+      emptyHelp: "सदस्यलाई सहयोग गर्न नयाँ कुराकानी सुरु गर्नुहोस्।",
+      common: "धेरै सोधिने", you: "तपाईं", bhasa: "भाषा", listen: "सुन्नुहोस्",
+      send: "पठाउनुहोस्", speak: "बोल्नुहोस्",
+      placeholder: "नेपाली वा अंग्रेजी अक्षरमा लेख्नुहोस्",
+      helper: "अंग्रेजी अक्षर यहाँ नेपालीमा बदलिन्छ।",
+      previewLabel: "नेपालीमा: ", writing: "भाषा लेख्दै छ",
+      failed: "पठाउन सकिएन। फेरि प्रयास गर्नुहोस्।", retry: "फेरि प्रयास",
+      offline: "तपाईं अफलाइन हुनुहुन्छ। सन्देश पठाउन सकिँदैन।",
+      sessionEnded: "तपाईंको सत्र सकियो। काम जारी राख्न फेरि साइन इन गर्नुहोस्।",
+      signIn: "साइन इन", jump: "पछिल्लोमा जानुहोस्",
+      welcomeTitle: "नमस्ते। म भाषा हुँ।",
+      welcomeBody: "म सहकारी र बैंकका सदस्यलाई सहयोग गर्छु। बचत, ऋण, पिन, कार्ड, केवाईसी वा शाखा समय सोध्नुहोस्। तल विषय छान्नुहोस् वा बाकसमा लेख्नुहोस्।",
+      welcomeHint: "अंग्रेजी अक्षरमा लेख्न सकिन्छ। नेपालीमा बदलिन्छ।",
+      chips: ["मोबाइल बैंकिङ", "पिन / पासवर्ड", "रकम", "ऋण", "केवाईसी", "कार्ड", "ब्याजदर"],
+      times: ["अहिले", "५ मिनेट", "आज", "हिजो"],
+      previews: [
+        "मोबाइल बैंकिङमा लगइन गर्न सकिएन, तीन पटक प्रयास गरें तर पासवर्ड मिलेन",
+        "मेरो पिन बिर्सें",
+        "ऋण किस्ता कहिले तिर्ने?",
+        "कार्ड हरायो, के गर्ने?"
+      ],
+      long: "नमस्ते। लगइन नभएको कारण सामान्यतया पासवर्ड मिलेन वा खाता अस्थायी रूपमा रोकिएको हुन सक्छ। तीन पटकभन्दा बढी गलत पासवर्ड हालिएमा खाता ३० मिनेटका लागि स्वतः रोकिन्छ। कृपया ३० मिनेट पर्खनुहोस्, अनि फेरि प्रयास गर्नुहोस्। त्यसपछि पनि नखुलेमा नजिकको शाखामा नागरिकता लिएर जानुहोस्। ओटीपी वा पिन कसैलाई नबताउनुहोस्।",
+      short: "ठीक छ, धन्यवाद",
+      ticket: "TCK-4A91C2 · रकम पुगेन"
+    };
+    const EN = {
+      conversations: "Conversations", newChat: "New chat", openTickets: "Open tickets",
+      noTickets: "No open tickets", emptyTitle: "No conversations yet",
+      emptyHelp: "Start a new chat to help a member.",
+      common: "Common questions", you: "You", bhasa: "Bhasa", listen: "Listen",
+      send: "Send", speak: "Speak",
+      placeholder: "Type in English letters. They become Nepali.",
+      helper: "Type your question. Send to Bhasa.",
+      previewLabel: "Nepali: ", writing: "Bhasa is writing",
+      failed: "Could not send. Try again.", retry: "Try again",
+      offline: "You are offline. Messages will not send.",
+      sessionEnded: "Your session ended. Sign in again to keep working.",
+      signIn: "Sign in", jump: "Jump to latest",
+      welcomeTitle: "Namaste. I am Bhasa.",
+      welcomeBody: "I help cooperative and bank members. Ask about savings, loans, PIN, cards, KYC, or branch hours. Pick a topic below or type in the box.",
+      welcomeHint: "You can type in English letters. They become Nepali.",
+      chips: ["Mobile banking", "PIN / password", "Transfers", "Loans", "KYC", "Cards", "Interest rate"],
+      times: ["Just now", "5 min", "Today", "Yesterday"],
+      previews: [
+        "I cannot sign in to mobile banking, I tried three times and the password did not work",
+        "I forgot my PIN",
+        "When is my loan instalment due?",
+        "My card is lost. What should I do?"
+      ],
+      long: "Namaste. A failed sign-in usually means the password did not match, or the account is temporarily locked. After three incorrect attempts the account locks itself for 30 minutes. Please wait 30 minutes and try again. If it still does not open, visit your nearest branch with your citizenship certificate. Never share your OTP or PIN with anyone.",
+      short: "Thank you, that helps",
+      ticket: "TCK-4A91C2 · Transfer not received"
+    };
+
+    const el = (tag, cls, text) => {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (text != null) n.textContent = text;
+      return n;
+    };
+
+    function inbox(S, lang, opts) {
+      const o = opts || {};
+      const pane = el("aside", "chat-inbox");
+      const head = el("div", "chat-inbox__head");
+      const h3 = el("h3");
+      h3.append(el("span", null, S.conversations), el("span", "chat-inbox__count", o.empty ? "0" : (lang === "ne" ? "६" : "6")));
+      head.appendChild(h3);
+      pane.appendChild(head);
+      pane.appendChild(el("button", "chat-inbox__new", S.newChat));
+      const list = el("div", "chat-inbox__list");
+      if (o.empty) {
+        const empty = el("div", "chat-inbox__empty");
+        empty.append(el("strong", null, S.emptyTitle), el("span", null, S.emptyHelp));
+        list.appendChild(empty);
+      } else {
+        for (let i = 0; i < 6; i++) {
+          const row = el("button", "convo" + (i === o.selected ? " on" : "") + (i === o.hover ? " gal-hover" : ""));
+          row.append(
+            el("span", "convo__time", S.times[i % S.times.length]),
+            el("span", "convo__preview", S.previews[i % S.previews.length])
+          );
+          list.appendChild(row);
+        }
+      }
+      pane.appendChild(list);
+      const foot = el("div", "chat-inbox__foot tickets");
+      foot.appendChild(el("h4", null, S.openTickets));
+      foot.appendChild(o.ticketsEmpty === false
+        ? el("div", "ticket", S.ticket)
+        : el("div", "empty", S.noTickets));
+      pane.appendChild(foot);
+      return pane;
+    }
+
+    function turn(S, who, text, kind) {
+      const t = el("div", "turn " + (who === "member" ? "member" : "agent") + (kind === "failed" ? " err" : ""));
+      t.appendChild(el("div", "who", who === "member" ? S.you : S.bhasa));
+      t.appendChild(el("div", "bubble", text));
+      if (kind === "failed") {
+        const note = el("div", "fail-note");
+        const icon = el("span", "fail-note__icon", "!");
+        note.append(icon, el("span", null, S.failed), el("button", "fail-note__retry", S.retry));
+        t.appendChild(note);
+      }
+      if (who === "bhasa" && kind === "listen") t.appendChild(el("button", "play", S.listen));
+      return t;
+    }
+
+    function room(S, lang, opts) {
+      const o = opts || {};
+      const sec = el("section", "room");
+      const topics = el("div", "room__topics");
+      topics.appendChild(el("span", "room__topics-label", S.common));
+      const chips = el("div");
+      chips.id = "";
+      chips.setAttribute("data-chips", "");
+      S.chips.forEach((label) => chips.appendChild(el("button", null, label)));
+      topics.appendChild(chips);
+      sec.appendChild(topics);
+
+      const log = el("div", "gal-log");
+      log.id = "";
+      if (o.welcome) {
+        const w = el("div", "welcome");
+        w.append(el("h2", null, S.welcomeTitle), el("p", null, S.welcomeBody));
+        const hint = el("p", "welcome__hint", S.welcomeHint);
+        w.appendChild(hint);
+        log.appendChild(w);
+      } else {
+        log.appendChild(turn(S, "member", S.previews[0]));
+        log.appendChild(turn(S, "bhasa", S.long, "listen"));
+        log.appendChild(turn(S, "member", S.short, o.failed ? "failed" : null));
+        if (o.writing) {
+          const w = el("div", "turn agent writing");
+          w.appendChild(el("div", "who", S.bhasa));
+          const row = el("div", "bubble loading");
+          const dots = el("span", "dots");
+          dots.innerHTML = "<span></span><span></span><span></span>";
+          row.append(dots, el("span", "writing__label", S.writing));
+          w.appendChild(row);
+          log.appendChild(w);
+        }
+      }
+      sec.appendChild(log);
+      if (o.jump) {
+        const j = el("button", "jump-latest", S.jump);
+        j.hidden = false;
+        sec.appendChild(j);
+      }
+      if (o.banner) {
+        const b = el("div", "conn-banner");
+        b.hidden = false;
+        b.appendChild(el("span", null, o.banner === "offline" ? S.offline : S.sessionEnded));
+        if (o.banner === "session") b.appendChild(el("button", null, S.signIn));
+        sec.appendChild(b);
+      }
+
+      const bar = el("div", "desk-bar");
+      const form = el("form");
+      const mic = el("button", null, S.speak);
+      mic.id = "mic";
+      if (o.listening) mic.className = "hot";
+      const box = el("textarea");
+      box.id = "box";
+      box.rows = 1;
+      if (o.typed) box.value = o.typed;
+      else box.placeholder = S.placeholder;
+      if (o.focused) box.className = "gal-focus";
+      const send = el("button", null, S.send);
+      send.id = "send";
+      send.disabled = !!o.sendDisabled;
+      form.append(mic, box, send);
+      bar.appendChild(form);
+      const helper = el("div", "unicoder" + (o.preview ? "" : " idle"));
+      if (o.preview) {
+        helper.append(el("span", null, S.previewLabel), el("span", null, o.preview));
+        helper.appendChild(el("button", "as-typed", lang === "ne" ? "जस्तो लेखियो त्यस्तै पठाउनुहोस्" : "Send as typed"));
+      } else {
+        helper.textContent = S.helper;
+      }
+      bar.appendChild(helper);
+      sec.appendChild(bar);
+      return sec;
+    }
+
+    function frame(lang, kind, opts) {
+      const S = lang === "ne" ? NE : EN;
+      const wrap = el("div", "gal-frame");
+      wrap.appendChild(el("div", "gal-label", lang === "ne" ? "नेपाली" : "English"));
+      const stage = el("div", "stage chat-room gal-stage " + (kind === "inbox" ? "inbox-only" : kind === "room" ? "room-only" : "full"));
+      stage.lang = lang;
+      if (kind !== "room") stage.appendChild(inbox(S, lang, opts));
+      if (kind !== "inbox") stage.appendChild(room(S, lang, opts));
+      wrap.appendChild(stage);
+      return wrap;
+    }
+
+    const CASES = [
+      ["Inbox · six rows, one selected, one hovered", "Two-line previews, human times, gold only on the open chat.", "inbox", { selected: 1, hover: 3, ticketsEmpty: false }],
+      ["Inbox · empty, tickets empty", "A designed sentence with New chat still obvious — not a hole.", "inbox", { empty: true }],
+      ["Thread · first open", "Full welcome copy, chips visible, box ready.", "room", { welcome: true, sendDisabled: true }],
+      ["Thread · working thread with a long answer", "A five-sentence Nepali answer stays in its column and never covers the write bar.", "room", { sendDisabled: true }],
+      ["Thread · Bhasa is writing", "Dots plus the line; the last member turn stays visible and Send is blocked.", "room", { writing: true, sendDisabled: true }],
+      ["Thread · failed send", "Right side, soft red, icon plus text, with a quiet Try again.", "room", { failed: true, sendDisabled: true, jump: true }],
+      ["Composer · typing with the Nepali preview", "Preview on its reserved line, Send strong, Speak quieter.", "room", { typed: "mero PIN birse", preview: "मेरो पिन बिर्सें" }],
+      ["Composer · Speak listening", "Listening is warm and still quieter than Send.", "room", { listening: true, sendDisabled: true }],
+      ["Connection · offline", "Banner above the composer; inbox and box stay usable.", "full", { banner: "offline", sendDisabled: true, selected: 1 }],
+      ["Connection · session ended", "The eight-hour-shift failure, with a way back in.", "full", { banner: "session", sendDisabled: true, selected: 1 }],
+      ["Full desk · wide", "Three zones: inbox, conversation, planted composer.", "full", { selected: 0, ticketsEmpty: false, sendDisabled: true }]
+    ];
+
+    function build() {
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+      CASES.forEach(([title, note, kind, opts]) => {
+        const box = el("div", "gal-case");
+        box.append(el("h2", null, title), el("p", null, note));
+        const pair = el("div", "gal-pair");
+        pair.append(frame("ne", kind, opts), frame("en", kind, opts));
+        box.appendChild(pair);
+        grid.appendChild(box);
+      });
+    }
+
+    /* Pull the shipped stylesheet out of dashboard.html so this gallery
+       always reflects the real Chat CSS. */
+    fetch("/")
+      .then((r) => r.text())
+      .then((html) => {
+        const css = html.slice(html.indexOf("<style>") + 7, html.indexOf("</style>"));
+        const style = document.createElement("style");
+        style.textContent = css
+          /* the gallery renders many rooms at once, so scope the two
+             rules that assume a single full-height page */
+          .replace(/html,\s*body\s*\{[^}]*\}/, "")
+          .replace(/\bbody\s*\{[^}]*\}/, "")
+          + "\n.gal-log{min-height:0;overflow-y:auto;padding:24px 28px 20px;display:flex;flex-direction:column;gap:16px;}"
+          + "\n.gal-stage .room .turn,.gal-stage .room .welcome{max-width:760px;margin-inline:auto;width:100%;}"
+          + "\n.gal-hover{background:var(--bhasa-hover)!important;}"
+          + "\n.gal-focus{outline:2px solid var(--bhasa-gold-edge);outline-offset:1px;border-color:var(--bhasa-gold)!important;}"
+          + "\n[data-chips]{display:flex;flex-wrap:wrap;gap:8px;}"
+          + "\n[data-chips] button{flex-shrink:0;border:1px solid var(--bhasa-line);background:var(--bhasa-raised);color:var(--bhasa-text);border-radius:var(--r-md);padding:8px 14px;font:inherit;font-size:13.5px;font-weight:600;line-height:1.6;cursor:pointer;white-space:nowrap;}"
+          + "\n[data-chips] button:hover{background:var(--bhasa-hover);border-color:var(--bhasa-gold-edge);}";
+        document.head.appendChild(style);
+        build();
+      })
+      .catch(() => {
+        document.getElementById("grid").textContent =
+          "Could not load dashboard.html — start the service and open this page from the same origin.";
+      });
+
+    document.documentElement.classList.add("dark");
+    document.getElementById("theme-btn").addEventListener("click", (e) => {
+      const dark = !document.documentElement.classList.contains("dark");
+      document.documentElement.classList.toggle("dark", dark);
+      e.target.textContent = dark ? "Dark" : "Light";
+      e.target.classList.toggle("on", dark);
+      document.body.style.background = dark ? "#0e1513" : "#f4fbf8";
+      document.body.style.color = dark ? "#dde4e1" : "#161d1b";
+    });
+    document.getElementById("motion-btn").addEventListener("click", (e) => {
+      const on = e.target.classList.toggle("on");
+      e.target.textContent = "Reduced motion: " + (on ? "on" : "off");
+      document.querySelectorAll(".gal-stage *").forEach((n) => {
+        n.style.animation = on ? "none" : "";
+        n.style.transition = on ? "none" : "";
+      });
+    });
+  </script>
+</body>
+</html>

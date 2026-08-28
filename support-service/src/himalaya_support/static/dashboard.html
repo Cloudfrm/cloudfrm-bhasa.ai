@@ -574,7 +574,7 @@
        composer is pushed off-screen at long thread lengths. */
     .room {
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
+      grid-template-rows: auto minmax(0, 1fr) auto auto;
       min-height: 0;
       min-width: 0;
       background: var(--bhasa-room);
@@ -969,7 +969,7 @@
           </header>
           <div class="list" id="inbox-list"></div>
         </aside>
-        <aside class="chat-inbox hidden" id="chat-inbox" aria-label="Conversations">
+        <aside class="chat-inbox hidden" id="chat-inbox">
           <div class="chat-inbox__head">
             <h3><span id="chat-inbox-title"></span><span class="chat-inbox__count" id="chat-inbox-count">0</span></h3>
             <button type="button" class="inbox-toggle" id="inbox-toggle" aria-expanded="true"></button>
@@ -986,7 +986,7 @@
             <span class="room__topics-label" id="topics-label"></span>
             <div id="chips"></div>
           </div>
-          <div id="log" role="log" aria-live="polite" aria-label="Conversation"></div>
+          <div id="log" role="log" aria-live="polite"></div>
           <button type="button" class="jump-latest" id="jump-latest" hidden></button>
           <div class="conn-banner" id="conn-banner" role="status" hidden>
             <span id="conn-text"></span>
@@ -1076,6 +1076,7 @@
         inboxEmptyTitle: "अहिले कुनै कुराकानी छैन",
         inboxEmptyHelp: "सदस्यलाई सहयोग गर्न नयाँ कुराकानी सुरु गर्नुहोस्।",
         inboxNewRowLabel: "नयाँ कुराकानी",
+        threadLabel: "कुराकानी",
         timeNow: "अहिले",
         timeMinutes: "{n} मिनेट",
         timeToday: "आज",
@@ -1154,6 +1155,7 @@
         inboxEmptyTitle: "No conversations yet",
         inboxEmptyHelp: "Start a new chat to help a member.",
         inboxNewRowLabel: "New chat",
+        threadLabel: "Conversation",
         timeNow: "Just now",
         timeMinutes: "{n} min",
         timeToday: "Today",
@@ -1434,6 +1436,10 @@
       box.placeholder = c.placeholder;
       send.textContent = c.send;
       box.setAttribute("aria-label", c.placeholder);
+      /* Accessible names follow the language switch too — an English
+         aria-label in Nepali mode is the same leak WO10 fails on. */
+      document.getElementById("chat-inbox").setAttribute("aria-label", c.chatInbox);
+      log.setAttribute("aria-label", c.threadLabel);
       /* WO6 — Speak carries a word, not a mystery icon, and stays
          quieter than Send. D4: when the browser has no recognition at
          all, hide it rather than offer a button that only errors. */
@@ -1796,7 +1802,6 @@
       wrap.classList.remove("err");
       clearFailure(wrap);
       wrap.dataset.clientId = clientId;
-      wrap.dataset.body = "";
       setBusy(true);
       showWriting();
       track("chat_message_sent", {

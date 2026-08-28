@@ -53,6 +53,7 @@ async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSON
 
 CHAT_PAGE = Path(__file__).with_name("static") / "chat.html"
 DASHBOARD_PAGE = Path(__file__).with_name("static") / "dashboard.html"
+CHAT_STATES_PAGE = Path(__file__).with_name("static") / "chat-states.html"
 STATIC_DIR = Path(__file__).with_name("static")
 
 
@@ -61,7 +62,7 @@ async def require_api_key(request: Request, call_next):
     key = settings.api_key.strip()
     if (
         not key
-        or request.url.path in {"/", "/chat", "/v1/health"}
+        or request.url.path in {"/", "/chat", "/chat/states", "/v1/health"}
         or request.url.path.startswith("/static/")
         or request.method == "OPTIONS"
     ):
@@ -83,6 +84,12 @@ def dashboard_page() -> FileResponse:
 @app.get("/chat", include_in_schema=False)
 def chat_page() -> FileResponse:
     return FileResponse(CHAT_PAGE, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/chat/states", include_in_schema=False)
+def chat_states_page() -> FileResponse:
+    """Review surface for the Chat rebuild: every state, both languages."""
+    return FileResponse(CHAT_STATES_PAGE, headers={"Cache-Control": "no-store"})
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
