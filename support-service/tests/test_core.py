@@ -301,3 +301,46 @@ def test_identical_text_dedupes_across_different_client_keys():
 
     routes._idempotency.clear()
     routes._content_keys.clear()
+
+
+def test_question_type_disagreement_is_detected():
+    """Asking "when" and asking "what happens" are different questions.
+
+    Word overlap alone ranked the late-penalty row above the due-date row for
+    "ऋण किस्ता कहिले तिर्ने?" because both repeat किस्ता.
+    """
+    from himalaya_support.adapt.pipeline import asks_a_different_question, question_kinds
+
+    assert question_kinds("ऋण किस्ता कहिले तिर्ने?") == {"when"}
+    assert question_kinds("कर्जाको किस्ता तिर्न ढिलो भएमा के हुन्छ?") == {"what"}
+    # के must match whole-word only: केवाईसी is not a "what" question
+    assert "what" not in question_kinds("केवाईसी कसरी गर्ने?")
+    assert question_kinds("केवाईसी कसरी गर्ने?") == {"how"}
+
+    assert asks_a_different_question(
+        "कर्जाको किस्ता तिर्न ढिलो भएमा के हुन्छ?", "ऋण किस्ता कहिले तिर्ने?"
+    )
+    # same question type -> not demoted
+    assert not asks_a_different_question("कार्ड हराएमा के गर्नुपर्छ?", "कार्ड हरायो, के गर्ने?")
+    # a prose row states no question, and a statement asks none: never demote
+    assert not asks_a_different_question("", "ऋण किस्ता कहिले तिर्ने?")
+    assert not asks_a_different_question("कार्ड हराएमा के गर्नुपर्छ?", "मेरो पिन बिर्सें")
+
+
+def test_each_loan_question_gets_its_own_answer():
+    """The regression this re-ranking exists for, end to end."""
+    from himalaya_support.adapt.pipeline import finish_reply
+    from himalaya_support.config import get_settings
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+
+    def answer(query: str) -> str:
+        reply, _ = finish_reply("", engine._pick_snippet(query, "ne"), "ne", user_message=query)
+        return reply
+
+    due = answer("ऋण किस्ता कहिले तिर्ने?")
+    assert "मितिमा" in due, f"expected the due-date row, got: {due[:120]}"
+
+    late = answer("कर्जाको किस्ता तिर्न ढिलो भएमा के हुन्छ?")
+    assert "जरिवाना" in late, f"expected the penalty row, got: {late[:120]}"

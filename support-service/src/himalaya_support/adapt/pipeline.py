@@ -61,6 +61,50 @@ def split_knowledge_row(text: str) -> tuple[str, str]:
     return "", _LABEL.sub("", raw).strip()
 
 
+# Every Q&A row states the question it answers, which is a free signal that
+# word overlap throws away: "ऋण किस्ता कहिले तिर्ने?" (when) was answered by the
+# row for "कर्जाको किस्ता तिर्न ढिलो भएमा के हुन्छ?" (what happens) purely because
+# both repeat किस्ता. Asking *when* and asking *what happens* are different
+# questions, and the corpus says so.
+_QUESTION_KINDS = {
+    "कहिले": "when",
+    "कति": "quantity",
+    "कतिको": "quantity",
+    "कसरी": "how",
+    "कहाँ": "where",
+    "कता": "where",
+    "किन": "why",
+    "को": "who",
+    "कुन": "which",
+    "के": "what",
+}
+
+
+def question_kinds(text: str) -> set[str]:
+    """Interrogatives present, matched whole-word.
+
+    Token matching matters: के is a substring of केवाईसी and केही, and
+    substring matching would call every KYC question a "what" question.
+    """
+    tokens = re.findall(r"[\wऀ-ॿ]+", (text or "").lower())
+    return {_QUESTION_KINDS[tok] for tok in tokens if tok in _QUESTION_KINDS}
+
+
+def asks_a_different_question(stored_question: str, asked: str) -> bool:
+    """True only when both sides name a question type and they disagree.
+
+    Deliberately conservative — a prose row states no question, and a member
+    who asks nothing interrogative ("मेरो पिन बिर्सें") is never re-ranked.
+    """
+    if not stored_question:
+        return False
+    mine = question_kinds(asked)
+    theirs = question_kinds(stored_question)
+    if not mine or not theirs:
+        return False
+    return mine.isdisjoint(theirs)
+
+
 def _content_words(text: str) -> set[str]:
     words = re.findall(r"[\wऀ-ॿ]+", (text or "").lower())
     return {w for w in words if len(w) > 2 and w not in _STOPWORDS_NE}

@@ -23,9 +23,11 @@ from himalaya_support.adapt.actions import parse_confirmation
 from himalaya_support.adapt.conversation_repair import repair_message
 from himalaya_support.adapt.pipeline import (
     ReplyGenerationError,
+    asks_a_different_question,
     finish_reply,
     is_directive_row,
     prepare_user_text,
+    split_knowledge_row,
 )
 from himalaya_support.adapt.speech import normalize_for_speech
 from himalaya_support.support.honorific import uses_informal_register
@@ -296,6 +298,16 @@ class SupportEngine:
             if is_directive_row(hit.get("text") or "", hit.get("tags")):
                 continue
             usable.append(hit)
+
+        # Word overlap alone let a row answering a different question outrank
+        # the one that answers this one. Demote rows whose stored question
+        # disagrees with what was actually asked, keeping BM25 order within
+        # each group so nothing else about ranking changes.
+        def _wrong_question(hit: dict) -> int:
+            stored, _ = split_knowledge_row(hit.get("text") or "")
+            return 1 if asks_a_different_question(stored, query) else 0
+
+        usable.sort(key=_wrong_question)
         preferred: list[dict] = []
         rest: list[dict] = []
         for hit in usable:
