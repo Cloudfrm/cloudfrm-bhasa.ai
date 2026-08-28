@@ -87,7 +87,18 @@ class SupportStore:
             )
         return new_id
 
-    def list_conversations(self, channel: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+    def list_conversations(
+        self,
+        channel: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """One page of conversations, newest first.
+
+        `offset` exists because the limit used to be the whole story: with no
+        way to ask for the next page, every conversation past the first 50
+        was simply unreachable from the inbox.
+        """
         sql = """
             SELECT c.id, c.user_id, c.locale, COALESCE(c.channel, 'chat') AS channel,
                    c.created_at, c.updated_at,
@@ -99,11 +110,26 @@ class SupportStore:
         if channel:
             sql += " WHERE COALESCE(c.channel, 'chat') = ?"
             params.append(channel)
-        sql += " ORDER BY c.updated_at DESC LIMIT ?"
+        sql += " ORDER BY c.updated_at DESC LIMIT ? OFFSET ?"
         params.append(limit)
+        params.append(max(0, offset))
         with self._connect() as conn:
             rows = conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
+
+    def count_conversations(self, channel: str | None = None) -> int:
+        """How many conversations exist, regardless of what a page returned.
+
+        The inbox badge is a count of the desk's work, not of the rows that
+        happened to fit in one response.
+        """
+        sql = "SELECT COUNT(*) FROM conversations"
+        params: list[Any] = []
+        if channel:
+            sql += " WHERE COALESCE(channel, 'chat') = ?"
+            params.append(channel)
+        with self._connect() as conn:
+            return int(conn.execute(sql, params).fetchone()[0])
 
     def list_messages(self, conversation_id: str) -> list[dict[str, Any]]:
         with self._connect() as conn:

@@ -937,6 +937,9 @@
     let convoMeta = {};
     let sendBusy = false;
     let conversations = [];
+    const INBOX_PAGE_SIZE = 60;
+    let conversationTotal = 0;
+    let inboxExhausted = false;
     let unicoderSeq = 0;
     let unicoderAbort = null;
     let previewTimer = null;
@@ -951,6 +954,23 @@
         .then((res) => res.json())
         .finally(() => { inflightGets.delete(url); });
       inflightGets.set(url, pending);
+      return pending;
+    }
+
+    /* Same de-duplication, but keeps the total the server reports. The list
+       is one page; the badge has to state the whole desk. */
+    const inflightPages = new Map();
+    function getPage(url) {
+      if (inflightPages.has(url)) return inflightPages.get(url);
+      const pending = fetch(url)
+        .then(async (res) => {
+          const rows = await res.json();
+          const header = res.headers.get("X-Total-Count");
+          const total = header === null ? null : Number(header);
+          return { rows: Array.isArray(rows) ? rows : [], total };
+        })
+        .finally(() => { inflightPages.delete(url); });
+      inflightPages.set(url, pending);
       return pending;
     }
 
@@ -1375,6 +1395,7 @@
           message_count: 2,
           locale: replyLang
         });
+        conversationTotal += 1;
       }
       conversations.sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
       paintChatInbox(conversations);
@@ -1441,28 +1462,70 @@
        hiccup all present as one dropped request, and recovering from that
        without showing the officer anything is better than making them press a
        button. Only a second failure is worth their attention. */
-    async function getListWithRetry(url) {
+    async function getListWithRetry(url, fetcher) {
+      const get = fetcher || getJSON;
       try {
-        return await getJSON(url);
+        return await get(url);
       } catch (first) {
         await new Promise((resolve) => setTimeout(resolve, 400));
-        return await getJSON(url);
+        return await get(url);
+      }
+    }
+
+    /* Older conversations load as the officer scrolls. Before this, anything
+       past the first page was simply unreachable — the desk quietly stopped
+       showing work that still existed. */
+    let loadingOlder = false;
+    async function loadOlderConversations() {
+      if (loadingOlder || inboxExhausted || view !== "chat") return;
+      loadingOlder = true;
+      try {
+        const page = await getPage(
+          "/v1/support/conversations?channel=chat&limit=" + INBOX_PAGE_SIZE +
+          "&offset=" + conversations.length
+        );
+        if (page.total !== null) conversationTotal = page.total;
+        const known = new Set(conversations.map((row) => row.id));
+        const fresh = page.rows.filter((row) => !known.has(row.id));
+        if (!fresh.length) {
+          inboxExhausted = true;
+        } else {
+          conversations = conversations.concat(fresh);
+          inboxExhausted = conversations.length >= conversationTotal;
+          paintChatInbox(conversations);
+        }
+      } catch (err) {
+        /* Leave what is already listed on screen; the officer can scroll
+           again to retry rather than losing the rows they had. */
+      } finally {
+        loadingOlder = false;
       }
     }
 
     async function loadInbox(channel) {
       const kind = channel || (view === "call" ? "call" : "chat");
+      if (kind === "chat") {
+        let page;
+        try {
+          page = await getListWithRetry(
+            "/v1/support/conversations?channel=chat&limit=" + INBOX_PAGE_SIZE + "&offset=0",
+            getPage
+          );
+        } catch (err) {
+          paintInboxError();
+          return;
+        }
+        clearInboxError();
+        conversations = page.rows;
+        conversationTotal = page.total === null ? page.rows.length : page.total;
+        inboxExhausted = conversations.length >= conversationTotal;
+        paintChatInbox(conversations);
+        return;
+      }
       let rows;
       try {
         rows = await getListWithRetry("/v1/support/conversations?channel=" + encodeURIComponent(kind));
       } catch (err) {
-        if (kind === "chat") paintInboxError();
-        return;
-      }
-      if (kind === "chat") {
-        clearInboxError();
-        conversations = Array.isArray(rows) ? rows : [];
-        paintChatInbox(conversations);
         return;
       }
       const list = document.getElementById("inbox-list");
@@ -1496,10 +1559,14 @@
          heading carries the whole name instead. Labelling both made a screen
          reader announce "संवादहरू" and then "२८ संवादहरू" back to back. */
       const countEl = document.getElementById("chat-inbox-count");
-      countEl.textContent = localNum(rows.length);
+      /* The badge counts the desk, not this page. It read one higher than the
+         list because a newly sent conversation was added locally on top of a
+         server page that was already truncated. */
+      const shown = Math.max(rows.length, conversationTotal || 0);
+      countEl.textContent = localNum(shown);
       countEl.setAttribute("aria-hidden", "true");
       const heading = countEl.closest("h3");
-      if (heading) heading.setAttribute("aria-label", c.chatInbox + ": " + localNum(rows.length));
+      if (heading) heading.setAttribute("aria-label", c.chatInbox + ": " + localNum(shown));
       list.innerHTML = "";
       convoMeta = {};
       rows.forEach((row) => { convoMeta[row.id] = row; });
@@ -1765,6 +1832,10 @@
       growBox();
       paintUnicoderHint();
       sendText(message);
+    });
+    document.getElementById("chat-list").addEventListener("scroll", (event) => {
+      const el = event.currentTarget;
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 160) loadOlderConversations();
     });
     document.getElementById("pickup").addEventListener("click", pickup);
     document.getElementById("hangup").addEventListener("click", hangup);

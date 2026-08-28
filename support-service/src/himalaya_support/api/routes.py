@@ -7,7 +7,7 @@ import time
 from collections import OrderedDict
 from functools import lru_cache
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Response
 
 from himalaya_support.adapt.to_nepali import unicoder
 from himalaya_support.api.schemas import (
@@ -183,9 +183,29 @@ def start_call(payload: CallStartRequest) -> dict:
         raise HTTPException(status_code=503, detail="Voice is temporarily unavailable") from exc
 
 
+CONVERSATION_PAGE_MAX = 200
+
+
 @router.get("/support/conversations")
-def list_conversations(channel: str | None = None) -> list[dict]:
-    return get_engine().store.list_conversations(channel=channel)
+def list_conversations(
+    response: Response,
+    channel: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[dict]:
+    """A page of conversations, newest first.
+
+    The response stays a bare array so existing callers are unaffected; the
+    full count travels in X-Total-Count, because the inbox badge has to state
+    how many conversations the desk has, not how many fitted in this page.
+    """
+    store = get_engine().store
+    page = max(1, min(int(limit), CONVERSATION_PAGE_MAX))
+    start = max(0, int(offset))
+    rows = store.list_conversations(channel=channel, limit=page, offset=start)
+    response.headers["X-Total-Count"] = str(store.count_conversations(channel=channel))
+    response.headers["Access-Control-Expose-Headers"] = "X-Total-Count"
+    return rows
 
 
 @router.get("/support/conversations/{conversation_id}")

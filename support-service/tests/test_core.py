@@ -344,3 +344,44 @@ def test_each_loan_question_gets_its_own_answer():
 
     late = answer("कर्जाको किस्ता तिर्न ढिलो भएमा के हुन्छ?")
     assert "जरिवाना" in late, f"expected the penalty row, got: {late[:120]}"
+
+
+def test_conversations_past_the_first_page_are_reachable(tmp_path):
+    """The limit used to be the whole story.
+
+    list_conversations capped at 50 with no way to ask for the next page, so
+    on a desk with more than 50 conversations the oldest silently vanished
+    from the inbox — present in the database, unreachable in the UI.
+    """
+    from himalaya_support.store.db import SupportStore
+
+    store = SupportStore(tmp_path / "support.db")
+    made = []
+    for _ in range(55):
+        made.append(store.get_or_create_conversation(None, None, "ne", channel="chat"))
+
+    assert store.count_conversations(channel="chat") == 55
+
+    first = store.list_conversations(channel="chat", limit=50, offset=0)
+    assert len(first) == 50
+    second = store.list_conversations(channel="chat", limit=50, offset=50)
+    assert len(second) == 5, "the tail must be reachable, not truncated away"
+
+    seen = {row["id"] for row in first} | {row["id"] for row in second}
+    assert seen == set(made), "every conversation must appear across the pages"
+    assert not ({row["id"] for row in first} & {row["id"] for row in second}), "pages must not overlap"
+
+
+def test_conversation_count_is_independent_of_page_size(tmp_path):
+    """The badge counts the desk, not the rows that fitted in one response."""
+    from himalaya_support.store.db import SupportStore
+
+    store = SupportStore(tmp_path / "support.db")
+    for _ in range(12):
+        store.get_or_create_conversation(None, None, "ne", channel="chat")
+    store.get_or_create_conversation(None, None, "ne", channel="call")
+
+    assert len(store.list_conversations(channel="chat", limit=5)) == 5
+    assert store.count_conversations(channel="chat") == 12
+    assert store.count_conversations(channel="call") == 1
+    assert store.count_conversations() == 13
