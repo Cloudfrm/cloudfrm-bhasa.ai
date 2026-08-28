@@ -358,7 +358,7 @@
        Chat room — three zones: inbox (left) · conversation (middle) ·
        write bar (planted at the bottom of the conversation).
        ------------------------------------------------------------------ */
-    .stage.chat-room { grid-template-columns: minmax(280px, 26%) minmax(0, 1fr); }
+    .stage.chat-room { grid-template-columns: clamp(288px, 25%, 360px) minmax(0, 1fr); }
 
     /* Zone 1 — inbox */
     .chat-inbox {
@@ -367,7 +367,7 @@
       min-height: 0;
       min-width: 0;
       background: var(--panel);
-      border-right: 1px solid var(--line-soft);
+      border-right: 1px solid var(--line);
       position: relative;
       z-index: 1;
     }
@@ -473,36 +473,35 @@
       min-width: 0;
       background: var(--bg);
     }
-    .room__head {
+    .room__topics {
       flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 13px 24px;
+      padding: 14px 28px 12px;
       border-bottom: 1px solid var(--line-soft);
       background: var(--panel);
     }
-    .room__title { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); }
-    .room__sub { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
-    .room__tag {
-      flex-shrink: 0;
-      font-size: 12px; font-weight: 700; color: var(--primary);
-      border: 1px solid var(--primary-45); border-radius: 999px;
-      padding: 4px 11px; background: var(--primary-12);
-      white-space: nowrap;
+    .room__topics-label {
+      display: block;
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      margin-bottom: 8px;
     }
     .room #log {
       flex: 1;
       min-height: 0;
       overflow-y: auto;
       overscroll-behavior: contain;
-      padding: 22px 28px 18px;
+      padding: 24px 28px 18px;
       gap: 16px;
       scrollbar-width: thin;
     }
-    .room .turn { max-width: min(720px, 84%); }
+    .room .turn,
+    .room .welcome {
+      width: 100%;
+      max-width: min(72ch, 100%);
+      margin-inline: auto;
+      align-self: center;
+    }
     .room .turn.agent { align-items: flex-start; }
+    .room .bubble { max-width: 85%; }
     .room .who { font-size: 11.5px; padding: 0 4px; }
     .room .welcome {
       background: var(--panel-2);
@@ -520,24 +519,13 @@
     .desk-bar {
       flex-shrink: 0;
       background: var(--panel-2);
-      border-top: 1px solid var(--line-soft);
+      border-top: 1px solid var(--line);
       box-shadow: var(--shadow-bar);
-      padding: 10px 20px 12px;
+      padding: 14px 24px 14px;
       position: relative;
       z-index: 1;
     }
-    .desk-bar__topics {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding-bottom: 10px;
-    }
-    .desk-bar__topics-label {
-      font-size: 11px; font-weight: 700; color: var(--muted);
-      text-transform: uppercase; letter-spacing: .08em; flex-shrink: 0;
-    }
-    #chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    #chips { display: flex; flex-wrap: wrap; gap: 8px; }
     #chips button {
       flex-shrink: 0;
       border: 1px solid var(--line);
@@ -700,21 +688,14 @@
           </div>
         </aside>
         <section class="room hidden" id="view-chat">
-          <header class="room__head">
-            <div>
-              <h3 class="room__title" id="room-title"></h3>
-              <p class="room__sub" id="room-sub"></p>
-            </div>
-            <span class="room__tag" id="room-tag"></span>
-          </header>
-          <div id="log"></div>
+          <div class="room__topics">
+            <span class="room__topics-label" id="topics-label"></span>
+            <div id="chips"></div>
+          </div>
+          <div id="log" role="log" aria-live="polite"></div>
           <div class="desk-bar">
-            <div class="desk-bar__topics">
-              <span class="desk-bar__topics-label" id="topics-label"></span>
-              <div id="chips"></div>
-            </div>
             <form id="form">
-              <button id="mic" type="button">🎤</button>
+              <button id="mic" type="button"></button>
               <textarea id="box" rows="1" autocomplete="off"></textarea>
               <button id="send" type="submit"></button>
             </form>
@@ -986,7 +967,6 @@
       document.getElementById("chat-inbox-title").textContent = c.chatInbox;
       document.getElementById("chat-new").textContent = c.chatNew;
       document.getElementById("topics-label").textContent = c.topics;
-      document.getElementById("room-tag").textContent = c.roomTag;
       document.getElementById("tickets-label").textContent = c.tickets;
       document.getElementById("settings-title").textContent = c.settingsTitle;
       document.getElementById("settings-body").textContent = c.settingsBody;
@@ -996,12 +976,11 @@
       document.getElementById("hangup").textContent = c.hangup;
       box.placeholder = c.placeholder;
       send.textContent = c.send;
-      mic.title = c.mic;
+      mic.textContent = c.mic;
       paintTheme();
       paintChips();
       paintUnicoderHint();
       if (view === "chat" && !started) showWelcome();
-      paintRoomHead();
     }
 
     function paintChips() {
@@ -1048,23 +1027,6 @@
       } catch {
         return String(iso).slice(0, 16).replace("T", " ");
       }
-    }
-
-    function paintRoomHead() {
-      const c = t();
-      const titleEl = document.getElementById("room-title");
-      const subEl = document.getElementById("room-sub");
-      if (!chatId) {
-        titleEl.textContent = c.roomNew;
-        subEl.textContent = c.roomNewSub;
-        return;
-      }
-      const turns = log.querySelectorAll(".turn:not(#pending)").length;
-      const meta = convoMeta[chatId] || {};
-      let sub = turns + " " + c.roomMsgs;
-      if (meta.created_at) sub += " · " + c.roomSince + " " + fmtWhen(meta.created_at);
-      titleEl.textContent = c.roomThread + " " + chatId.slice(0, 8).toUpperCase();
-      subEl.textContent = sub;
     }
 
     function growBox() {
@@ -1116,7 +1078,6 @@
       log.appendChild(el);
       started = false;
       chatId = null;
-      paintRoomHead();
     }
 
     function addTurn(host, role, text, isErr) {
@@ -1214,7 +1175,6 @@
         if (data.transliterated && lastMemberBubble) lastMemberBubble.textContent = data.transliterated;
         clearLoading("pending");
         addAgent(data.reply, false, data);
-        paintRoomHead();
         loadInbox("chat");
         loadTickets();
         loadHome();
@@ -1277,7 +1237,6 @@
       rows.forEach((row) => { convoMeta[row.id] = row; });
       if (!rows.length) {
         list.innerHTML = '<div class="empty">' + c.emptyInbox + "</div>";
-        paintRoomHead();
         return;
       }
       rows.forEach((row) => {
@@ -1295,7 +1254,6 @@
         btn.addEventListener("click", () => openThread(row.id, "chat"));
         list.appendChild(btn);
       });
-      paintRoomHead();
     }
 
     async function openThread(id, kind) {
@@ -1312,7 +1270,6 @@
       started = true;
       log.innerHTML = "";
       (data.messages || []).forEach((msg) => addTurn(log, msg.role === "user" ? "member" : "agent", msg.content));
-      paintRoomHead();
       loadInbox("chat");
       box.focus();
     }
