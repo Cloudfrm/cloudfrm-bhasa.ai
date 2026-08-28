@@ -11,11 +11,41 @@ from himalaya_support.config import Settings
 from himalaya_support.rag.knowledge import load_product_articles
 from himalaya_support.support.honorific import load_honorific_examples
 
-TOKEN_RE = re.compile(r"[\w\u0900-\u097F]+", re.UNICODE)
+# The old class was [\w\u0900-\u097F], and \u0900-\u097F spans U+0900\u2013U+097F \u2014 which includes the
+# danda "\u0964" and double danda "\u0965". Every sentence-final word was therefore
+# indexed with its punctuation attached ("\u092C\u093F\u0930\u094D\u0938\u0928\u0941\u092D\u092F\u094B\u0964"), so it never matched
+# the same word written mid-sentence. Devanagari digits (U+0966\u2013U+096F) stay.
+TOKEN_RE = re.compile(
+    r"[\w\u0900-\u0963\u0966-\u096F\u0971-\u097F]+",
+    re.UNICODE,
+)
+
+# Nepali inflects heavily, and exact-token BM25 misses the match that matters:
+# a member types "\u092A\u093F\u0928 \u092C\u093F\u0930\u094D\u0938\u0947\u0902" while the reset article says "\u092A\u093F\u0928 \u092C\u093F\u0930\u094D\u0938\u0928\u0941\u092D\u092F\u094B",
+# so the right article loses to a shorter one that merely repeats "\u092A\u093F\u0928".
+# Stripping a small set of common endings puts both on the same stem.
+# Ordered longest-first; only applied when a real stem remains.
+_NE_SUFFIXES = (
+    "\u0928\u0941\u0939\u0941\u0928\u094D\u091B", "\u0928\u0941\u092A\u0930\u094D\u091B", "\u0928\u0941\u092D\u092F\u094B", "\u0928\u0941\u0939\u094B\u0938\u094D", "\u0928\u0941\u092A\u0930\u094D\u0928\u0947",
+    "\u0939\u0930\u0942\u0932\u093E\u0908", "\u0939\u0930\u0942\u0915\u094B", "\u0939\u0930\u0942\u092E\u093E", "\u0939\u0930\u0942\u0932\u0947", "\u0939\u0930\u0942",
+    "\u093F\u090F\u0915\u094B", "\u090F\u0915\u094B", "\u0947\u0915\u094B", "\u0947\u0915\u093E", "\u0947\u0915\u0940", "\u093F\u0928\u094D\u091B", "\u0928\u094D\u091B",
+    "\u0932\u093E\u0908", "\u092C\u093E\u091F", "\u0938\u0901\u0917", "\u092E\u093E", "\u0932\u0947", "\u0915\u094B", "\u0915\u093E", "\u0915\u0940",
+    "\u0948\u0902", "\u0947\u0902", "\u094B", "\u0947", "\u093E", "\u0940", "\u0942", "\u0941", "\u0901",
+)
+_MIN_STEM = 3
+
+
+def _stem(token: str) -> str:
+    if not any("\u0900" <= ch <= "\u097F" for ch in token):
+        return token
+    for suffix in _NE_SUFFIXES:
+        if token.endswith(suffix) and len(token) - len(suffix) >= _MIN_STEM:
+            return token[: -len(suffix)]
+    return token
 
 
 def tokenize(text: str) -> list[str]:
-    return [tok.lower() for tok in TOKEN_RE.findall(text or "")]
+    return [_stem(tok.lower()) for tok in TOKEN_RE.findall(text or "")]
 
 
 @dataclass
@@ -128,5 +158,10 @@ class Retriever:
 
     @staticmethod
     def _to_doc(doc_id: str, title: str, text: str, source: str) -> Document:
-        blob = f"{title}\n{text}"
+        # The title says what an article is about, so a query matching it is a
+        # stronger signal than the same words buried in the body. Without this
+        # a "cannot log in" question matched the daily-limit article, which
+        # merely repeats "मोबाइल बैंकिङ", ahead of the login article whose
+        # title actually carries "लगइन".
+        blob = f"{title}\n{title}\n{text}"
         return Document(doc_id=doc_id, title=title, text=text, source=source, tokens=tokenize(blob))

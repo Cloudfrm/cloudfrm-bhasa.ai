@@ -148,3 +148,80 @@ def test_store_splits_chat_and_call(tmp_path):
     assert all(row["id"] != call_id for row in chats)
     messages = store.list_messages(call_id)
     assert messages[0]["content"] == "नमस्ते, कल उठ्यो"
+
+
+def test_knowledge_rows_never_leak_qa_scaffolding():
+    """Corpus rows are stored as "प्रश्न: ...\nजवाफ: ...".
+
+    Splicing a row in whole showed the corpus's own question back to the
+    officer as though Bhasa had asked it, answering a different question and
+    marked grounded. Only the answer half may ever be shown.
+    """
+    from himalaya_support.adapt.pipeline import compose_from_knowledge, split_knowledge_row
+
+    question, answer = split_knowledge_row(
+        "प्रश्न: बचत खाताको ब्याजदर कति हो?\nजवाफ: बचत खातामा वार्षिक ५ प्रतिशत ब्याज दिइन्छ।"
+    )
+    assert question == "बचत खाताको ब्याजदर कति हो?"
+    assert answer == "बचत खातामा वार्षिक ५ प्रतिशत ब्याज दिइन्छ।"
+
+    reply = compose_from_knowledge(
+        "बचत खाताको ब्याजदर कति हो?",
+        [{"text": "प्रश्न: बचत खाताको ब्याजदर कति हो?\nजवाफ: बचत खातामा वार्षिक ५ प्रतिशत ब्याज दिइन्छ।"}],
+        "ne",
+    )
+    for marker in ("हजुर, यसरी पूरा गर्नुहोस्", "प्रश्न:", "जवाफ:"):
+        assert marker not in reply, f"leaked template marker: {marker}"
+    assert "वार्षिक ५ प्रतिशत" in reply
+
+
+def test_finish_reply_rejects_template_markers():
+    """A reply carrying our scaffolding is a generation failure, not an answer."""
+    import pytest
+
+    from himalaya_support.adapt.pipeline import ReplyGenerationError, finish_reply
+
+    # Long enough to survive the thin-reply check and free of digits so the
+    # numeric grounding check passes it through to the final guard, which is
+    # the shape the live leak actually had.
+    leaked = (
+        "हजुर, यसरी पूरा गर्नुहोस्। प्रश्न: कार्ड हराएमा के गर्नुपर्छ? "
+        "जवाफ: तुरुन्तै ग्राहक सेवामा फोन गरेर कार्ड ब्लक गर्न अनुरोध गर्नुपर्छ। "
+        "त्यसपछि शाखामा परिचयपत्र लिएर जानुहोस् र नयाँ कार्डका लागि निवेदन दिनुहोस्।"
+    )
+    with pytest.raises(ReplyGenerationError):
+        finish_reply(leaked, [], "ne", user_message="कार्ड हरायो, के गर्ने?")
+
+
+def test_mismatched_knowledge_row_is_not_presented_as_the_answer():
+    """A row answering a different question must not be stated confidently."""
+    from himalaya_support.adapt.pipeline import compose_from_knowledge
+
+    reply = compose_from_knowledge(
+        "शाखा कति बजे खुल्छ?",
+        [{"text": "प्रश्न: डेबिट कार्डको वार्षिक शुल्क कति हो?\nजवाफ: डेबिट कार्डको वार्षिक शुल्क ५०० रुपैयाँ हो।"}],
+        "ne",
+    )
+    assert "५०० रुपैयाँ" not in reply
+
+
+def test_devanagari_danda_is_not_part_of_a_token():
+    """ऀ-ॿ spans U+0900–U+097F, which includes "।".
+
+    Indexing "बिर्सनुभयो।" with its danda meant it never matched the same
+    word written mid-sentence, so "मेरो पिन बिर्सें" missed the PIN-reset
+    article entirely.
+    """
+    from himalaya_support.rag.retriever import tokenize
+
+    assert "।" not in "".join(tokenize("पिन बिर्सनुभयो। दर्ता नम्बर हाल्नुहोस्।"))
+    assert set(tokenize("बिर्सें")) == set(tokenize("बिर्सनुभयो।"))
+
+
+def test_forgotten_pin_retrieves_the_reset_article():
+    from himalaya_support.config import get_settings
+    from himalaya_support.rag.retriever import Retriever
+
+    hits = Retriever(get_settings()).search("मेरो पिन बिर्सें", k=3)
+    assert hits, "no retrieval hits for a forgotten PIN"
+    assert "लगइन" in hits[0]["title"] or "पिन" in hits[0]["text"][:200]

@@ -21,7 +21,11 @@ from himalaya_support.store.db import SupportStore
 from himalaya_support.support.finetune import SFTRecorder
 from himalaya_support.adapt.actions import parse_confirmation
 from himalaya_support.adapt.conversation_repair import repair_message
-from himalaya_support.adapt.pipeline import finish_reply, prepare_user_text
+from himalaya_support.adapt.pipeline import (
+    ReplyGenerationError,
+    finish_reply,
+    prepare_user_text,
+)
 from himalaya_support.adapt.speech import normalize_for_speech
 from himalaya_support.support.honorific import uses_informal_register
 from himalaya_support.support.ocr import DevanagariOCR
@@ -181,13 +185,31 @@ class SupportEngine:
             first = ChatResult(self._offline_reply(cleaned, language), "offline", "fallback", {})
         tool_results: list[dict[str, Any]] = []
         reply_text = strip_tool_markup(first.text)
-        reply_text, safety = finish_reply(
-            reply_text,
-            snippets,
-            language,
-            intent=str(intent.get("intent") or "other"),
-            user_message=cleaned,
-        )
+        try:
+            reply_text, safety = finish_reply(
+                reply_text,
+                snippets,
+                language,
+                intent=str(intent.get("intent") or "other"),
+                user_message=cleaned,
+            )
+        except ReplyGenerationError as exc:
+            # Retry once without the knowledge rows, so a malformed corpus row
+            # cannot be spliced in a second time.
+            logger.error("Reply rejected: %s", exc)
+            try:
+                reply_text, safety = finish_reply(
+                    "",
+                    [],
+                    language,
+                    intent=str(intent.get("intent") or "other"),
+                    user_message=cleaned,
+                )
+            except ReplyGenerationError as retry_exc:
+                logger.error("Reply rejected on retry: %s", retry_exc)
+                raise InferenceError(
+                    "Support could not compose a safe answer"
+                ) from retry_exc
         pending_confirm = None
         if intent.get("needs_ticket"):
             self._pending_ticket[conversation_id] = {
