@@ -423,6 +423,33 @@
     }
     .stage.chat-room :focus-visible { outline: 2px solid var(--bhasa-gold-edge); outline-offset: 2px; }
 
+    /* The top bar belongs to Chat while Chat is open (A2), so it joins
+       the room rather than shouting teal at it. Scoped to .is-chat so
+       Call and Settings keep the chrome they had. */
+    .is-chat .topbar {
+      background: var(--bhasa-surface);
+      border-bottom-color: var(--bhasa-line);
+    }
+    .is-chat .topbar h2 { color: var(--bhasa-text); }
+    .is-chat .topbar .status { color: var(--bhasa-text-muted); }
+    .is-chat .topbar .dot {
+      background: var(--bhasa-text-muted);
+      box-shadow: none;
+    }
+    /* Gold is reserved for Send and the selected chat, so the top-bar
+       toggles read as quiet furniture, not a second primary action. */
+    .is-chat .topbar .pill {
+      border-color: var(--bhasa-line);
+      background: var(--bhasa-raised);
+      color: var(--bhasa-text);
+    }
+    .is-chat .topbar .pill:hover { background: var(--bhasa-hover); }
+    .is-chat .topbar .pill.active {
+      background: var(--bhasa-hover);
+      border-color: var(--bhasa-text-muted);
+      color: var(--bhasa-text);
+    }
+
     /* Zone 1 — inbox */
     .chat-inbox {
       display: flex;
@@ -535,6 +562,40 @@
       overflow-wrap: anywhere;
       min-height: calc(13.5px * 1.6 * 2);
     }
+    /* A0.8 — skeletons at the real row height, never a spinner. Shown
+       only after 200ms so a fast response does not flash one. */
+    .skel-row {
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: 8px;
+      flex-shrink: 0;
+    }
+    .skel-bar {
+      height: 11px;
+      border-radius: 999px;
+      background: var(--bhasa-hover);
+      animation: skel-pulse 1.4s var(--ease-out) infinite;
+    }
+    .skel-row .skel-bar:nth-child(1) { grid-column: 2; width: 42px; align-self: start; margin-top: 3px; }
+    .skel-row .skel-bar:nth-child(2) { grid-column: 1; grid-row: 1; }
+    .skel-row .skel-bar:nth-child(3) { grid-column: 1; grid-row: 2; width: 72%; margin-top: 8px; }
+    .skel-turn { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 760px; margin-inline: auto; }
+    .skel-turn.member { align-items: flex-end; }
+    .skel-bubble {
+      width: min(62%, 420px);
+      height: 62px;
+      border-radius: var(--r-lg);
+      background: var(--bhasa-raised);
+      border: 1px solid var(--bhasa-line-soft);
+      animation: skel-pulse 1.4s var(--ease-out) infinite;
+    }
+    .skel-turn.member .skel-bubble { width: min(44%, 300px); height: 44px; }
+    @keyframes skel-pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+      .skel-bar, .skel-bubble { animation: none; opacity: .7; }
+    }
+
     .chat-inbox__empty {
       padding: 32px 20px;
       text-align: center;
@@ -652,6 +713,20 @@
       border-top-right-radius: var(--r-sm);
     }
     .room .who { font-size: 11.5px; padding: 0 4px; color: var(--bhasa-text-muted); }
+    /* A policy answer reads as prose, not one grey slab. Rich bubbles
+       drop pre-wrap because their structure is real elements now. */
+    .room .bubble--rich { white-space: normal; }
+    .room .bubble--rich > :first-child { margin-top: 0; }
+    .room .bubble--rich > :last-child { margin-bottom: 0; }
+    .room .bubble--rich p { margin: 0 0 10px; line-height: 1.75; }
+    .room .bubble--rich ul,
+    .room .bubble--rich ol { margin: 0 0 10px; padding-inline-start: 22px; }
+    .room .bubble--rich li { margin: 0 0 6px; line-height: 1.75; }
+    .room .bubble--rich li:last-child { margin-bottom: 0; }
+    .room .bubble--rich strong { font-weight: 700; }
+    .room .bubble--rich a { color: inherit; text-underline-offset: 3px; }
+    .room .bubble--rich a:hover { text-decoration-thickness: 2px; }
+
     /* WO9 — a failed send stays on the right and stays readable. The
        icon carries the meaning alongside the colour (WCAG 1.4.1). */
     .room .err .bubble {
@@ -876,19 +951,36 @@
        branch offices, so both are held rather than hidden.
        ------------------------------------------------------------------ */
     @media (max-width: 1279px) and (min-width: 1024px) {
-      .stage.chat-room { grid-template-columns: 288px minmax(0, 1fr); }
+      .stage.chat-room { grid-template-columns: 264px minmax(0, 1fr); }
       .room #log { padding: 20px 20px 16px; }
       .room__topics, .desk-bar, .conn-banner { padding-left: 20px; padding-right: 20px; }
+      /* The type box is the thing that must stay comfortable here, so
+         the buttons give up their width first. */
+      .desk-bar #send { min-width: 104px; padding: 0 14px; }
+      .desk-bar #mic { padding: 0 12px; }
     }
     /* Below 1024 the inbox collapses to a panel with a persistent
        control. The thread and the composer never leave the screen. */
     @media (max-width: 1023px) {
+      /* The shared max-width:960 rules let the page grow and scroll,
+         which pushes the composer past the fold — at 853px (a 1280
+         laptop at 150% scaling) Send became unreachable. Chat keeps a
+         fixed-height desk instead; only the thread scrolls. */
+      .app.is-chat {
+        height: 100dvh;
+        min-height: 0;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
+        overflow: hidden;
+      }
+      .app.is-chat .main { min-height: 0; }
+      .app.is-chat .sidebar { max-height: 30vh; overflow: auto; }
       .stage.chat-room {
         grid-template-columns: minmax(0, 1fr);
         grid-template-rows: auto minmax(0, 1fr);
       }
       .chat-inbox {
-        max-height: 46vh;
+        max-height: 38vh;
         border-right: 0;
         border-bottom: 1px solid var(--bhasa-line);
       }
@@ -1063,7 +1155,7 @@
         unicoderLabel: "नेपालीमा: ",
         send: "पठाउनुहोस्",
         mic: "बोल्नुहोस्",
-        agent: "भाषा सेवा",
+        agent: "भाषा",
         member: "तपाईं",
         play: "सुन्नुहोस्",
         newThread: "नयाँ",
@@ -1142,7 +1234,7 @@
         unicoderLabel: "Nepali: ",
         send: "Send",
         mic: "Speak",
-        agent: "Bhasa support",
+        agent: "Bhasa",
         member: "You",
         play: "Listen",
         newThread: "New",
@@ -1346,6 +1438,8 @@
     let connection = "online";
     let sendAsTyped = false;
     let isComposing = false;
+    let inboxLoaded = false;
+    let inboxUserToggled = false;
 
     function t() { return copy[replyLang]; }
     function hasLatin(text) { return /[A-Za-z]/.test(text || ""); }
@@ -1388,7 +1482,7 @@
       paintChrome();
       if (name === "home") loadHome();
       if (work) loadInbox();
-      if (name === "chat") { loadTickets(); box.focus(); }
+      if (name === "chat") { loadTickets(); syncInboxForWidth(); box.focus(); }
     }
 
     function paintChrome() {
@@ -1462,6 +1556,16 @@
       const collapsed = pane.dataset.collapsed === "true";
       btn.textContent = t().chatInbox;
       btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    }
+
+    /* Below 1024 the list starts collapsed so the conversation is the
+       primary view — expanded, it left no thread to read. The officer's
+       own choice wins once they touch the control. */
+    function syncInboxForWidth() {
+      if (inboxUserToggled) return;
+      const pane = document.getElementById("chat-inbox");
+      pane.dataset.collapsed = window.innerWidth < 1024 ? "true" : "false";
+      paintInboxToggle();
     }
 
     function paintChips() {
@@ -1617,6 +1721,87 @@
       logStick = true;
     }
 
+    /* A0.11 — Bhasa answers are policy prose: they need paragraphs,
+       bold and lists to be readable, not one grey slab. This renders a
+       restricted subset (paragraphs, ordered and unordered lists, bold,
+       links) by BUILDING NODES, never by assigning innerHTML, so server
+       content cannot inject markup. No raw HTML, images or tables. */
+    function safeHref(url) {
+      const clean = String(url || "").trim();
+      return /^https?:\/\//i.test(clean) ? clean : null;
+    }
+
+    function renderInline(target, text) {
+      /* **bold** and [label](url); everything else is literal text. */
+      const pattern = /\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\)/g;
+      let cursor = 0;
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        if (match.index > cursor) {
+          target.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+        }
+        if (match[1] !== undefined) {
+          const strong = document.createElement("strong");
+          strong.textContent = match[1];
+          target.appendChild(strong);
+        } else {
+          const href = safeHref(match[3]);
+          if (href) {
+            const link = document.createElement("a");
+            link.href = href;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.textContent = match[2];
+            target.appendChild(link);
+          } else {
+            /* An unsafe scheme degrades to plain text, never a link. */
+            target.appendChild(document.createTextNode(match[0]));
+          }
+        }
+        cursor = match.index + match[0].length;
+      }
+      if (cursor < text.length) {
+        target.appendChild(document.createTextNode(text.slice(cursor)));
+      }
+    }
+
+    /* Speech should never read "asterisk asterisk" — strip the markup
+       before it reaches TTS. */
+    function plainText(body) {
+      return String(body == null ? "" : body)
+        .replace(/\*\*([^*]+)\*\*/g, "$1")
+        .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, "$1")
+        .replace(/^\s*(?:[-*]|\d+[.)])\s+/gm, "");
+    }
+
+    function renderRich(target, body) {
+      const blocks = String(body == null ? "" : body).split(/\n{2,}/);
+      blocks.forEach((block) => {
+        const lines = block.split("\n").filter((line) => line.trim() !== "");
+        if (!lines.length) return;
+        const bulleted = lines.every((line) => /^\s*[-*]\s+/.test(line));
+        const numbered = lines.every((line) => /^\s*\d+[.)]\s+/.test(line));
+        if ((bulleted || numbered) && lines.length) {
+          const list = document.createElement(bulleted ? "ul" : "ol");
+          lines.forEach((line) => {
+            const item = document.createElement("li");
+            renderInline(item, line.replace(/^\s*(?:[-*]|\d+[.)])\s+/, ""));
+            list.appendChild(item);
+          });
+          target.appendChild(list);
+          return;
+        }
+        const para = document.createElement("p");
+        /* Single newlines inside a block stay as line breaks. */
+        lines.forEach((line, index) => {
+          if (index) para.appendChild(document.createElement("br"));
+          renderInline(para, line);
+        });
+        target.appendChild(para);
+      });
+      if (!target.childNodes.length) target.textContent = body || "";
+    }
+
     function addTurn(host, role, text, isErr) {
       if (host === log && !started) { host.innerHTML = ""; started = true; }
       const isMember = role === "user" || role === "member";
@@ -1629,7 +1814,10 @@
       who.textContent = isMember ? t().member : t().agent;
       const bubble = document.createElement("div");
       bubble.className = "bubble";
-      bubble.textContent = text;
+      /* A member's own words are shown exactly as typed — never parsed
+         for markup. Only Bhasa's answers get the rich subset. */
+      if (isMember || isErr) bubble.textContent = text;
+      else { bubble.classList.add("bubble--rich"); renderRich(bubble, text); }
       /* A0.3 — tag the run so the right font applies. Historical
          bodies are never re-rendered when the officer switches
          language; only the chrome around them changes. */
@@ -1644,9 +1832,12 @@
     function addAgent(text, isErr, meta) {
       const bubble = addTurn(log, "agent", text, isErr);
       if (meta && meta.tickets && meta.tickets.length) {
+        /* Its own class: a repaint of the speaker labels must not
+           overwrite the ticket reference. */
         const note = document.createElement("div");
-        note.className = "who";
-        note.textContent = t().ticketPrefix + meta.tickets.join(", ");
+        note.className = "who ticket-note";
+        note.dataset.tickets = meta.tickets.join(", ");
+        note.textContent = t().ticketPrefix + note.dataset.tickets;
         bubble.parentNode.appendChild(note);
       }
       if (!isErr) {
@@ -1654,14 +1845,47 @@
         play.type = "button";
         play.className = "play";
         play.textContent = t().play;
+        const spoken = plainText(text);
         play.addEventListener("click", () => {
           track("chat_listen_used", {});
-          speakReply(text, false);
+          speakReply(spoken, false);
         });
         bubble.parentNode.appendChild(play);
-        speakReply(text, false);
+        speakReply(spoken, false);
       }
       stickToBottom();
+    }
+
+    /* A0.3 — the switch changes chrome, and the speaker label, Listen
+       and the failure line ARE chrome even though they sit inside a
+       turn. Message bodies are deliberately left alone: a Nepali answer
+       stays Nepali when the officer switches to English. */
+    function repaintTurnChrome() {
+      const c = t();
+      log.querySelectorAll(".turn").forEach((turn) => {
+        const who = turn.querySelector(".who:not(.ticket-note)");
+        if (who && !turn.classList.contains("writing")) {
+          who.textContent = turn.classList.contains("member") ? c.member : c.agent;
+        }
+        const play = turn.querySelector(".play");
+        if (play) play.textContent = c.play;
+        const note = turn.querySelector(".ticket-note");
+        if (note) note.textContent = c.ticketPrefix + (note.dataset.tickets || "");
+        const fail = turn.querySelector(".fail-note");
+        if (fail) {
+          const label = fail.querySelector("span:not(.fail-note__icon)");
+          if (label) label.textContent = c.sendFailed;
+          const retry = fail.querySelector(".fail-note__retry");
+          if (retry) retry.textContent = c.retry;
+        }
+      });
+      const writing = document.getElementById("pending");
+      if (writing) {
+        const who = writing.querySelector(".who");
+        if (who) who.textContent = c.agent;
+        const label = writing.querySelector(".writing__label");
+        if (label) label.textContent = c.writing;
+      }
     }
 
     function showLoading(host) {
@@ -1918,12 +2142,54 @@
       };
     }
 
+    /* A0.8 — a skeleton that only appears if the wait is real. The
+       200ms delay is what stops a fast reply flashing a placeholder. */
+    function delayedSkeleton(paint) {
+      let done = false;
+      const timer = setTimeout(() => { if (!done) paint(); }, 200);
+      return () => { done = true; clearTimeout(timer); };
+    }
+
+    function paintInboxSkeleton() {
+      const list = document.getElementById("chat-list");
+      list.innerHTML = "";
+      for (let i = 0; i < 5; i++) {
+        const row = document.createElement("div");
+        row.className = "skel-row";
+        row.setAttribute("aria-hidden", "true");
+        for (let b = 0; b < 3; b++) {
+          const bar = document.createElement("div");
+          bar.className = "skel-bar";
+          row.appendChild(bar);
+        }
+        list.appendChild(row);
+      }
+    }
+
+    function paintThreadSkeleton() {
+      log.innerHTML = "";
+      ["agent", "member", "agent"].forEach((side) => {
+        const turn = document.createElement("div");
+        turn.className = "skel-turn " + side;
+        turn.setAttribute("aria-hidden", "true");
+        const bubble = document.createElement("div");
+        bubble.className = "skel-bubble";
+        turn.appendChild(bubble);
+        log.appendChild(turn);
+      });
+    }
+
     async function loadInbox(channel) {
       const kind = channel || (view === "call" ? "call" : "chat");
       if (kind === "chat") {
+        const settle = inboxLoaded ? () => {} : delayedSkeleton(paintInboxSkeleton);
         try {
-          paintChatInbox(await api.conversations("chat"));
+          const rows = await api.conversations("chat");
+          settle();
+          inboxLoaded = true;
+          paintChatInbox(rows);
         } catch {
+          settle();
           paintChatInbox([]);
         }
         return;
@@ -1985,10 +2251,14 @@
 
     async function openThread(id, kind) {
       if (kind !== "call") {
+        /* Opening a thread is the one Chat wait an officer feels, so
+           the skeleton mirrors the shape of the conversation. */
+        started = true;
+        const settle = delayedSkeleton(paintThreadSkeleton);
         let messages = [];
         try { messages = await api.messages(id); } catch { messages = []; }
+        settle();
         chatId = id;
-        started = true;
         log.innerHTML = "";
         messages.forEach((msg) => addTurn(log, msg.role === "user" ? "member" : "agent", msg.content));
         logStick = true;
@@ -2162,6 +2432,7 @@
       if (view === "chat") {
         loadInbox("chat");
         loadTickets();
+        repaintTurnChrome();
         setConnection(connection);
         paintJump();
       }
@@ -2279,9 +2550,11 @@
     document.getElementById("inbox-toggle").addEventListener("click", () => {
       const pane = document.getElementById("chat-inbox");
       const collapsed = pane.dataset.collapsed === "true";
+      inboxUserToggled = true;
       pane.dataset.collapsed = collapsed ? "false" : "true";
       paintInboxToggle();
     });
+    window.addEventListener("resize", syncInboxForWidth);
     /* Below 1024px the officer opens a chat from a panel that then
        collapses, so the thread is never buried under the list. */
     document.getElementById("chat-list").addEventListener("click", () => {

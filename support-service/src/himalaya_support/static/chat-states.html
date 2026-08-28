@@ -40,7 +40,8 @@
       background: #101c16; color: #a9beb2; border-bottom: 1px solid #24382e;
     }
     .gal-stage { height: 460px; display: grid; }
-    .gal-stage.inbox-only { grid-template-columns: 320px; }
+    .gal-stage.inbox-only { grid-template-columns: minmax(0, 1fr); }
+    .gal-frame.narrow { max-width: 380px; }
     .gal-stage.room-only { grid-template-columns: minmax(0, 1fr); }
     .gal-stage.full { grid-template-columns: 300px minmax(0, 1fr); }
     @media (max-width: 1100px) { .gal-pair { grid-template-columns: minmax(0, 1fr); } }
@@ -88,7 +89,8 @@
       ],
       long: "नमस्ते। लगइन नभएको कारण सामान्यतया पासवर्ड मिलेन वा खाता अस्थायी रूपमा रोकिएको हुन सक्छ। तीन पटकभन्दा बढी गलत पासवर्ड हालिएमा खाता ३० मिनेटका लागि स्वतः रोकिन्छ। कृपया ३० मिनेट पर्खनुहोस्, अनि फेरि प्रयास गर्नुहोस्। त्यसपछि पनि नखुलेमा नजिकको शाखामा नागरिकता लिएर जानुहोस्। ओटीपी वा पिन कसैलाई नबताउनुहोस्।",
       short: "ठीक छ, धन्यवाद",
-      ticket: "TCK-4A91C2 · रकम पुगेन"
+      ticket: "TCK-4A91C2 · रकम पुगेन",
+      rich: "पिन रिसेट गर्न **तीन** कुरा चाहिन्छ:\n\n- नागरिकता प्रमाणपत्र\n- एटिएम कार्ड\n- दर्ता भएको मोबाइल नम्बर\n\nत्यसपछि यी चरण पूरा गर्नुहोस्:\n\n1. नजिकको शाखामा जानुहोस्\n2. फाराम भर्नुहोस्\n3. नयाँ पिन सेट गर्नुहोस्\n\n**ओटीपी वा पिन कसैलाई नबताउनुहोस्।**"
     };
     const EN = {
       conversations: "Conversations", newChat: "New chat", openTickets: "Open tickets",
@@ -116,7 +118,8 @@
       ],
       long: "Namaste. A failed sign-in usually means the password did not match, or the account is temporarily locked. After three incorrect attempts the account locks itself for 30 minutes. Please wait 30 minutes and try again. If it still does not open, visit your nearest branch with your citizenship certificate. Never share your OTP or PIN with anyone.",
       short: "Thank you, that helps",
-      ticket: "TCK-4A91C2 · Transfer not received"
+      ticket: "TCK-4A91C2 · Transfer not received",
+      rich: "To reset your PIN you need **three** things:\n\n- Citizenship certificate\n- Your ATM card\n- The registered mobile number\n\nThen complete these steps:\n\n1. Visit your nearest branch\n2. Fill in the reset form\n3. Set a new PIN at the counter\n\n**Never share your OTP or PIN with anyone.**"
     };
 
     const el = (tag, cls, text) => {
@@ -135,6 +138,14 @@
       head.appendChild(h3);
       pane.appendChild(head);
       pane.appendChild(el("button", "chat-inbox__new", S.newChat));
+      if (o.skeleton) {
+        pane.appendChild(skeletonInbox());
+        const foot0 = el("div", "chat-inbox__foot tickets");
+        foot0.appendChild(el("h4", null, S.openTickets));
+        foot0.appendChild(el("div", "empty", S.noTickets));
+        pane.appendChild(foot0);
+        return pane;
+      }
       const list = el("div", "chat-inbox__list");
       if (o.empty) {
         const empty = el("div", "chat-inbox__empty");
@@ -174,6 +185,49 @@
       return t;
     }
 
+    /* Mirrors the shipped renderer closely enough to review the look;
+       dashboard.html owns the real one. */
+    function rich(text) {
+      const b = el("div", "bubble bubble--rich");
+      text.split(/\n{2,}/).forEach((block) => {
+        const lines = block.split("\n").filter((l) => l.trim());
+        if (!lines.length) return;
+        if (lines.every((l) => /^\s*[-*]\s+/.test(l))) {
+          const ul = el("ul");
+          lines.forEach((l) => ul.appendChild(el("li", null, l.replace(/^\s*[-*]\s+/, ""))));
+          b.appendChild(ul);
+          return;
+        }
+        if (lines.every((l) => /^\s*\d+[.)]\s+/.test(l))) {
+          const ol = el("ol");
+          lines.forEach((l) => ol.appendChild(el("li", null, l.replace(/^\s*\d+[.)]\s+/, ""))));
+          b.appendChild(ol);
+          return;
+        }
+        const p = el("p");
+        lines.forEach((line, i) => {
+          if (i) p.appendChild(el("br"));
+          const parts = line.split(/(\*\*[^*]+\*\*)/);
+          parts.forEach((part) => {
+            if (/^\*\*[^*]+\*\*$/.test(part)) p.appendChild(el("strong", null, part.slice(2, -2)));
+            else if (part) p.appendChild(document.createTextNode(part));
+          });
+        });
+        b.appendChild(p);
+      });
+      return b;
+    }
+
+    function skeletonInbox() {
+      const list = el("div", "chat-inbox__list");
+      for (let i = 0; i < 5; i++) {
+        const row = el("div", "skel-row");
+        for (let n = 0; n < 3; n++) row.appendChild(el("div", "skel-bar"));
+        list.appendChild(row);
+      }
+      return list;
+    }
+
     function room(S, lang, opts) {
       const o = opts || {};
       const sec = el("section", "room");
@@ -194,6 +248,19 @@
         const hint = el("p", "welcome__hint", S.welcomeHint);
         w.appendChild(hint);
         log.appendChild(w);
+      } else if (o.skeleton) {
+        ["agent", "member", "agent"].forEach((side) => {
+          const t = el("div", "skel-turn " + side);
+          t.appendChild(el("div", "skel-bubble"));
+          log.appendChild(t);
+        });
+      } else if (o.richAnswer) {
+        log.appendChild(turn(S, "member", S.previews[1]));
+        const t = el("div", "turn agent");
+        t.appendChild(el("div", "who", S.bhasa));
+        t.appendChild(rich(S.rich));
+        t.appendChild(el("button", "play", S.listen));
+        log.appendChild(t);
       } else {
         log.appendChild(turn(S, "member", S.previews[0]));
         log.appendChild(turn(S, "bhasa", S.long, "listen"));
@@ -253,7 +320,7 @@
 
     function frame(lang, kind, opts) {
       const S = lang === "ne" ? NE : EN;
-      const wrap = el("div", "gal-frame");
+      const wrap = el("div", "gal-frame" + (kind === "inbox" ? " narrow" : ""));
       wrap.appendChild(el("div", "gal-label", lang === "ne" ? "नेपाली" : "English"));
       const stage = el("div", "stage chat-room gal-stage " + (kind === "inbox" ? "inbox-only" : kind === "room" ? "room-only" : "full"));
       stage.lang = lang;
@@ -268,6 +335,8 @@
       ["Inbox · empty, tickets empty", "A designed sentence with New chat still obvious — not a hole.", "inbox", { empty: true }],
       ["Thread · first open", "Full welcome copy, chips visible, box ready.", "room", { welcome: true, sendDisabled: true }],
       ["Thread · working thread with a long answer", "A five-sentence Nepali answer stays in its column and never covers the write bar.", "room", { sendDisabled: true }],
+      ["Thread · rich policy answer", "Paragraphs, bold and lists — built as real nodes, so markup in a reply can never execute.", "room", { richAnswer: true, sendDisabled: true }],
+      ["Loading · inbox and thread skeletons", "Real row heights, no spinner, and only after 200ms so a fast reply never flashes one.", "full", { skeleton: true, sendDisabled: true }],
       ["Thread · Bhasa is writing", "Dots plus the line; the last member turn stays visible and Send is blocked.", "room", { writing: true, sendDisabled: true }],
       ["Thread · failed send", "Right side, soft red, icon plus text, with a quiet Try again.", "room", { failed: true, sendDisabled: true, jump: true }],
       ["Composer · typing with the Nepali preview", "Preview on its reserved line, Send strong, Speak quieter.", "room", { typed: "mero PIN birse", preview: "मेरो पिन बिर्सें" }],
