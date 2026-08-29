@@ -273,7 +273,7 @@
       justify-content: space-between;
       align-items: center;
     }
-    .inbox h3 { margin: 0; font-size: 15px; }
+    .inbox h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
     .inbox .new {
       border: 1px solid var(--line);
       background: transparent;
@@ -700,7 +700,7 @@
         </section>
         <aside class="inbox hidden" id="inbox-pane">
           <header>
-            <h3 id="inbox-title"></h3>
+            <h3 id="inbox-title"><span id="inbox-title-text"></span><span class="chat-inbox__count" id="inbox-count">0</span></h3>
             <button type="button" class="new" id="new-thread"></button>
           </header>
           <div class="list" id="inbox-list"></div>
@@ -940,6 +940,8 @@
     const INBOX_PAGE_SIZE = 60;
     let conversationTotal = 0;
     let inboxExhausted = false;
+    const chatList = pagedSource("/v1/support/conversations?channel=chat", INBOX_PAGE_SIZE);
+    const callList = pagedSource("/v1/support/conversations?channel=call", INBOX_PAGE_SIZE);
     let unicoderSeq = 0;
     let unicoderAbort = null;
     let previewTimer = null;
@@ -1048,7 +1050,9 @@
       document.getElementById("door-call-kicker").textContent = c.doorCallKicker;
       document.getElementById("door-call-title").textContent = c.doorCallTitle;
       document.getElementById("door-call-body").textContent = c.doorCallBody;
-      document.getElementById("inbox-title").textContent = view === "call" ? c.call : c.chat;
+      /* Sets the label span, not the heading: the heading also holds the
+         count badge, and writing textContent on it would delete that. */
+      document.getElementById("inbox-title-text").textContent = view === "call" ? c.call : c.chat;
       document.getElementById("new-thread").textContent = c.newThread;
       document.getElementById("chat-inbox-title").textContent = c.chatInbox;
       document.getElementById("chat-new").textContent = c.chatNew;
@@ -1435,23 +1439,7 @@
         if (heading) heading.setAttribute("aria-label", t().chatInbox + ": " + t().listFailed);
       }
 
-      const list = document.getElementById("chat-list");
-      list.innerHTML = "";
-      const box = document.createElement("div");
-      box.className = "empty load-error";
-      box.setAttribute("role", "status");
-      box.setAttribute("aria-live", "polite");
-      const line = document.createElement("div");
-      line.className = "load-error__line";
-      line.textContent = t().listFailed;
-      const retry = document.createElement("button");
-      retry.type = "button";
-      retry.className = "new";
-      retry.style.marginTop = "8px";
-      retry.textContent = t().retry;
-      retry.addEventListener("click", () => loadInbox("chat"));
-      box.append(line, retry);
-      list.appendChild(box);
+      paintListError(document.getElementById("chat-list"), () => loadInbox("chat"));
     }
 
     function clearInboxError() {
@@ -1473,82 +1461,149 @@
       }
     }
 
-    /* Older conversations load as the officer scrolls. Before this, anything
-       past the first page was simply unreachable — the desk quietly stopped
-       showing work that still existed. */
-    let loadingOlder = false;
-    async function loadOlderConversations() {
-      if (loadingOlder || inboxExhausted || view !== "chat") return;
-      loadingOlder = true;
+    /* One paging implementation, used by every list.
+       This bug had four separate instances — the sidebar badge, two Dashboard
+       tiles, and the Call inbox — because each surface counted and paged for
+       itself. Anything that lists rows now shares this, so a list cannot
+       quietly cap itself again. */
+    function pagedSource(url, pageSize) {
+      return { url, pageSize, rows: [], total: 0, exhausted: false, loading: false };
+    }
+
+    async function loadFirstPage(src) {
+      const page = await getListWithRetry(
+        src.url + "&limit=" + src.pageSize + "&offset=0", getPage
+      );
+      src.rows = page.rows;
+      src.total = page.total === null ? page.rows.length : page.total;
+      src.exhausted = src.rows.length >= src.total;
+      return src;
+    }
+
+    /* Returns true when it actually appended, so a caller only repaints on a
+       real change. Older rows load as the officer scrolls; before this,
+       anything past the first page was simply unreachable. */
+    async function loadNextPage(src) {
+      if (src.loading || src.exhausted) return false;
+      src.loading = true;
       try {
         const page = await getPage(
-          "/v1/support/conversations?channel=chat&limit=" + INBOX_PAGE_SIZE +
-          "&offset=" + conversations.length
+          src.url + "&limit=" + src.pageSize + "&offset=" + src.rows.length
         );
-        if (page.total !== null) conversationTotal = page.total;
-        const known = new Set(conversations.map((row) => row.id));
+        if (page.total !== null) src.total = page.total;
+        const known = new Set(src.rows.map((row) => row.id));
         const fresh = page.rows.filter((row) => !known.has(row.id));
         if (!fresh.length) {
-          inboxExhausted = true;
-        } else {
-          conversations = conversations.concat(fresh);
-          inboxExhausted = conversations.length >= conversationTotal;
-          paintChatInbox(conversations);
+          src.exhausted = true;
+          return false;
         }
+        src.rows = src.rows.concat(fresh);
+        src.exhausted = src.rows.length >= src.total;
+        return true;
       } catch (err) {
-        /* Leave what is already listed on screen; the officer can scroll
-           again to retry rather than losing the rows they had. */
+        /* Leave what is already listed on screen; scrolling again retries
+           rather than costing the officer the rows they had. */
+        return false;
       } finally {
-        loadingOlder = false;
+        src.loading = false;
       }
+    }
+
+    /* A failed list is never rendered as an empty one, on any surface. */
+    function paintListError(container, onRetry) {
+      container.innerHTML = "";
+      const box = document.createElement("div");
+      box.className = "empty load-error";
+      box.setAttribute("role", "status");
+      box.setAttribute("aria-live", "polite");
+      const line = document.createElement("div");
+      line.className = "load-error__line";
+      line.textContent = t().listFailed;
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "new";
+      retry.style.marginTop = "8px";
+      retry.textContent = t().retry;
+      retry.addEventListener("click", onRetry);
+      box.append(line, retry);
+      container.appendChild(box);
+    }
+
+    async function loadOlderConversations() {
+      if (view !== "chat") return;
+      if (await loadNextPage(chatList)) {
+        conversations = chatList.rows;
+        conversationTotal = chatList.total;
+        inboxExhausted = chatList.exhausted;
+        paintChatInbox(conversations);
+      }
+    }
+
+    async function loadOlderCalls() {
+      if (view !== "call") return;
+      if (await loadNextPage(callList)) paintCallInbox();
+    }
+
+    /* The Call list renders into its own element and used to have its own
+       fetch — no limit, no total, no way to reach anything past the server's
+       default page, and no badge to make the gap visible. It now goes through
+       the same paged source as Chat. */
+    function paintCallInbox() {
+      const list = document.getElementById("inbox-list");
+      const countEl = document.getElementById("inbox-count");
+      list.innerHTML = "";
+      if (countEl) {
+        countEl.textContent = localNum(Math.max(callList.rows.length, callList.total || 0));
+        countEl.setAttribute("aria-hidden", "true");
+        const heading = document.getElementById("inbox-title");
+        if (heading) {
+          heading.setAttribute(
+            "aria-label",
+            t().call + ": " + localNum(Math.max(callList.rows.length, callList.total || 0))
+          );
+        }
+      }
+      if (!callList.rows.length) {
+        list.innerHTML = '<div class="empty">' + t().emptyInbox + "</div>";
+        return;
+      }
+      callList.rows.forEach((row) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "thread" + (row.id === callId ? " on" : "");
+        /* Was a raw ISO slice — the second time-formatting path FIX 6 asks
+           to remove, so it goes through the one formatter too. */
+        btn.innerHTML = '<div class="meta"></div><div class="preview"></div>';
+        btn.querySelector(".meta").textContent = fmtWhen(row.updated_at || row.created_at);
+        btn.querySelector(".preview").textContent = row.preview || row.id.slice(0, 8);
+        btn.addEventListener("click", () => openThread(row.id, "call"));
+        list.appendChild(btn);
+      });
     }
 
     async function loadInbox(channel) {
       const kind = channel || (view === "call" ? "call" : "chat");
       if (kind === "chat") {
-        let page;
         try {
-          page = await getListWithRetry(
-            "/v1/support/conversations?channel=chat&limit=" + INBOX_PAGE_SIZE + "&offset=0",
-            getPage
-          );
+          await loadFirstPage(chatList);
         } catch (err) {
           paintInboxError();
           return;
         }
         clearInboxError();
-        conversations = page.rows;
-        conversationTotal = page.total === null ? page.rows.length : page.total;
-        inboxExhausted = conversations.length >= conversationTotal;
+        conversations = chatList.rows;
+        conversationTotal = chatList.total;
+        inboxExhausted = chatList.exhausted;
         paintChatInbox(conversations);
         return;
       }
-      let rows;
       try {
-        rows = await getListWithRetry("/v1/support/conversations?channel=" + encodeURIComponent(kind));
+        await loadFirstPage(callList);
       } catch (err) {
+        paintListError(document.getElementById("inbox-list"), () => loadInbox("call"));
         return;
       }
-      const list = document.getElementById("inbox-list");
-      list.innerHTML = "";
-      if (!Array.isArray(rows) || !rows.length) {
-        list.innerHTML = '<div class="empty">' + t().emptyInbox + "</div>";
-        return;
-      }
-      const active = kind === "call" ? callId : chatId;
-      rows.forEach((row) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "thread" + (row.id === active ? " on" : "");
-        /* Was a raw ISO slice — the second time-formatting path FIX 6 asks
-           to remove, so it goes through the one formatter too. */
-        const when = fmtWhen(row.updated_at || row.created_at);
-        btn.innerHTML = '<div class="meta"></div><div class="preview"></div>';
-        btn.querySelector(".meta").textContent = when;
-        btn.querySelector(".preview").textContent = row.preview || row.id.slice(0, 8);
-        btn.addEventListener("click", () => openThread(row.id, kind));
-        list.appendChild(btn);
-      });
+      paintCallInbox();
     }
 
     function paintChatInbox(rows) {
@@ -1858,6 +1913,10 @@
     document.getElementById("chat-list").addEventListener("scroll", (event) => {
       const el = event.currentTarget;
       if (el.scrollHeight - el.scrollTop - el.clientHeight < 160) loadOlderConversations();
+    });
+    document.getElementById("inbox-list").addEventListener("scroll", (event) => {
+      const el = event.currentTarget;
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 160) loadOlderCalls();
     });
     document.getElementById("pickup").addEventListener("click", pickup);
     document.getElementById("hangup").addEventListener("click", hangup);
