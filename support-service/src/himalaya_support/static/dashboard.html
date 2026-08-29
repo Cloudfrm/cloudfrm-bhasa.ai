@@ -1258,18 +1258,28 @@
         bubble.parentNode.appendChild(note);
       }
       if (!isErr) {
-        const play = document.createElement("button");
-        play.type = "button";
-        play.className = "play";
-        play.textContent = t().play;
-        play.dataset.speech = text;
-        play.addEventListener("click", () => togglePlayback(play, text));
-        bubble.parentNode.appendChild(play);
+        attachListen(bubble, text);
         /* Auto-narration now only happens when the officer has switched the
            Voice toggle on, and that toggle defaults to off. It used to fetch
            a full MP3 for every reply whether or not anyone was listening. */
         if (speakOn) speakReply(text, false);
       }
+    }
+
+    /* The Listen control belongs to a Bhasa reply, not to the moment it
+       arrived. It used to be attached only by addAgent, so a reply an
+       officer scrolled back to find had no way to be read aloud — the one
+       case where hearing it instead of reading it is most useful. */
+    function attachListen(bubble, text) {
+      if (!text || !bubble || !bubble.parentNode) return null;
+      const play = document.createElement("button");
+      play.type = "button";
+      play.className = "play";
+      play.textContent = t().play;
+      play.dataset.speech = text;
+      play.addEventListener("click", () => togglePlayback(play, text));
+      bubble.parentNode.appendChild(play);
+      return play;
     }
 
     /* Labels painted once at creation time kept the locale they were born
@@ -1803,7 +1813,12 @@
       chatId = id;
       started = true;
       log.innerHTML = "";
-      (data.messages || []).forEach((msg) => addTurn(log, msg.role === "user" ? "member" : "agent", msg.content));
+      (data.messages || []).forEach((msg) => {
+        const isMember = msg.role === "user";
+        const bubble = addTurn(log, isMember ? "member" : "agent", msg.content);
+        // Stored replies get the same Listen control as live ones.
+        if (!isMember) attachListen(bubble, msg.content);
+      });
       paintRoomHead();
       /* Selecting a row is local state, not a reason to re-fetch the list. */
       paintChatInbox(conversations);
