@@ -511,3 +511,76 @@ def test_reference_codes_are_not_transliterated():
     assert "पिन" in latin_to_nepali("I forgot my PIN")["out"]
     roman = latin_to_nepali("mero pin birse")["out"]
     assert "पिन" in roman or "मेरो" in roman
+
+
+def test_training_corpora_never_ground_an_answer():
+    """The retrieval index holds fine-tuning slices alongside knowledge.
+
+    A message that is essentially just an amount matches no banking article,
+    which let a function-calling training row win — returning a tool
+    definition named initiateDispute to a member asking about a transfer.
+    """
+    from himalaya_support.adapt.pipeline import compose_from_knowledge, is_training_artifact
+
+    tools_row = 'Tools: [{"type": "function", "function": {"name": "initiateDispute"}}]'
+    schema_row = 'Schema: {"properties": {"totalShipments": {"type": "integer"}}}'
+
+    assert is_training_artifact(tools_row)
+    assert is_training_artifact(schema_row)
+    # recognised by source too, for a dataset shaped differently
+    assert is_training_artifact("anything", "himalaya-ai/nepali-hermes-function-calling-v1")
+    assert is_training_artifact("anything", "himalaya-ai/nepali-json-mode-singleturn")
+    # real knowledge is not an artifact
+    assert not is_training_artifact("बचत खातामा वार्षिक ५ प्रतिशत ब्याज दिइन्छ।", "product_knowledge")
+
+    reply = compose_from_knowledge(
+        "NPR 5,000",
+        [{"text": tools_row, "source": "himalaya-ai/nepali-hermes-function-calling-v1"}],
+        "ne",
+    )
+    assert "initiateDispute" not in reply
+    assert "Tools:" not in reply
+
+
+def test_finish_reply_never_returns_training_data():
+    from himalaya_support.adapt.pipeline import (
+        ReplyGenerationError,
+        finish_reply,
+        is_training_artifact,
+    )
+
+    leaked = (
+        'Schema: {"properties": {"totalShipments": {"title": "Total Shipments", '
+        '"type": "integer"}}, "title": "LogisticsDashboard", "type": "object"}'
+    )
+    try:
+        reply, _ = finish_reply(leaked, [], "ne", user_message="NPR 5,000")
+    except ReplyGenerationError:
+        return  # rejected outright is also correct
+    assert not is_training_artifact(reply)
+
+
+def test_reference_formats_survive_the_composer_path():
+    """The guard has to hold in unicoder(), not just latin_to_nepali().
+
+    The composer converts through /v1/support/unicoder before posting, and
+    that function treated leftover Latin as "conversion unfinished" and
+    force-converted the raw text — walking straight past the guard, because a
+    preserved TXN-1001 is itself Latin.
+    """
+    from himalaya_support.adapt.to_nepali import unicoder
+
+    for text, must_survive in [
+        ("TXN-1001 pugena", "TXN-1001"),
+        ("NARBNPKA", "NARBNPKA"),            # SWIFT/BIC, letters only
+        ("NIBLNPKT", "NIBLNPKT"),
+        ("ram.thapa@example.com", "ram.thapa@example.com"),
+        ("https://bank.com.np/help", "https://bank.com.np/help"),
+        ("NPR 5,000", "NPR"),                # currency code
+        ("ATM 24x7", "24x7"),
+    ]:
+        assert must_survive in unicoder(text)["nepali"], f"{must_survive} lost from {text!r}"
+
+    # and the carve-out still converts
+    assert "पिन" in unicoder("I forgot my PIN")["nepali"]
+    assert "पिन" in unicoder("mero pin birse")["nepali"]

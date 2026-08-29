@@ -33,6 +33,31 @@ DIRECTIVE_TAGS = {"greeting", "smalltalk", "instruction", "style", "persona"}
 _DIRECTIVE_RULE = re.compile(r"सदस्यले.{0,80}?भने", re.S)
 
 
+# The retrieval index also holds fine-tuning corpora — function-calling and
+# JSON-mode training slices. They are training material, never an answer, but
+# a message that is essentially just an amount ("NPR 5,000") matches no banking
+# article and lets one of them win, which returned a logistics JSON schema and
+# a tool definition named initiateDispute to a member asking about a transfer.
+_TRAINING_SOURCES = ("function-calling", "json-mode", "hermes", "honorific-bench")
+_ARTIFACT_SHAPES = re.compile(
+    r'^\s*(?:Tools|Schema|Example JSON)\s*:|"type"\s*:\s*"(?:object|function)"'
+    r'|"properties"\s*:\s*\{|"parameters"\s*:\s*\{|<tool_call>',
+    re.I,
+)
+
+
+def is_training_artifact(text: str, source: str | None = None) -> bool:
+    """True for rows that are model training data rather than knowledge.
+
+    Checked by source *and* by shape: a new dataset can arrive under a name
+    nobody added to the list, and the shape is what actually reaches a member.
+    """
+    src = (source or "").lower()
+    if any(marker in src for marker in _TRAINING_SOURCES):
+        return True
+    return bool(_ARTIFACT_SHAPES.search(text or ""))
+
+
 def is_directive_row(text: str, tags: list[str] | tuple[str, ...] | None = None) -> bool:
     if tags and DIRECTIVE_TAGS.intersection({str(t).lower() for t in tags}):
         return True
@@ -177,6 +202,9 @@ def compose_from_knowledge(message: str, snippets: list[dict], language: str) ->
         # A rule about how to answer is not an answer.
         if is_directive_row(raw, item.get("tags")):
             continue
+        # Neither is a slice of the model's own training data.
+        if is_training_artifact(raw, item.get("source")):
+            continue
         question, answer = split_knowledge_row(raw)
         # Only use the row when it actually addresses what was asked; a
         # confident answer to a different question is worse than none.
@@ -262,6 +290,8 @@ def finish_reply(
         )
     if is_directive_row(text):
         raise ReplyGenerationError("reply was a behavioural instruction, not an answer")
+    if is_training_artifact(text):
+        raise ReplyGenerationError("reply contained model training data, not an answer")
     honorific = check_honorific(text, "high") if language == "ne" else {"ok": True, "reason": "english"}
     register = classify(text) if language == "ne" else {"register": "english"}
     return text, {

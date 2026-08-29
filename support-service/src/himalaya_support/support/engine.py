@@ -26,6 +26,7 @@ from himalaya_support.adapt.pipeline import (
     asks_a_different_question,
     finish_reply,
     is_directive_row,
+    is_training_artifact,
     prepare_user_text,
     split_knowledge_row,
 )
@@ -296,6 +297,10 @@ class SupportEngine:
         for hit in hits:
             source = str(hit.get("source") or "")
             if "honorific" in source.lower():
+                continue
+            # Fine-tuning corpora are indexed alongside product knowledge.
+            # They may never ground a member-facing answer.
+            if is_training_artifact(hit.get("text") or "", source):
                 continue
             # Behavioural rules ground nothing — they only describe how to
             # reply, and were being shown to members as the reply.

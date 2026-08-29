@@ -50,27 +50,51 @@ _HAS_DIGIT = re.compile(r"\d")
 _PUA_BASE = 0xE000
 _MAX_PROTECTED = 256
 
+# Letters-fused-with-digits was a proxy that happened to catch TXN-1001 and
+# happened to miss everything else. These are the shapes that actually turn up
+# at a bank counter, each anchored to its real format rather than to a guess
+# about character composition. Ordered longest-first so a URL is taken whole
+# before its pieces are.
+_PROTECTED_SHAPES = (
+    re.compile(r"https?://\S+", re.I),                                  # URL
+    re.compile(r"\bwww\.\S+", re.I),                                    # bare www URL
+    re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),  # email
+    re.compile(r"\b[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b"),             # SWIFT/BIC, 8 or 11
+    re.compile(                                                          # currency codes
+        r"\b(?:NPR|USD|EUR|GBP|INR|AUD|CAD|CHF|JPY|CNY|SGD|AED|SAR|QAR|KWD|MYR|KRW)\b"
+    ),
+)
+
 
 def _protect_identifiers(text: str) -> tuple[str, list[str]]:
-    """Swap identifiers for private-use placeholders during conversion.
+    """Swap references for private-use placeholders during conversion.
 
     Private-use characters carry no letters or digits, so neither the
-    transliteration tables nor Unicode normalisation touch them.
+    transliteration tables nor Unicode normalisation touch them. Anything
+    held here comes back out exactly as the member typed it.
     """
     saved: list[str] = []
 
-    def swap(match: re.Match) -> str:
+    def take(token: str) -> str:
+        if len(saved) >= _MAX_PROTECTED:
+            return token
+        saved.append(token)
+        return chr(_PUA_BASE + len(saved) - 1)
+
+    out = text
+    for pattern in _PROTECTED_SHAPES:
+        out = pattern.sub(lambda m: take(m.group(0)), out)
+
+    # Anything else fusing letters and digits — TXN-1001, 24x7, A1B2 — is a
+    # reference too. Letter-only words are deliberately left alone so PIN
+    # still becomes पिन.
+    def swap_mixed(match: re.Match) -> str:
         token = match.group(0)
-        if (
-            len(saved) < _MAX_PROTECTED
-            and _HAS_LETTER.search(token)
-            and _HAS_DIGIT.search(token)
-        ):
-            saved.append(token)
-            return chr(_PUA_BASE + len(saved) - 1)
+        if _HAS_LETTER.search(token) and _HAS_DIGIT.search(token):
+            return take(token)
         return token
 
-    return _ID_TOKEN.sub(swap, text), saved
+    return _ID_TOKEN.sub(swap_mixed, out), saved
 
 
 def _restore_identifiers(text: str, saved: list[str]) -> str:
@@ -154,7 +178,14 @@ def unicoder(text: str) -> dict[str, str]:
     converted = latin_to_nepali(raw)
     nepali = converted["out"]
     if _LATIN_RE.search(nepali):
-        nepali = normalize(to_devanagari(raw, force=True).out)
+        # Leftover Latin used to mean "conversion did not finish", so this
+        # branch force-converted the raw text — which walked straight past the
+        # reference guard, because a preserved TXN-1001 is itself Latin. This
+        # is the path the composer uses, so the guard has to hold here or it
+        # does not hold for anyone typing into the box.
+        protected, saved = _protect_identifiers(raw)
+        forced = normalize(to_devanagari(protected, force=True).out)
+        nepali = _restore_identifiers(forced, saved)
         if trail_ws and not nepali.endswith(trail_ws):
             nepali += trail_ws
         return {"nepali": nepali, "mode": "translit"}
