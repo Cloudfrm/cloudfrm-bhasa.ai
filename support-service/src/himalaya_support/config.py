@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     llama_ngl: int = Field(default=99, alias="LLAMA_NGL")
     api_key: str = Field(default="", alias="SUPPORT_API_KEY")
     cors_origins: str = Field(default="*", alias="SUPPORT_CORS_ORIGINS")
+    # "development" keeps the permissive local defaults. "production" makes
+    # an unset key or a wildcard CORS origin a refusal to boot rather than a
+    # silently open API — the plan's first blocker.
+    environment: str = Field(default="development", alias="SUPPORT_ENV")
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.strip().lower() in {"production", "prod"}
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
     gemini_tts_model: str = Field(default="gemini-2.5-flash-preview-tts", alias="GEMINI_TTS_MODEL")
