@@ -420,3 +420,49 @@ def test_open_ticket_count_is_filtered_in_sql_not_after_truncation(tmp_path):
 
     assert len(store.list_tickets(status="open", limit=100)) == 60
     assert len(store.list_tickets(status="open", limit=50, offset=50)) == 10
+
+
+def test_export_streams_every_message_with_filters(tmp_path):
+    """Every chat and call was already stored; there was just no way out."""
+    from himalaya_support.store.db import SupportStore
+
+    store = SupportStore(tmp_path / "support.db")
+    chat_id = store.get_or_create_conversation(None, None, "ne", channel="chat")
+    call_id = store.get_or_create_conversation(None, None, "ne", channel="call")
+    store.add_message(chat_id, "user", "मेरो पिन बिर्सें")
+    store.add_message(chat_id, "assistant", "पिन रिसेट गर्नुहोस्।")
+    store.add_message(call_id, "user", "कार्ड हरायो")
+
+    assert store.count_export() == {"messages": 3, "conversations": 2}
+    assert store.count_export(channel="chat")["messages"] == 2
+    assert store.count_export(channel="call")["conversations"] == 1
+
+    rows = list(store.iter_export_rows(channel="chat"))
+    assert [r["role"] for r in rows] == ["user", "assistant"]
+    assert {r["channel"] for r in rows} == {"chat"}
+    assert rows[0]["content"] == "मेरो पिन बिर्सें"
+    # every column a training pipeline needs
+    for key in ("conversation_id", "channel", "locale", "role", "content", "created_at"):
+        assert key in rows[0]
+
+    later = rows[1]["created_at"]
+    assert all(r["created_at"] >= later for r in store.iter_export_rows(since=later))
+
+
+def test_export_rows_survive_line_per_record_serialisation(tmp_path):
+    """JSONL is line-per-record, so a newline inside content must be escaped
+    rather than splitting one message across two lines."""
+    import json
+
+    from himalaya_support.store.db import SupportStore
+
+    store = SupportStore(tmp_path / "support.db")
+    cid = store.get_or_create_conversation(None, None, "ne", channel="chat")
+    hostile = 'पहिलो\nदोस्रो, अल्पविराम\t"उद्धरण"'
+    store.add_message(cid, "user", hostile)
+
+    row = next(iter(store.iter_export_rows()))
+    line = json.dumps(row, ensure_ascii=False)
+    assert "\n" not in line, "an embedded newline would break line-per-record"
+    assert json.loads(line)["content"] == hostile
+    assert "पहिलो" in line, "Devanagari should stay readable, not backslash-u escaped"

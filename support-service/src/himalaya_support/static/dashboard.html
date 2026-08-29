@@ -465,6 +465,37 @@
       flex-shrink: 0;
       background: var(--panel-2);
     }
+    /* Which clock the timestamps in this pane are using. Quiet — it is
+       reassurance, not a control. */
+    .tz-note {
+      padding: 0 16px 8px;
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .export-card {
+      margin-top: 28px;
+      max-width: 640px;
+      padding: 20px;
+      border: 1px solid var(--line-soft);
+      border-radius: 20px;
+      background: var(--panel-2);
+    }
+    .export-card h3 { margin: 0 0 6px; font-size: 18px; font-weight: 700; }
+    .export-card p { margin: 0 0 8px; color: var(--muted); line-height: 1.6; }
+    .export-warn { color: var(--danger); font-weight: 600; }
+    .export-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+    .export-row label { font-size: 13px; color: var(--muted); font-weight: 600; }
+    .export-row select {
+      font: inherit; padding: 8px 10px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--well); color: var(--ink);
+    }
+    .export-row button {
+      border: 0; border-radius: 10px; padding: 9px 18px; font-weight: 700;
+      cursor: pointer; background: var(--primary); color: var(--on-primary);
+    }
+    .export-row button:hover { filter: brightness(1.08); }
+
     /* A failed load has to read as a problem, not as "nothing here". The
        empty state is quiet grey; this is not. */
     .load-error {
@@ -704,6 +735,7 @@
             <h3 id="inbox-title"><span id="inbox-title-text"></span><span class="chat-inbox__count" id="inbox-count">0</span></h3>
             <button type="button" class="new" id="new-thread"></button>
           </header>
+          <div class="tz-note" id="call-tz"></div>
           <div class="list" id="inbox-list"></div>
         </aside>
         <aside class="chat-inbox hidden" id="chat-inbox" aria-label="Conversations">
@@ -711,6 +743,7 @@
             <h3><span id="chat-inbox-title"></span><span class="chat-inbox__count" id="chat-inbox-count">0</span></h3>
             <button type="button" class="chat-inbox__new" id="chat-new"></button>
           </div>
+          <div class="tz-note" id="chat-tz"></div>
           <div class="chat-inbox__list" id="chat-list"></div>
           <div class="chat-inbox__foot tickets" id="ticket-box">
             <h4 id="tickets-label"></h4>
@@ -756,6 +789,25 @@
         <section class="settings hidden" id="view-settings">
           <h2 id="settings-title"></h2>
           <p id="settings-body"></p>
+          <div class="export-card">
+            <h3 id="export-title"></h3>
+            <p id="export-body"></p>
+            <p class="export-warn" id="export-warn"></p>
+            <div class="export-row">
+              <label for="export-channel" id="export-channel-label"></label>
+              <select id="export-channel">
+                <option value="">—</option>
+                <option value="chat">Chat</option>
+                <option value="call">Call</option>
+              </select>
+              <label for="export-format" id="export-format-label"></label>
+              <select id="export-format">
+                <option value="jsonl">JSONL</option>
+                <option value="csv">CSV</option>
+              </select>
+              <button type="button" id="export-go"></button>
+            </div>
+          </div>
         </section>
       </div>
     </div>
@@ -803,6 +855,14 @@
         member: "तपाईं",
         play: "सुन्नुहोस्",
         stopPlay: "रोक्नुहोस्",
+        timesShownIn: "समय {zone} अनुसार",
+        exportTitle: "कुराकानीको डेटा निर्यात",
+        exportBody: "पुनःप्रशिक्षणका लागि सबै च्याट र कल यहाँबाट झिक्न सकिन्छ।",
+        exportWarn: "यो फाइलमा सदस्यले लेखेका कुरा जस्ताको तस्तै हुन्छन्। सुरक्षित राख्नुहोस्।",
+        exportChannel: "कुन च्यानल",
+        exportAll: "सबै",
+        exportFormat: "ढाँचा",
+        exportDownload: "डाउनलोड गर्नुहोस्",
         newThread: "नयाँ",
         tickets: "टिकट",
         emptyInbox: "अहिले संवाद छैन",
@@ -874,6 +934,14 @@
         member: "You",
         play: "Listen",
         stopPlay: "Stop",
+        timesShownIn: "Times shown in {zone}",
+        exportTitle: "Export conversation data",
+        exportBody: "Download every chat and call for retraining.",
+        exportWarn: "This file contains what members typed, word for word. Handle it accordingly.",
+        exportChannel: "Channel",
+        exportAll: "All",
+        exportFormat: "Format",
+        exportDownload: "Download",
         newThread: "New",
         tickets: "Tickets",
         emptyInbox: "No conversations yet",
@@ -1071,10 +1139,20 @@
       box.placeholder = c.placeholder;
       send.textContent = c.send;
       mic.title = c.mic;
+      document.getElementById("export-title").textContent = c.exportTitle;
+      document.getElementById("export-body").textContent = c.exportBody;
+      document.getElementById("export-warn").textContent = c.exportWarn;
+      document.getElementById("export-channel-label").textContent = c.exportChannel;
+      document.getElementById("export-format-label").textContent = c.exportFormat;
+      document.getElementById("export-go").textContent = c.exportDownload;
+      document.querySelector('#export-channel option[value=""]').textContent = c.exportAll;
+      document.querySelector('#export-channel option[value="chat"]').textContent = c.chat;
+      document.querySelector('#export-channel option[value="call"]').textContent = c.call;
       paintTheme();
       paintChips();
       paintStats();
       paintTurnLabels();
+      paintTimezoneNotes();
       paintUnicoderHint();
       if (view === "chat" && !started) showWelcome();
       paintRoomHead();
@@ -1136,8 +1214,35 @@
       if (mins < 60) return c.timeMinutes.replace("{n}", localNum(mins));
       if (d.toDateString() === now.toDateString()) return c.timeToday;
       if (d.toDateString() === new Date(now.getTime() - 86400000).toDateString()) return c.timeYesterday;
+      /* Older rows keep the time of day. A bare date told an officer
+         reviewing week-old correspondence nothing about when in that day it
+         happened. getHours/getMinutes are local-clock methods, same as the
+         comparisons above, so this stays consistent with the rest. */
       const pad = (n) => String(n).padStart(2, "0");
-      return localNum(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+      const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      return localNum(`${date} ${pad(d.getHours())}:${pad(d.getMinutes())}`);
+    }
+
+    /* Every timestamp is rendered in the viewer's own clock — correct
+       everywhere, but silently so. NPT and IST differ by 15 minutes, which
+       is exactly the kind of gap nobody notices until it matters, so the
+       pane says which clock it is using. */
+    function viewerTimeZone() {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      } catch (e) {
+        return "";
+      }
+    }
+
+    function paintTimezoneNotes() {
+      const zone = viewerTimeZone();
+      ["chat-tz", "call-tz"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = zone ? t().timesShownIn.replace("{zone}", zone) : "";
+        el.title = zone;
+      });
     }
 
     function paintRoomHead() {
@@ -2084,6 +2189,16 @@
     document.getElementById("inbox-list").addEventListener("scroll", (event) => {
       const el = event.currentTarget;
       if (el.scrollHeight - el.scrollTop - el.clientHeight < 160) loadOlderCalls();
+    });
+    /* A plain navigation to the export URL: the response already carries
+       Content-Disposition, so the browser saves it rather than rendering it,
+       and the download works without holding the whole file in memory. */
+    document.getElementById("export-go").addEventListener("click", () => {
+      const channel = document.getElementById("export-channel").value;
+      const format = document.getElementById("export-format").value;
+      const params = new URLSearchParams({ format });
+      if (channel) params.set("channel", channel);
+      window.location.href = "/v1/support/export?" + params.toString();
     });
     document.getElementById("pickup").addEventListener("click", pickup);
     document.getElementById("hangup").addEventListener("click", hangup);

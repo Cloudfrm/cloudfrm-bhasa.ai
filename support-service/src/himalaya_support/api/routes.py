@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import base64
+import csv
 import hashlib
+import io
+import json
+import re
 import threading
 import time
 from collections import OrderedDict
+from datetime import datetime, timezone
 from functools import lru_cache
 
 from fastapi import APIRouter, Header, HTTPException, Response
+from fastapi.responses import StreamingResponse
 
 from himalaya_support.adapt.to_nepali import unicoder
 from himalaya_support.api.schemas import (
@@ -206,6 +212,82 @@ def list_conversations(
     response.headers["X-Total-Count"] = str(store.count_conversations(channel=channel))
     response.headers["Access-Control-Expose-Headers"] = "X-Total-Count"
     return rows
+
+
+EXPORT_FIELDS = ("conversation_id", "channel", "locale", "role", "content", "created_at")
+
+
+@router.get("/support/export")
+def export_conversations(
+    format: str = "jsonl",
+    channel: str | None = None,
+    since: str | None = None,
+) -> StreamingResponse:
+    """Stream stored conversations for retraining.
+
+    JSONL because that is what fine-tuning pipelines ingest directly, one
+    message per line; CSV so the same rows can be eyeballed in a spreadsheet
+    before they go near a training run.
+
+    The rows are member-facing content — whatever someone typed while asking
+    for help, which can include account or phone numbers. This endpoint sits
+    behind the same API-key middleware as the rest of /v1, and a deployment
+    handling real members should decide explicitly who may call it.
+    """
+    kind = (format or "jsonl").strip().lower()
+    if kind not in {"jsonl", "csv"}:
+        raise HTTPException(status_code=400, detail="format must be jsonl or csv")
+    channel = (channel or "").strip().lower() or None
+    if channel and channel not in {"chat", "call"}:
+        raise HTTPException(status_code=400, detail="channel must be chat or call")
+    since = (since or "").strip() or None
+    if since:
+        # Timestamps here are stored as "...+00:00", and an unencoded "+" in a
+        # query string arrives as a space — which is exactly what copying a
+        # created_at out of the API and pasting it into this URL produces.
+        # Accept that rather than answering a plausible request with a 400.
+        since = re.sub(r"\s(\d{2}:\d{2})$", r"+\1", since)
+        try:
+            datetime.fromisoformat(since.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(
+                status_code=400, detail="since must be an ISO 8601 timestamp"
+            ) from None
+
+    store = get_engine().store
+    totals = store.count_export(channel=channel, since=since)
+
+    def rows_jsonl():
+        for row in store.iter_export_rows(channel=channel, since=since):
+            # ensure_ascii=False keeps Devanagari readable; json.dumps still
+            # escapes newlines inside content, so one record stays one line.
+            yield json.dumps({k: row.get(k) for k in EXPORT_FIELDS}, ensure_ascii=False) + "\n"
+
+    def rows_csv():
+        buffer = io.StringIO()
+        writer = csv.writer(buffer, lineterminator="\n")
+        writer.writerow(EXPORT_FIELDS)
+        yield buffer.getvalue()
+        for row in store.iter_export_rows(channel=channel, since=since):
+            buffer.seek(0)
+            buffer.truncate(0)
+            writer.writerow([row.get(k) for k in EXPORT_FIELDS])
+            yield buffer.getvalue()
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    name = f"bhasa-conversations-{channel or 'all'}-{stamp}.{kind}"
+    media = "application/x-ndjson" if kind == "jsonl" else "text/csv"
+    return StreamingResponse(
+        rows_jsonl() if kind == "jsonl" else rows_csv(),
+        media_type=media + "; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{name}"',
+            "X-Message-Count": str(totals["messages"]),
+            "X-Conversation-Count": str(totals["conversations"]),
+            "Access-Control-Expose-Headers": "X-Message-Count, X-Conversation-Count",
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router.get("/support/conversations/{conversation_id}")

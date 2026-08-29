@@ -229,6 +229,61 @@ class SupportStore:
             rows = conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
 
+    # ------------------------------------------------------------------
+    # Export. Every chat and call is already stored turn by turn; until now
+    # there was simply no way to get it back out in bulk for retraining.
+    # ------------------------------------------------------------------
+    def _export_filters(self, channel: str | None, since: str | None) -> tuple[str, list[Any]]:
+        clauses: list[str] = []
+        params: list[Any] = []
+        if channel:
+            clauses.append("COALESCE(c.channel, 'chat') = ?")
+            params.append(channel)
+        if since:
+            # Timestamps are stored as UTC ISO 8601, which sorts lexically,
+            # so a string comparison is a correct time comparison here.
+            clauses.append("m.created_at >= ?")
+            params.append(since)
+        return (" WHERE " + " AND ".join(clauses) if clauses else ""), params
+
+    def iter_export_rows(self, channel: str | None = None, since: str | None = None):
+        """Yield one row per message, oldest first, streaming.
+
+        A generator rather than a list: a training export can be far larger
+        than a page of the inbox, and the whole point is not to hold it all
+        in memory at once.
+        """
+        where, params = self._export_filters(channel, since)
+        sql = f"""
+            SELECT c.id AS conversation_id,
+                   COALESCE(c.channel, 'chat') AS channel,
+                   c.locale AS locale,
+                   m.role AS role,
+                   m.content AS content,
+                   m.created_at AS created_at
+            FROM messages m
+            JOIN conversations c ON c.id = m.conversation_id
+            {where}
+            ORDER BY c.created_at ASC, m.created_at ASC, m.id ASC
+        """
+        conn = self._connect()
+        try:
+            for row in conn.execute(sql, params):
+                yield dict(row)
+        finally:
+            conn.close()
+
+    def count_export(self, channel: str | None = None, since: str | None = None) -> dict[str, int]:
+        where, params = self._export_filters(channel, since)
+        sql = f"""
+            SELECT COUNT(*) AS messages, COUNT(DISTINCT c.id) AS conversations
+            FROM messages m JOIN conversations c ON c.id = m.conversation_id
+            {where}
+        """
+        with self._connect() as conn:
+            row = conn.execute(sql, params).fetchone()
+        return {"messages": int(row["messages"]), "conversations": int(row["conversations"])}
+
     def count_tickets(self, user_id: str | None = None, status: str | None = None) -> int:
         where, params = self._ticket_filters(user_id, status)
         with self._connect() as conn:
