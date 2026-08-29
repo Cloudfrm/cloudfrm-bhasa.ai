@@ -528,9 +528,9 @@
       padding: 10px 12px;
       cursor: pointer;
       color: var(--bhasa-text);
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      column-gap: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
       flex-shrink: 0;
       transition: background .15s, border-color .15s;
     }
@@ -540,18 +540,35 @@
       border-color: var(--bhasa-gold-edge);
     }
     .convo__time {
-      grid-column: 2;
-      grid-row: 1;
-      align-self: start;
+      flex-shrink: 0;
       font-size: 12px;
       color: var(--bhasa-text-muted);
       font-weight: 600;
       white-space: nowrap;
-      padding-top: 2px;
+    }
+    /* SF-1 row shape: who and when on one line, the preview under it,
+       the count under that. Retokenized to the R1 palette. */
+    .convo__top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .convo__name {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--bhasa-text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .convo__meta {
+      font-size: 11.5px;
+      color: var(--bhasa-text-muted);
+      display: flex;
+      gap: 6px;
     }
     .convo__preview {
-      grid-column: 1;
-      grid-row: 1 / span 2;
       font-size: 13.5px;
       line-height: 1.6;
       color: var(--bhasa-text);
@@ -566,11 +583,13 @@
        only after 200ms so a fast response does not flash one. */
     .skel-row {
       padding: 10px 12px;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      column-gap: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
       flex-shrink: 0;
     }
+    .skel-row .skel-bar:nth-child(1) { width: 45%; }
+    .skel-row .skel-bar:nth-child(3) { width: 30%; height: 9px; }
     .skel-bar {
       height: 11px;
       border-radius: 999px;
@@ -1169,6 +1188,8 @@
         inboxEmptyHelp: "सदस्यलाई सहयोग गर्न नयाँ कुराकानी सुरु गर्नुहोस्।",
         inboxNewRowLabel: "नयाँ कुराकानी",
         threadLabel: "कुराकानी",
+        memberRow: "सदस्य",
+        roomMsgs: "सन्देश",
         timeNow: "अहिले",
         timeMinutes: "{n} मिनेट",
         timeToday: "आज",
@@ -1248,6 +1269,8 @@
         inboxEmptyHelp: "Start a new chat to help a member.",
         inboxNewRowLabel: "New chat",
         threadLabel: "Conversation",
+        memberRow: "Member",
+        roomMsgs: "messages",
         timeNow: "Just now",
         timeMinutes: "{n} min",
         timeToday: "Today",
@@ -2236,14 +2259,27 @@
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "convo" + (row.id === chatId ? " on" : "");
+        const top = document.createElement("div");
+        top.className = "convo__top";
+        const name = document.createElement("span");
+        name.className = "convo__name";
+        name.textContent = c.memberRow + " · " + String(row.id || "").slice(0, 8).toUpperCase();
+        const time = document.createElement("span");
+        time.className = "convo__time";
+        time.textContent = humanTime(row.updatedAt);
+        top.append(name, time);
         const preview = document.createElement("span");
         preview.className = "convo__preview";
         preview.textContent = row.preview || c.inboxNewRowLabel;
         preview.lang = hasDevanagari(preview.textContent) ? "ne" : "en";
-        const time = document.createElement("span");
-        time.className = "convo__time";
-        time.textContent = humanTime(row.updatedAt);
-        btn.append(time, preview);
+        const meta = document.createElement("div");
+        meta.className = "convo__meta";
+        const count = document.createElement("span");
+        count.className = "convo__count";
+        const n = row.messageCount || 0;
+        count.textContent = (replyLang === "ne" ? neNum(n) : String(n)) + " " + c.roomMsgs;
+        meta.appendChild(count);
+        btn.append(top, preview, meta);
         btn.addEventListener("click", () => openThread(row.id, "chat"));
         list.appendChild(btn);
       });
