@@ -2090,7 +2090,7 @@
       icon.setAttribute("aria-hidden", "true");
       icon.textContent = "!";
       const text = document.createElement("span");
-      text.textContent = t().sendFailed;
+      text.textContent = t().sendFailed + (info.code ? ` [debug: ${info.code}]` : "");
       const again = document.createElement("button");
       again.type = "button";
       again.className = "fail-note__retry";
