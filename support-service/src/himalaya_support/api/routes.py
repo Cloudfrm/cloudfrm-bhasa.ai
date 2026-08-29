@@ -233,8 +233,27 @@ def create_ticket(payload: TicketCreateRequest) -> dict:
 
 
 @router.get("/support/tickets")
-def list_tickets(user_id: str | None = None) -> list[dict]:
-    return get_engine().store.list_tickets(user_id=user_id)
+def list_tickets(
+    response: Response,
+    user_id: str | None = None,
+    status: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[dict]:
+    """A page of tickets, newest first, optionally filtered by status.
+
+    Same contract as conversations: bare array, count in X-Total-Count, so a
+    caller that needs "how many open tickets" gets the real number instead of
+    the length of a truncated page.
+    """
+    store = get_engine().store
+    page = max(1, min(int(limit), CONVERSATION_PAGE_MAX))
+    rows = store.list_tickets(
+        user_id=user_id, status=status, limit=page, offset=max(0, int(offset))
+    )
+    response.headers["X-Total-Count"] = str(store.count_tickets(user_id=user_id, status=status))
+    response.headers["Access-Control-Expose-Headers"] = "X-Total-Count"
+    return rows
 
 
 @router.get("/support/tickets/{ticket_id}")

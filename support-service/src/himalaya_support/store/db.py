@@ -197,19 +197,42 @@ class SupportStore:
             row = conn.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
         return dict(row) if row else None
 
-    def list_tickets(self, user_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+    def _ticket_filters(
+        self, user_id: str | None, status: str | None
+    ) -> tuple[str, list[Any]]:
+        clauses: list[str] = []
+        params: list[Any] = []
+        if user_id:
+            clauses.append("user_id = ?")
+            params.append(user_id)
+        if status == "open":
+            # "Open" is every ticket not yet resolved. Deciding this in SQL
+            # matters: filtering client-side happened after truncation, so an
+            # open-ticket count could be wrong even when few were open.
+            clauses.append("COALESCE(status, 'open') != 'resolved'")
+        elif status:
+            clauses.append("COALESCE(status, 'open') = ?")
+            params.append(status)
+        return (" WHERE " + " AND ".join(clauses) if clauses else ""), params
+
+    def list_tickets(
+        self,
+        user_id: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        where, params = self._ticket_filters(user_id, status)
+        sql = f"SELECT * FROM tickets{where} ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        params = params + [limit, max(0, offset)]
         with self._connect() as conn:
-            if user_id:
-                rows = conn.execute(
-                    "SELECT * FROM tickets WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
-                    (user_id, limit),
-                ).fetchall()
-            else:
-                rows = conn.execute(
-                    "SELECT * FROM tickets ORDER BY created_at DESC LIMIT ?",
-                    (limit,),
-                ).fetchall()
+            rows = conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
+
+    def count_tickets(self, user_id: str | None = None, status: str | None = None) -> int:
+        where, params = self._ticket_filters(user_id, status)
+        with self._connect() as conn:
+            return int(conn.execute(f"SELECT COUNT(*) FROM tickets{where}", params).fetchone()[0])
 
     def update_ticket(self, ticket_id: str, **fields: Any) -> dict[str, Any] | None:
         current = self.get_ticket(ticket_id)

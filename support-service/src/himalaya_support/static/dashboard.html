@@ -1066,6 +1066,7 @@
       mic.title = c.mic;
       paintTheme();
       paintChips();
+      paintStats();
       paintUnicoderHint();
       if (view === "chat" && !started) showWelcome();
       paintRoomHead();
@@ -1618,7 +1619,10 @@
     async function loadTickets() {
       let rows;
       try {
-        rows = await getListWithRetry("/v1/support/tickets");
+        /* Ask the server for open tickets rather than filtering a page that
+           was already truncated — the block only shows 8, but it must be the
+           8 newest open ones, not whichever open ones survived the cap. */
+        rows = await getListWithRetry("/v1/support/tickets?status=open&limit=8&offset=0");
       } catch (err) {
         const boxEl = document.getElementById("ticket-list");
         boxEl.innerHTML = "";
@@ -1637,7 +1641,7 @@
       }
       const boxEl = document.getElementById("ticket-list");
       boxEl.innerHTML = "";
-      const open = (Array.isArray(rows) ? rows : []).filter((row) => row.status !== "resolved");
+      const open = Array.isArray(rows) ? rows : [];
       if (!open.length) {
         boxEl.innerHTML = '<div class="empty">' + t().emptyTickets + "</div>";
         return open.length;
@@ -1651,17 +1655,35 @@
       return open.length;
     }
 
+    /* These tiles are counts, so they must come from the count the server
+       reports — never from the length of a page. Asking for one row and
+       reading X-Total-Count keeps them right no matter how large the desk
+       grows, and stops the tiles plateauing at the page size the way the
+       sidebar badge used to. */
+    async function statTotal(url) {
+      const page = await getPage(url + "&limit=1&offset=0");
+      return page.total === null ? page.rows.length : page.total;
+    }
+
+    /* Kept as numbers, formatted at paint time, so switching language
+       re-renders them in the right numerals without another round trip. */
+    let homeStats = { chat: 0, call: 0, ticket: 0 };
+
+    function paintStats() {
+      document.getElementById("stat-chat").textContent = localNum(homeStats.chat);
+      document.getElementById("stat-call").textContent = localNum(homeStats.call);
+      document.getElementById("stat-ticket").textContent = localNum(homeStats.ticket);
+    }
+
     async function loadHome() {
       try {
-        const [chats, calls, tickets] = await Promise.all([
-          getJSON("/v1/support/conversations?channel=chat"),
-          getJSON("/v1/support/conversations?channel=call"),
-          getJSON("/v1/support/tickets")
+        const [chats, calls, openTickets] = await Promise.all([
+          statTotal("/v1/support/conversations?channel=chat"),
+          statTotal("/v1/support/conversations?channel=call"),
+          statTotal("/v1/support/tickets?status=open")
         ]);
-        document.getElementById("stat-chat").textContent = Array.isArray(chats) ? chats.length : 0;
-        document.getElementById("stat-call").textContent = Array.isArray(calls) ? calls.length : 0;
-        const open = (Array.isArray(tickets) ? tickets : []).filter((row) => row.status !== "resolved");
-        document.getElementById("stat-ticket").textContent = open.length;
+        homeStats = { chat: chats, call: calls, ticket: openTickets };
+        paintStats();
       } catch {}
     }
 

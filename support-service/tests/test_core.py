@@ -385,3 +385,38 @@ def test_conversation_count_is_independent_of_page_size(tmp_path):
     assert store.count_conversations(channel="chat") == 12
     assert store.count_conversations(channel="call") == 1
     assert store.count_conversations() == 13
+
+
+def test_open_ticket_count_is_filtered_in_sql_not_after_truncation(tmp_path):
+    """The Dashboard tiles had the same bug as the sidebar badge.
+
+    They read .length on an unparameterized (so page-capped) response, which
+    plateaus at the page size. Worse for tickets: "open" was filtered on the
+    client, i.e. after truncation, so the count could be wrong even when few
+    tickets were open.
+    """
+    from himalaya_support.store.db import SupportStore
+
+    store = SupportStore(tmp_path / "support.db")
+    for i in range(60):
+        store.create_ticket({"subject": f"open {i}"})
+    resolved = [store.create_ticket({"subject": f"done {i}"}) for i in range(10)]
+    for ticket in resolved:
+        store.update_ticket(ticket["id"], status="resolved")
+
+    assert store.count_tickets() == 70
+    assert store.count_tickets(status="open") == 60
+    assert store.count_tickets(status="resolved") == 10
+
+    # A page is a page, but the count is the truth.
+    page = store.list_tickets(status="open", limit=8)
+    assert len(page) == 8
+    assert all(row["status"] != "resolved" for row in page)
+
+    # Filtering after truncation is what used to go wrong: take the first 50
+    # of everything and count the open ones, and you do not get 60.
+    naive = [r for r in store.list_tickets(limit=50) if r["status"] != "resolved"]
+    assert len(naive) != store.count_tickets(status="open")
+
+    assert len(store.list_tickets(status="open", limit=100)) == 60
+    assert len(store.list_tickets(status="open", limit=50, offset=50)) == 10
