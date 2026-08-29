@@ -843,6 +843,24 @@
       text-underline-offset: 3px;
     }
     .room .play:hover { color: var(--bhasa-text); }
+    /* Preparing: visibly working, and still clickable — pressing cancels. */
+    .play--pending { color: var(--bhasa-text-muted); text-decoration: none; }
+    .play--pending::before {
+      content: "";
+      display: inline-block;
+      width: 9px; height: 9px;
+      margin-right: 6px;
+      vertical-align: -1px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      animation: play-spin 0.7s linear infinite;
+    }
+    .play[aria-pressed="true"] { color: var(--bhasa-gold); }
+    @keyframes play-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .play--pending::before { animation: none; opacity: .6; }
+    }
     .room .loading { color: var(--bhasa-text-muted); }
     .room .dots span { background: var(--bhasa-gold); }
     .room .welcome {

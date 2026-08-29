@@ -57,6 +57,9 @@ const copy = {
         roomNewSub: "सदस्यको पहिलो सन्देश लेख्नुहोस्, वा तलबाट विषय छान्नुहोस्।",
         roomThread: "संवाद",
         roomTag: "एआई जवाफ दिन्छ",
+        stopPlay: "रोक्नुहोस्",
+        preparing: "तयार गर्दै…",
+        speechFailed: "आवाज बजाउन सकिएन।",
         listFailed: "सूची ल्याउन सकिएन।",
         timesShownIn: "समय {zone} अनुसार",
         retry: "फेरि प्रयास",
@@ -146,6 +149,9 @@ const copy = {
         roomNewSub: "Type the member's first message, or pick a topic below.",
         roomThread: "Conversation",
         roomTag: "AI replies",
+        stopPlay: "Stop",
+        preparing: "Preparing…",
+        speechFailed: "Could not play the audio.",
         listFailed: "Could not load the list.",
         timesShownIn: "Times shown in {zone}",
         retry: "Try again",
@@ -736,6 +742,25 @@ const copy = {
       return bubble;
     }
 
+    /* Stored replies used to reach the log through addTurn, which never
+       built this control — so a reopened conversation offered Listen on
+       nothing, while the same reply had carried one when it first arrived. */
+    function attachListen(bubble, text) {
+      if (!bubble || !bubble.parentNode) return null;
+      if (bubble.parentNode.querySelector(".play")) return null;
+      const play = document.createElement("button");
+      play.type = "button";
+      play.className = "play";
+      const spoken = plainText(text);
+      setPlayState(play, "idle");
+      play.addEventListener("click", () => {
+        track("chat_listen_used", {});
+        togglePlayback(play, spoken);
+      });
+      bubble.parentNode.appendChild(play);
+      return play;
+    }
+
     function addAgent(text, isErr, meta) {
       const bubble = addTurn(log, "agent", text, isErr);
       if (meta && meta.tickets && meta.tickets.length) {
@@ -748,16 +773,8 @@ const copy = {
         bubble.parentNode.appendChild(note);
       }
       if (!isErr) {
-        const play = document.createElement("button");
-        play.type = "button";
-        play.className = "play";
-        play.textContent = t().play;
         const spoken = plainText(text);
-        play.addEventListener("click", () => {
-          track("chat_listen_used", {});
-          speakReply(spoken, false);
-        });
-        bubble.parentNode.appendChild(play);
+        attachListen(bubble, text);
         speakReply(spoken, false);
       }
       stickToBottom();
@@ -775,7 +792,10 @@ const copy = {
           who.textContent = turn.classList.contains("member") ? c.member : c.agent;
         }
         const play = turn.querySelector(".play");
-        if (play) play.textContent = c.play;
+        /* Straight to textContent here would overwrite "Stop" or
+           "Preparing…" with "Listen" on a language switch, leaving the
+           label disagreeing with what the control actually does. */
+        if (play) setPlayState(play, play.dataset.state || "idle");
         const note = turn.querySelector(".ticket-note");
         if (note) note.textContent = c.ticketPrefix + (note.dataset.tickets || "");
         const fail = turn.querySelector(".fail-note");
@@ -875,6 +895,112 @@ const copy = {
     function clearLoading(id) {
       const pending = document.getElementById(id);
       if (pending) pending.remove();
+    }
+
+    /* ---- Listen: idle -> pending -> playing, and a stop that works ----
+       The control could only ever start speech. Once playing there was no
+       way to stop it short of muting the machine, and a slow provider left
+       the button looking idle while a request was in flight. */
+    const SPEECH_TIMEOUT_MS = 20000;
+    const speechCache = new WeakMap();
+    let currentAudio = null;
+    let currentPlayBtn = null;
+    let pendingPlayBtn = null;
+    let speechAbort = null;
+
+    function setPlayLabel(btn, playing) {
+      if (!btn) return;
+      btn.textContent = playing ? t().stopPlay : t().play;
+      btn.setAttribute("aria-pressed", playing ? "true" : "false");
+      btn.dataset.playing = playing ? "true" : "false";
+    }
+
+    /* Every label write goes through here. It used to happen in two places
+       — creation wrote the text directly — so a fresh control carried no
+       aria-pressed at all and read as a plain button until first press. */
+    function setPlayState(btn, state) {
+      if (!btn) return;
+      btn.dataset.state = state;
+      btn.classList.toggle("play--pending", state === "pending");
+      if (state === "pending") {
+        btn.textContent = t().preparing;
+        btn.setAttribute("aria-busy", "true");
+        btn.setAttribute("aria-pressed", "false");
+        return;
+      }
+      btn.removeAttribute("aria-busy");
+      setPlayLabel(btn, state === "playing");
+    }
+
+    function stopPlayback() {
+      const audio = currentAudio;
+      currentAudio = null;
+      const btn = currentPlayBtn;
+      currentPlayBtn = null;
+      if (btn) setPlayState(btn, "idle");
+      if (audio) { try { audio.pause(); } catch (e) {} }
+      if (lastAudio === audio) lastAudio = null;
+    }
+
+    function playSrc(src, btn) {
+      stopPlayback();
+      const audio = new Audio(src);
+      currentAudio = audio;
+      currentPlayBtn = btn || null;
+      lastAudio = audio;
+      const finished = () => {
+        if (currentAudio === audio) { currentAudio = null; currentPlayBtn = null; }
+        setPlayState(btn, "idle");
+      };
+      audio.addEventListener("ended", finished);
+      audio.addEventListener("pause", finished);
+      audio.addEventListener("error", finished);
+      setPlayState(btn, "playing");
+      audio.play().catch(() => { finished(); });
+    }
+
+    async function fetchSpeech(text, signal) {
+      /* A timeout of its own: a hung provider left the control dead, with
+         nothing to press and nothing to read. */
+      const timer = setTimeout(() => { if (speechAbort) speechAbort.abort("timeout"); },
+        SPEECH_TIMEOUT_MS);
+      try {
+        const res = await fetch("/v1/support/speak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, locale: replyLang }),
+          signal
+        });
+        const data = await res.json();
+        if (!res.ok || !data.audio_base64) return null;
+        return "data:" + (data.mime || "audio/mpeg") + ";base64," + data.audio_base64;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    async function togglePlayback(btn, text) {
+      if (currentPlayBtn === btn && currentAudio) { stopPlayback(); return; }
+      /* A second press while preparing cancels, rather than being ignored. */
+      if (btn.dataset.state === "pending") {
+        if (speechAbort) speechAbort.abort("cancelled");
+        return;
+      }
+      stopPlayback();
+      let src = speechCache.get(btn);
+      if (!src) {
+        setPlayState(btn, "pending");   // synchronous: paints on this click
+        speechAbort = new AbortController();
+        pendingPlayBtn = btn;
+        const signal = speechAbort.signal;
+        try { src = await fetchSpeech(text, signal); } catch (err) { src = null; }
+        const wasCancelled = signal.aborted;
+        if (pendingPlayBtn === btn) { pendingPlayBtn = null; speechAbort = null; }
+        if (wasCancelled) { setPlayState(btn, "idle"); return; }
+        if (!src) { setPlayState(btn, "idle"); speakError(t().speechFailed); return; }
+        speechCache.set(btn, src);
+      }
+      playSrc(src, btn);
     }
 
     async function speakReply(text, wait) {
@@ -1254,7 +1380,11 @@ const copy = {
         settle();
         chatId = id;
         log.innerHTML = "";
-        messages.forEach((msg) => addTurn(log, msg.role === "user" ? "member" : "agent", msg.content));
+        messages.forEach((msg) => {
+          const isMember = msg.role === "user";
+          const bubble = addTurn(log, isMember ? "member" : "agent", msg.content);
+          if (!isMember) attachListen(bubble, msg.content);
+        });
         logStick = true;
         stickToBottom(true);
       paintRoomHead();
