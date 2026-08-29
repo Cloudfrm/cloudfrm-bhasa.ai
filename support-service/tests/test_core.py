@@ -1126,3 +1126,92 @@ def test_a_caller_that_sends_no_typed_text_is_unchanged(tmp_path):
 
     assert engine.chat("म मर्न चाहन्छु", locale="ne")["tickets"]
     assert engine.chat("Hello", locale="en")["pipeline"] == "smalltalk"
+
+
+def test_dedupe_key_separates_requests_that_are_not_the_same_message():
+    """Two requests carrying the same converted body are not the same message
+    if the member typed something different.
+
+    The content key hashed conversation, channel and `message` only. Once the
+    composer began sending `typed`, an ordinary message and a distress message
+    with the same converted body collapsed into one inside the twelve second
+    window — and whichever arrived first answered both. That is how a crisis
+    could be handed a cached non-crisis reply, and it is why an A/B of the two
+    flapped depending on batch order.
+    """
+    from himalaya_support.api.routes import _content_key
+    from himalaya_support.api.schemas import ChatRequest
+
+    body = "म चाहन्छु दिए"
+    plain = ChatRequest(message=body, locale="ne", channel="chat")
+    distress = ChatRequest(message=body, typed="I want to die", locale="ne", channel="chat")
+    english = ChatRequest(message=body, locale="en", channel="chat")
+
+    assert _content_key(plain) != _content_key(distress)
+    assert _content_key(plain) != _content_key(english)
+    # and an identical repeat still dedupes, which is the case it exists for
+    assert _content_key(distress) == _content_key(
+        ChatRequest(message=body, typed="I want to die", locale="ne", channel="chat")
+    )
+
+
+def test_both_client_send_paths_carry_the_typed_text():
+    """Chat and Call each build their own POST body. Chat carried `typed` and
+    Call did not, so crisis detection on the call surface still read the
+    transliteration — a missing client field, not a missing server capability.
+    """
+    from pathlib import Path
+
+    import himalaya_support
+
+    html = (Path(himalaya_support.__file__).parent / "static" / "dashboard.html").read_text(
+        encoding="utf-8"
+    )
+    posts = [block for block in html.split('fetch("/v1/support/chat"')[1:]]
+    assert len(posts) == 2, "expected exactly two chat POST sites (chat and call)"
+    for block in posts:
+        body = block[: block.index("})")]
+        assert "typed:" in body, "a send path is not carrying the typed text"
+
+
+def test_call_channel_honours_the_typed_text(tmp_path):
+    from himalaya_support.config import get_settings
+    from himalaya_support.store.db import SupportStore
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+    engine.store = SupportStore(tmp_path / "scratch.db")
+    out = engine.chat(
+        "म हवे होइन रेअसोन लिवे, मेरो ऋण हो तू मुच",
+        typed="I have no reason to live, my loan is too much",
+        locale="ne",
+        channel="call",
+    )
+    assert out["pipeline"] == "crisis"
+    assert out["tickets"]
+
+
+def test_a_crisis_conversation_records_what_the_member_wrote(tmp_path):
+    """The wellbeing ticket carries none of the member's words and tells the
+    officer to open the conversation. That only works if the conversation
+    holds what they said — and in Nepali mode it held the composer's
+    transliteration of their English, which is neither language."""
+    from himalaya_support.config import get_settings
+    from himalaya_support.store.db import SupportStore
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+    engine.store = SupportStore(tmp_path / "scratch.db")
+
+    typed = "I have no reason to live, my loan is too much"
+    out = engine.chat("म हवे होइन रेअसोन लिवे, मेरो ऋण हो तू मुच", typed=typed, locale="ne")
+    member = [m for m in engine.store.list_messages(out["conversation_id"])
+              if m["role"] == "user"][0]["content"]
+    assert member == typed
+
+    # romanized Nepali still gets the Devanagari: producing it is what that
+    # member asked the desk for
+    out2 = engine.chat("म मर्न चाहन्छु", typed="ma marna chahanchu", locale="ne")
+    member2 = [m for m in engine.store.list_messages(out2["conversation_id"])
+               if m["role"] == "user"][0]["content"]
+    assert member2 == "म मर्न चाहन्छु"

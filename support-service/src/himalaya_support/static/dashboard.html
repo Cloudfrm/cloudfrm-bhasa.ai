@@ -2251,6 +2251,12 @@
 
     async function sendCallTurn(message) {
       let shown = message;
+      /* `message` here is the speech transcript or the typed turn, before
+         conversion — the same thing the chat composer calls `typed`. Call had
+         its own send and did not carry it, so crisis detection on this
+         surface still read the transliteration. Distress is at least as
+         likely on a call as in chat. */
+      const typed = message;
       if (hasLatin(message)) shown = await toUnicoder(message);
       addTurn(callLog, "member", shown);
       showLoading(callLog);
@@ -2258,7 +2264,7 @@
         const res = await fetch("/v1/support/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: shown, conversation_id: callId, locale: replyLang, channel: "call" })
+          body: JSON.stringify({ message: shown, conversation_id: callId, typed: typed || shown, locale: replyLang, channel: "call" })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);

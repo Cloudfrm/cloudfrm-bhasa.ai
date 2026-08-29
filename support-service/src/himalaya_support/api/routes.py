@@ -63,9 +63,31 @@ _content_keys: OrderedDict[str, tuple[float, str]] = OrderedDict()
 
 
 def _content_key(payload: ChatRequest) -> str:
+    """Everything that can change the answer goes in the key.
+
+    It used to hash only the conversation, the channel and `message`. Once the
+    composer began sending `typed` as well, two requests carrying the same
+    converted text but different typed text collapsed into one — and they are
+    not the same message. The dangerous direction is the safety one: an
+    ordinary message with the same converted body, arriving first, would hand
+    its cached non-crisis answer to a distress message sent inside the twelve
+    second window. It also made A/B comparisons of the two flap, which is how
+    this was found.
+
+    `locale` is in for the same reason: the same words asked in Nepali and in
+    English are two questions, and the cache would have answered the second in
+    the first one's language.
+    """
     body = " ".join((payload.message or "").split())
+    keyed = " ".join((payload.typed or "").split())
     return hashlib.sha1(
-        f"{payload.conversation_id or 'new'}|{payload.channel or 'chat'}|{body}".encode("utf-8")
+        "|".join([
+            payload.conversation_id or "new",
+            payload.channel or "chat",
+            payload.locale or "ne",
+            body,
+            keyed,
+        ]).encode("utf-8")
     ).hexdigest()
 
 

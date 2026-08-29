@@ -114,7 +114,7 @@ class SupportEngine:
         )
 
         if in_crisis:
-            return self._crisis_turn(conversation_id, message, language, user_id)
+            return self._crisis_turn(conversation_id, message, language, user_id, keyed)
 
         # On what was keyed, not the transliterated form: an English "yes"
         # becomes Devanagari on the way through and stops being a decision.
@@ -381,6 +381,7 @@ class SupportEngine:
         message: str,
         language: str,
         user_id: str | None,
+        keyed: str | None = None,
     ) -> dict[str, Any]:
         """Answer a distress message, and nothing else.
 
@@ -392,8 +393,20 @@ class SupportEngine:
         config = load_crisis_config(self.settings.knowledge_path)
         reply_text = crisis_reply(language, config)
 
+        # The ticket deliberately carries none of the member's words and tells
+        # the officer to open the conversation instead. That only works if the
+        # conversation holds what they said. In Nepali mode the composer had
+        # already turned "I have no reason to live" into
+        # "म हवे होइन रेअसोन लिवे" — not Nepali, not English, and not what was
+        # written — so an urgent wellbeing ticket pointed at gibberish.
+        #
+        # Scoped to the crisis path on purpose. Whether English typing should
+        # survive the composer everywhere is a product decision that has been
+        # put to the desk owner and not answered; here the ticket design
+        # already depends on the answer, so the record has to be readable.
+        recorded = keyed if keyed and self._typed_is_english(keyed) else message
         self.store.add_message(
-            conversation_id, "user", message, {"language": language, "crisis": True}
+            conversation_id, "user", recorded, {"language": language, "crisis": True}
         )
         self.store.add_message(
             conversation_id, "assistant", reply_text, {"crisis": True, "generated": False}
@@ -437,6 +450,16 @@ class SupportEngine:
             "dataset_grounded_only": True,
             "crisis": True,
         }
+
+    @staticmethod
+    def _typed_is_english(text: str) -> bool:
+        """True when converting this to Devanagari would mangle it.
+
+        Romanized Nepali is what the composer exists to convert, and a member
+        who typed it wants the Devanagari back. Genuine English is the case
+        the conversion was never for.
+        """
+        return prepare_user_text(text).get("script") == "english"
 
     def _reply_language(self, locale: str, message: str) -> str:
         choice = (locale or "auto").strip().lower()
