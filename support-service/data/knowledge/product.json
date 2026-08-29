@@ -85,20 +85,6 @@
       "tags": ["policy", "privacy", "security"],
       "title": "यो सेवामा सुरक्षा",
       "body": "भाषा सेवामा पूरा पिन, पासवर्ड, ओटीपी वा सीभीभी कहिल्यै मागिँदैन। यहाँ नलेख्नुहोस्। ठगी वा कानुनी विषयमा मानव अधिकृतलाई टिकट खोलिन्छ। खाता बन्द शाखा प्रक्रियाअनुसार ३० दिनसम्म लाग्न सक्छ।"
-    },
-    {
-      "id": "greeting",
-      "language": "en",
-      "tags": ["greeting", "smalltalk"],
-      "title": "Greetings",
-      "body": "If the member says namaste, sanchai, or hello, greet as Bhasa customer support for their cooperative or bank. Offer help with login, transfers, loans, KYC, or cards. Do not say you have no physical location."
-    },
-    {
-      "id": "greeting-ne",
-      "language": "ne",
-      "tags": ["greeting", "smalltalk"],
-      "title": "अभिवादन",
-      "body": "सदस्यले नमस्ते, सञ्चै, sanchai वा hello भने भाषा ग्राहक सेवाबाट सम्मानपूर्वक जवाफ दिनुहोस्। लगइन, रकम, ऋण, केवाईसी वा कार्डमा सहयोग प्रस्ताब गर्नुहोस्। आफूलाई स्थान नभएको एआई भन्नु पर्दैन।"
     }
   ]
 }

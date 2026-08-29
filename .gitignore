@@ -1,4 +1,5 @@
 .env
+.env.groq
 .venv/
 venv/
 officer-desk/node_modules/
