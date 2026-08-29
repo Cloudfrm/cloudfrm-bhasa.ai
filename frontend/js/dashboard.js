@@ -53,6 +53,9 @@ const copy = {
         inboxNewRowLabel: "नयाँ कुराकानी",
         threadLabel: "कुराकानी",
         memberRow: "सदस्य",
+        listFailed: "सूची ल्याउन सकिएन।",
+        retry: "फेरि प्रयास",
+        retrying: "फेरि प्रयास गर्दै…",
         roomMsgs: "सन्देश",
         timeNow: "अहिले",
         timeMinutes: "{n} मिनेट",
@@ -134,6 +137,9 @@ const copy = {
         inboxNewRowLabel: "New chat",
         threadLabel: "Conversation",
         memberRow: "Member",
+        listFailed: "Could not load the list.",
+        retry: "Try again",
+        retrying: "Trying again…",
         roomMsgs: "messages",
         timeNow: "Just now",
         timeMinutes: "{n} min",
@@ -1077,7 +1083,7 @@ const copy = {
           paintChatInbox(rows);
         } catch {
           settle();
-          paintChatInbox([]);
+          paintInboxError(() => loadInbox("chat"));
         }
         return;
       }
@@ -1102,9 +1108,51 @@ const copy = {
       });
     }
 
+    /* The catch used to paint the empty state, so a list that failed to
+       load was indistinguishable from a desk with no conversations. */
+    function paintInboxError(onRetry) {
+      const list = document.getElementById("chat-list");
+      const pane = document.getElementById("chat-inbox");
+      const count = document.getElementById("chat-inbox-count");
+      if (pane) pane.dataset.state = "error";
+      if (count) { count.textContent = "—"; count.setAttribute("aria-hidden", "true"); }
+      list.innerHTML = "";
+      const box = document.createElement("div");
+      box.className = "chat-inbox__empty load-error";
+      box.setAttribute("role", "status");
+      box.setAttribute("aria-live", "polite");
+      const line = document.createElement("div");
+      line.className = "load-error__line";
+      line.textContent = t().listFailed;
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "load-error__retry";
+      retry.textContent = t().retry;
+      /* A retry that changed nothing on screen while in flight read as a
+         click that never registered, and got pressed again and again. */
+      retry.addEventListener("click", async () => {
+        if (retry.disabled) return;
+        retry.disabled = true;
+        retry.setAttribute("aria-busy", "true");
+        retry.textContent = t().retrying;
+        try { await onRetry(); } finally {
+          if (retry.isConnected) {
+            retry.disabled = false;
+            retry.removeAttribute("aria-busy");
+            retry.textContent = t().retry;
+          }
+        }
+      });
+      box.append(line, retry);
+      list.appendChild(box);
+    }
+
     function paintChatInbox(rows) {
       const c = t();
       const list = document.getElementById("chat-list");
+      const pane = document.getElementById("chat-inbox");
+      if (pane) delete pane.dataset.state;
+      document.getElementById("chat-inbox-count").removeAttribute("aria-hidden");
       document.getElementById("chat-inbox-count").textContent =
         replyLang === "ne" ? neNum(rows.length) : String(rows.length);
       list.innerHTML = "";
