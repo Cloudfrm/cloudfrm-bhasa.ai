@@ -217,6 +217,15 @@ class SupportEngine:
             first = ChatResult(self._offline_reply(cleaned, language), "offline", "fallback", {})
         tool_results: list[dict[str, Any]] = []
         reply_text = strip_tool_markup(first.text)
+        # What to quote back when the reply has to say what it understood.
+        # A member typing English gets their English back; a member typing
+        # romanized Nepali gets the Devanagari, which is what they were
+        # asking the desk to produce. Retrieval keeps using `cleaned`.
+        echo_text = (
+            prepared.get("raw") or message
+            if prepared.get("script") == "english"
+            else (prepared.get("display") or cleaned)
+        )
         try:
             reply_text, safety = finish_reply(
                 reply_text,
@@ -224,6 +233,7 @@ class SupportEngine:
                 language,
                 intent=str(intent.get("intent") or "other"),
                 user_message=cleaned,
+                echo=echo_text,
             )
         except ReplyGenerationError as exc:
             # Retry once without the knowledge rows, so a malformed corpus row

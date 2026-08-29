@@ -60,7 +60,7 @@ _CORE: dict[str, set[str]] = {
     PRAISE: {
         "done", "great", "nice", "excellent", "perfect", "awesome",
         "brilliant", "thumbs", "wow", "helpful", "bravo", "superb",
-        "fantastic", "amazing",
+        "fantastic", "amazing", "stunning", "gorgeous", "beautiful", "lovely",
         "राम्रो", "उत्तम", "बढिया", "सुन्दर", "ramro", "badhiya", "साबास",
     },
     WELL_WISH: {
@@ -96,6 +96,14 @@ _ALLOWED: dict[str, set[str]] = {
 _FILLER = {"a", "the", "is", "it", "u", "and", "please", "plz", "hai", "ho", "na", "ni", "है"}
 
 MEETING = "meeting"
+# "Got it" and "Sounds good" close a topic rather than agreeing to anything,
+# and answering them with the affirmation reply ("tell me what you need help
+# with") talks past someone who has just said they are satisfied.
+ACKNOWLEDGE = "acknowledge"
+# "My pleasure" and "No worries" are the member being gracious back. Neither
+# is thanks, and neither is a decline, though the decline reply happens to
+# fit — naming it honestly costs three lines.
+GRACIOUS = "gracious"
 
 # Some courtesies are phrases, not bags of words. "Have a nice day" and "Nice
 # to meet you" both fell through: adding their words to a category would have
@@ -148,6 +156,34 @@ _PHRASES: dict[str, str] = {
     "सन्चै हुनुहुन्छ": GREETING,
     "कस्तो छ": GREETING,
     "कस्तो हुनुहुन्छ": GREETING,
+    # Second sample from the desk's courtesy table. Phrases rather than
+    # words, deliberately: "got" and "worries" both turn up in real messages
+    # ("I got charged twice", "worried about my balance"), so only the whole
+    # phrase may match.
+    "bon voyage": WELL_WISH,
+    "fingers crossed": WELL_WISH,
+    "see you later": FAREWELL,
+    "see you soon": FAREWELL,
+    "catch you later": FAREWELL,
+    "talk to you later": FAREWELL,
+    "sounds good": ACKNOWLEDGE,
+    "sounds great": ACKNOWLEDGE,
+    "got it": ACKNOWLEDGE,
+    "understood": ACKNOWLEDGE,
+    "makes sense": ACKNOWLEDGE,
+    "that makes sense": ACKNOWLEDGE,
+    "noted": ACKNOWLEDGE,
+    "fair enough": ACKNOWLEDGE,
+    "बुझें": ACKNOWLEDGE,
+    "बुझेँ": ACKNOWLEDGE,
+    "ठिक छ बुझें": ACKNOWLEDGE,
+    "my pleasure": GRACIOUS,
+    "no worries": GRACIOUS,
+    "not at all": GRACIOUS,
+    "any time": GRACIOUS,
+    "anytime": GRACIOUS,
+    "you are welcome": GRACIOUS,
+    "youre welcome": GRACIOUS,
     "शुभ दिन": WELL_WISH,
     "शुभ दिनको कामना": WELL_WISH,
     "तपाईंको दिन राम्रो होस्": WELL_WISH,
@@ -167,8 +203,8 @@ def _phrase_key(text: str) -> str:
 
 
 _CONFIG_NAME = "courtesy_phrases.json"
-_ORDER = (DECLINE, AFFIRM, THANKS, WELL_WISH, MEETING, GREETING, APOLOGY,
-          ATTENTION, FAREWELL, PRAISE)
+_ORDER = (DECLINE, AFFIRM, THANKS, WELL_WISH, MEETING, ACKNOWLEDGE, GRACIOUS,
+          GREETING, APOLOGY, ATTENTION, FAREWELL, PRAISE)
 _CATEGORIES = frozenset(_ORDER)
 _loaded: dict[str, tuple[dict[str, str], dict[str, set[str]]]] = {}
 
@@ -267,6 +303,14 @@ _REPLIES: dict[str, dict[str, str]] = {
     MEETING: {
         "ne": "भेटेर मलाई पनि खुसी लाग्यो! म कसरी सहयोग गर्न सक्छु?",
         "en": "Good to meet you too. How can I help?",
+    },
+    ACKNOWLEDGE: {
+        "ne": "राम्रो! अरू केही चाहिएमा भन्नुहोस्।",
+        "en": "Good — tell me if you need anything else.",
+    },
+    GRACIOUS: {
+        "ne": "धन्यवाद! म यहीँ छु।",
+        "en": "Thank you — I'm here if you need anything.",
     },
     # Reached only when nothing was pending; a pending ticket offer is
     # answered before this layer runs.

@@ -1000,3 +1000,67 @@ def test_scratch_db_path_moves_every_write_off_the_desk(monkeypatch, tmp_path):
 
     monkeypatch.delenv("SUPPORT_DB_PATH")
     assert get_settings().is_scratch_store is False
+
+
+def test_second_sample_from_the_courtesy_table():
+    """Bon voyage, Sounds good, Got it, See you later, Fingers crossed,
+    Stunning, My pleasure, No worries — the next eight reported after the
+    first sample was fixed."""
+    from himalaya_support.adapt.smalltalk import classify
+
+    for text in ("Bon voyage", "Sounds good", "Got it", "See you later",
+                 "Fingers crossed", "Stunning", "My pleasure", "No worries"):
+        assert classify(text) is not None, text
+
+
+def test_acknowledgements_do_not_swallow_real_messages():
+    """"got" and "worries" turn up in real messages, so only the whole phrase
+    may match: "I got charged twice" is a dispute, not an acknowledgement."""
+    from himalaya_support.adapt.smalltalk import classify
+
+    for text in ("I got charged twice on my card",
+                 "I am worried about my balance",
+                 "got it wrong, my transfer failed",
+                 "no worries about the fee, but when does it post?",
+                 "sounds good, what is the interest rate?",
+                 "see you later, but first how do I block my card?"):
+        assert classify(text) is None, text
+
+
+def test_the_reply_quotes_what_the_member_typed(tmp_path):
+    """A question typed in English is transliterated to search a Nepali
+    corpus — which measurably helps retrieval — and the fallback then quoted
+    that search key back at the member:
+
+        "how do you calculate the interest rate?"
+        → I understood: "कसरी दो तपाईं चल्चुलते ब्याजदर?"
+
+    Round 15 fixed this for the stored message and missed the copy inside the
+    reply. Romanized Nepali still gets the Devanagari back, because producing
+    it is what the member asked the desk for.
+    """
+    from himalaya_support.config import get_settings
+    from himalaya_support.store.db import SupportStore
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+    engine.store = SupportStore(tmp_path / "scratch.db")
+
+    typed = "how do you calculate the interest rate?"
+    reply = engine.chat(typed, locale="en")["reply"]
+    if "I understood" in reply:
+        assert typed in reply, reply
+    assert "चल्चुलते" not in reply, "the transliterated search key reached the member"
+
+
+def test_compose_from_knowledge_separates_the_key_from_the_quote():
+    from himalaya_support.adapt.pipeline import compose_from_knowledge
+
+    out = compose_from_knowledge(
+        "कसरी दो तपाईं चल्चुलते ब्याजदर?", [], "en",
+        echo="how do you calculate the interest rate?",
+    )
+    assert "how do you calculate the interest rate?" in out
+    assert "चल्चुलते" not in out
+    # with no echo given, behaviour is unchanged
+    assert "abc" in compose_from_knowledge("abc", [], "en")

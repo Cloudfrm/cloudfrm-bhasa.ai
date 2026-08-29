@@ -194,8 +194,24 @@ def evidence_text(snippets: list[dict]) -> str:
     return " ".join(parts)
 
 
-def compose_from_knowledge(message: str, snippets: list[dict], language: str) -> str:
+def compose_from_knowledge(
+    message: str, snippets: list[dict], language: str, echo: str = ""
+) -> str:
+    """`message` is the retrieval key; `echo` is what the member typed.
+
+    They differ, and quoting the wrong one is visible to the member. A
+    question typed in English is transliterated into Devanagari to search the
+    corpus — which measurably improves retrieval, since the corpus is Nepali —
+    but the fallback then quoted that key back:
+
+        "how do you calculate the interest rate?"
+        → I understood: "कसरी दो तपाईं चल्चुलते ब्याजदर?"
+
+    Round 15 fixed this for the message we store against the member's name and
+    missed the copy of it inside the reply.
+    """
     asked = re.sub(r"\s+", " ", (message or "").strip())[:180]
+    shown = re.sub(r"\s+", " ", (echo or message or "").strip())[:180]
     facts = ""
     for item in snippets[:1]:
         raw = item.get("text") or ""
@@ -225,7 +241,7 @@ def compose_from_knowledge(message: str, snippets: list[dict], language: str) ->
                 "पिन, पासवर्ड वा ओटीपी यहाँ नलेख्नुहोस्।"
             )
         return (
-            f"तपाईंले लेख्नुभएको कुरा बुझें: “{asked}”। "
+            f"तपाईंले लेख्नुभएको कुरा बुझें: “{shown}”। "
             "लगइन, रकम, ऋण, केवाईसी, बचत, कार्ड वा शाखा समयमा कदम-कदममा भन्न सक्छु। "
             "थोरै थप लेख्नुहोस्, वा टिकट खोलौं हो?"
         )
@@ -236,7 +252,7 @@ def compose_from_knowledge(message: str, snippets: list[dict], language: str) ->
             "Do not type PIN, password, or OTP here."
         )
     return (
-        f"I understood: “{asked}”. I can walk through login, transfers, loans, KYC, savings, cards, or hours. "
+        f"I understood: “{shown}”. I can walk through login, transfers, loans, KYC, savings, cards, or hours. "
         "Add one more sentence, or say yes and I will open a ticket."
     )
 
@@ -279,15 +295,16 @@ def finish_reply(
     language: str,
     intent: str = "other",
     user_message: str = "",
+    echo: str = "",
 ) -> tuple[str, dict[str, Any]]:
     text = (reply or "").strip()
     if is_thin_reply(text, language, intent):
-        text = compose_from_knowledge(user_message, snippets, language)
+        text = compose_from_knowledge(user_message, snippets, language, echo)
     evidence = evidence_text(snippets)
     grounded, failures = check_numeric_grounding(text, evidence, [])
     if not grounded:
         if snippets:
-            retry = compose_from_knowledge(user_message, snippets, language)
+            retry = compose_from_knowledge(user_message, snippets, language, echo)
             grounded, failures = check_numeric_grounding(retry, evidence, [])
             if grounded:
                 text = retry
