@@ -223,6 +223,14 @@
     }
     .topbar h2 { margin: 0; font-size: 19px; font-weight: 700; color: var(--ink); }
     .status { display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 600; font-size: 13px; margin-top: 2px; }
+    /* Two instances that look identical in a browser, one of which is the
+       real desk, is how test traffic ends up in the real desk. */
+    .scratch-tag {
+      font-size: 10.5px; font-weight: 800; letter-spacing: .08em;
+      border: 1px solid #c9821f; background: #fff3df; color: #7a4a06;
+      border-radius: 999px; padding: 2px 8px;
+    }
+    html.dark .scratch-tag { border-color: #7a5a1c; background: #2a2110; color: #f0cf90; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 8px var(--primary-45); }
     .dot.busy { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
     .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -714,7 +722,7 @@
       <header class="topbar">
         <div>
           <h2 id="page-title"></h2>
-          <div class="status"><span class="dot" id="status-dot"></span><span id="live"></span></div>
+          <div class="status"><span class="dot" id="status-dot"></span><span id="live"></span><span class="scratch-tag" id="scratch-tag" hidden>SCRATCH</span></div>
         </div>
         <div class="controls">
           <button type="button" id="speak-toggle" class="pill active"></button>
@@ -892,6 +900,7 @@
         timeYesterday: "हिजो",
         listFailed: "सूची ल्याउन सकिएन।",
         retry: "फेरि प्रयास",
+        retrying: "फेरि प्रयास गर्दै…",
         chatInbox: "संवादहरू",
         chatNew: "+ नयाँ संवाद",
         topics: "छिटो विषय",
@@ -973,6 +982,7 @@
         timeYesterday: "Yesterday",
         listFailed: "Could not load the list.",
         retry: "Try again",
+        retrying: "Trying again…",
         chatInbox: "Conversations",
         chatNew: "+ New chat",
         topics: "Quick topics",
@@ -1433,7 +1443,13 @@
       const play = document.createElement("button");
       play.type = "button";
       play.className = "play";
-      play.textContent = t().play;
+      /* Was play.textContent = t().play — the label written here and nowhere
+         else, so a freshly created control had no aria-pressed and no
+         data-state at all, and a screen reader met a plain button instead of
+         a toggle that is off. It only acquired them on the first press or a
+         language switch. Going through setPlayState makes the idle state one
+         thing, set in one place. */
+      setPlayState(play, "idle");
       play.dataset.speech = text;
       play.addEventListener("click", () => togglePlayback(play, text));
       bubble.parentNode.appendChild(play);
@@ -1897,7 +1913,28 @@
       retry.className = "new";
       retry.style.marginTop = "8px";
       retry.textContent = t().retry;
-      retry.addEventListener("click", onRetry);
+      /* A retry used to change nothing on screen while it was in flight —
+         same label, still enabled, no busy state — so a slow one was
+         indistinguishable from a click that never registered, and an officer
+         pressed it again and again. */
+      retry.addEventListener("click", async () => {
+        if (retry.disabled) return;
+        retry.disabled = true;
+        retry.setAttribute("aria-busy", "true");
+        retry.textContent = t().retrying;
+        try {
+          await onRetry();
+        } finally {
+          /* A retry that succeeds repaints the list and takes this button
+             with it; one that fails draws a fresh error box. Only restore a
+             button that somehow survived both. */
+          if (retry.isConnected) {
+            retry.disabled = false;
+            retry.removeAttribute("aria-busy");
+            retry.textContent = t().retry;
+          }
+        }
+      });
       box.append(line, retry);
       container.appendChild(box);
     }
@@ -2372,6 +2409,19 @@
       html[data-gallery][data-part="call-log"] #inbox-pane { display: none; }
     `;
 
+    /* Ask the server which corpus it writes to, and say so. A scratch desk
+       and the real one are otherwise indistinguishable in a browser, and a
+       tab is easy to lose track of. */
+    async function paintStoreLabel() {
+      try {
+        const data = await getJSON("/v1/health");
+        const tag = document.getElementById("scratch-tag");
+        if (tag) tag.hidden = data.store !== "scratch";
+      } catch (err) {
+        /* A desk that cannot answer is not a scratch desk; leave it hidden. */
+      }
+    }
+
     function galleryStart() {
       document.documentElement.setAttribute("data-gallery", "");
       const style = document.createElement("style");
@@ -2423,7 +2473,7 @@
     }
 
     if (GALLERY) galleryStart();
-    else setView("home");
+    else { setView("home"); paintStoreLabel(); }
   </script>
 </body>
 </html>

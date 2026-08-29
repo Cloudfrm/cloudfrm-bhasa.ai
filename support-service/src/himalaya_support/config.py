@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     llama_port: int = Field(default=8081, alias="LLAMA_PORT")
     llama_ngl: int = Field(default=99, alias="LLAMA_NGL")
     api_key: str = Field(default="", alias="SUPPORT_API_KEY")
+    db_path_override: str = Field(default="", alias="SUPPORT_DB_PATH")
     cors_origins: str = Field(default="*", alias="SUPPORT_CORS_ORIGINS")
     # "development" keeps the permissive local defaults. "production" makes
     # an unset key or a wildcard CORS origin a refusal to boot rather than a
@@ -99,7 +100,31 @@ class Settings(BaseSettings):
 
     @property
     def db_path(self) -> Path:
+        """Where conversations, messages and tickets are written.
+
+        SUPPORT_DB_PATH exists so testing has somewhere to write that is not
+        the desk. Every verification round so far has gone over HTTP into the
+        live corpus, because a browser cannot reach a scratch database and
+        there was no other instance to point one at. Telling people to use a
+        scratch database while providing no way to do so from a browser made
+        the instruction impossible to follow.
+        """
+        if self.db_path_override.strip():
+            path = Path(self.db_path_override.strip())
+            if not path.is_absolute():
+                path = PROJECT_ROOT / path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            return path
         return self.store_dir / "support.db"
+
+    @property
+    def is_scratch_store(self) -> bool:
+        """True when this instance writes somewhere other than the desk.
+
+        Surfaced on /v1/health and shown in the dashboard, so nobody has to
+        infer from a port number which corpus they are typing into.
+        """
+        return bool(self.db_path_override.strip())
 
     @property
     def models_dir(self) -> Path:

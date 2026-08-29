@@ -110,7 +110,23 @@ def _claim(key: str, content: str | None = None) -> tuple[dict, bool]:
 
 @router.get("/health")
 def health() -> dict:
-    return {"ok": True}
+    """Names the corpus this instance writes to.
+
+    Two instances that look identical in a browser, one of which is the real
+    desk, is how test traffic ends up in the real desk. The store label is
+    reported here and shown in the dashboard so it never has to be inferred
+    from a port number.
+    """
+    settings = get_settings()
+    if settings.is_production:
+        # /v1/health is reachable without a key. In production it carries
+        # nothing but liveness — which corpus a deployment writes to is not
+        # an unauthenticated caller's business.
+        return {"ok": True}
+    return {
+        "ok": True,
+        "store": "scratch" if settings.is_scratch_store else "desk",
+    }
 
 
 @router.post("/support/unicoder")

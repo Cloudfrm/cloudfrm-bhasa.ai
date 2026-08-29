@@ -12,7 +12,9 @@ due?" is a loan question with a greeting attached, and must stay one.
 """
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 
 GREETING = "greeting"
 THANKS = "thanks"
@@ -57,8 +59,9 @@ _CORE: dict[str, set[str]] = {
     },
     PRAISE: {
         "done", "great", "nice", "excellent", "perfect", "awesome",
-        "brilliant", "thumbs", "wow", "helpful",
-        "राम्रो", "उत्तम", "बढिया", "सुन्दर", "ramro", "badhiya",
+        "brilliant", "thumbs", "wow", "helpful", "bravo", "superb",
+        "fantastic", "amazing",
+        "राम्रो", "उत्तम", "बढिया", "सुन्दर", "ramro", "badhiya", "साबास",
     },
     WELL_WISH: {
         "luck", "wishes", "congratulations", "congrats",
@@ -121,6 +124,30 @@ _PHRASES: dict[str, str] = {
     "have a nice weekend": WELL_WISH,
     "have a good weekend": WELL_WISH,
     "you too have a nice day": WELL_WISH,
+    # Reported after the phrase fix shipped. "Good day" is the pointed one:
+    # the reasoning for matching phrases used it as the example of what
+    # bag-of-words would get wrong, and then left it matching nothing at all.
+    # A bare "good day" to a support desk is an opening, not a send-off.
+    "good day": GREETING,
+    "g day": GREETING,
+    "lovely day": GREETING,
+    "beautiful day": GREETING,
+    "how do you do": GREETING,
+    "how do you do?": GREETING,
+    "how are you": GREETING,
+    "how are you doing": GREETING,
+    "hope you are well": GREETING,
+    "bless you": WELL_WISH,
+    "god bless you": WELL_WISH,
+    "all the best": WELL_WISH,
+    "best of luck": WELL_WISH,
+    "safe travels": WELL_WISH,
+    "safe journey": WELL_WISH,
+    "get well soon": WELL_WISH,
+    "शुभ यात्रा": WELL_WISH,
+    "सन्चै हुनुहुन्छ": GREETING,
+    "कस्तो छ": GREETING,
+    "कस्तो हुनुहुन्छ": GREETING,
     "शुभ दिन": WELL_WISH,
     "शुभ दिनको कामना": WELL_WISH,
     "तपाईंको दिन राम्रो होस्": WELL_WISH,
@@ -139,13 +166,57 @@ def _phrase_key(text: str) -> str:
     return " ".join(_TRIM.split((text or "").lower())).strip()
 
 
-def classify(text: str) -> str | None:
+_CONFIG_NAME = "courtesy_phrases.json"
+_ORDER = (DECLINE, AFFIRM, THANKS, WELL_WISH, MEETING, GREETING, APOLOGY,
+          ATTENTION, FAREWELL, PRAISE)
+_CATEGORIES = frozenset(_ORDER)
+_loaded: dict[str, tuple[dict[str, str], dict[str, set[str]]]] = {}
+
+
+def _load_extra(knowledge_path: Path | None) -> tuple[dict[str, str], dict[str, set[str]]]:
+    """Phrases and words a desk owner has added, on top of the built-ins.
+
+    The courtesy list started as twenty items and the desk's own table is
+    longer; reporting the gap one string at a time is nobody's good use of an
+    afternoon. Entries here are plain text and a category name, so the list
+    can be completed without a deploy. Unknown categories are ignored rather
+    than crashing the desk.
+    """
+    if knowledge_path is None:
+        return {}, {}
+    path = Path(knowledge_path).parent / _CONFIG_NAME
+    if not path.exists():
+        return {}, {}
+    key = str(path)
+    cached = _loaded.get(key)
+    if cached is not None:
+        return cached
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}, {}
+    phrases = {
+        _phrase_key(text): category
+        for text, category in (loaded.get("phrases") or {}).items()
+        if category in _CATEGORIES and str(text).strip()
+    }
+    words: dict[str, set[str]] = {}
+    for word, category in (loaded.get("words") or {}).items():
+        if category in _CATEGORIES and str(word).strip():
+            words.setdefault(category, set()).add(str(word).strip().lower())
+    _loaded[key] = (phrases, words)
+    return phrases, words
+
+
+def classify(text: str, knowledge_path: Path | None = None) -> str | None:
     """Return a small-talk category, or None when this is a real message."""
     raw = (text or "").strip()
     if not raw:
         return None
 
-    phrase = _PHRASES.get(_phrase_key(raw))
+    extra_phrases, extra_words = _load_extra(knowledge_path)
+    key = _phrase_key(raw)
+    phrase = _PHRASES.get(key) or extra_phrases.get(key)
     if phrase:
         return phrase
 
@@ -156,10 +227,9 @@ def classify(text: str) -> str | None:
 
     # Order resolves overlap: "no thanks" is a decline, a bare "thanks" is
     # thanks, and "good luck" is a well-wish rather than a greeting.
-    for category in (DECLINE, AFFIRM, THANKS, WELL_WISH, GREETING, APOLOGY,
-                     ATTENTION, FAREWELL, PRAISE):
-        core = _CORE[category]
-        allowed = core | _ALLOWED[category]
+    for category in _ORDER:
+        core = _CORE.get(category, set()) | extra_words.get(category, set())
+        allowed = core | _ALLOWED.get(category, set())
         if all(word in allowed for word in content) and any(word in core for word in content):
             return category
     return None

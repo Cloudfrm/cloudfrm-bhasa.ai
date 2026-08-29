@@ -4,6 +4,10 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>भाषा · UI states</title>
+<!-- Without this the browser asks for /favicon.ico, which 404s. The page
+     exists to make the console worth reading; it should not be the loudest
+     thing in it. -->
+<link rel="icon" href="data:," />
 <style>
   :root {
     --bg: #f4fbf8;
@@ -112,8 +116,14 @@
     background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink);
     border-radius: 8px; padding: 7px 9px;
   }
-  .frame { background: var(--bg); }
+  .frame { background: var(--bg); overflow-x: auto; }
   iframe { width: 100%; border: 0; display: block; background: transparent; }
+  /* Every frame is its own viewport, so a narrow frame gets the app's narrow
+     layout. At 1100px the frames clear the 960px breakpoint and show the
+     desk layout an officer actually uses — the one a designer would need to
+     sign anything off against. */
+  body.desk-width iframe { width: 1100px; }
+  body.desk-width figure.state { max-width: 100%; }
   .probe {
     margin: 0; padding: 9px 14px; border-top: 1px solid var(--line);
     background: var(--panel-2); font-size: 12px;
@@ -139,6 +149,10 @@
     <button type="button" data-dark="0" class="on">Light</button>
     <button type="button" data-dark="1">Dark</button>
   </div>
+  <div class="switch" id="width-switch">
+    <button type="button" data-wide="0" class="on">Narrow</button>
+    <button type="button" data-wide="1">Desk 1100px</button>
+  </div>
 </header>
 
 <main>
@@ -163,9 +177,14 @@
     </p>
     <p>
       One caveat worth knowing: each frame is its own viewport, so the app's responsive
-      rules apply at the <em>frame's</em> width, not the browser's. These frames sit below
-      the 960px breakpoint, so type, padding and stacking are the narrow-layout ones. The
-      states themselves are identical; the desk's own proportions are not.
+      rules apply at the <em>frame's</em> width, not the browser's. In
+      <strong>Narrow</strong> the frames sit below the app's 960px breakpoint, so type,
+      padding and stacking are the narrow-layout ones — fine for checking a state, wrong
+      for judging proportions. <strong>Desk 1100px</strong> widens every frame past the
+      breakpoint and scrolls each card sideways, so type, spacing and proportions are the
+      desk's own. What it still does not show is the desk's <em>composition</em>: each card
+      deliberately crops to one surface, so the two-pane inbox-beside-room arrangement is
+      not on this page. For that, open the app.
     </p>
   </div>
   <div id="board"></div>
@@ -363,10 +382,9 @@
 
     { group: "Listen control", groupnote: "All four states of one control, side by side. Each is produced by the function that produces it in the app — states 12 and 14 by pressing the control for real, against a fixture that never answers." },
 
-    { n: 11, name: "Idle", fn: "attachListen(bubble, text)", part: "log", h: 175, small: true,
+    { n: 11, name: "Idle", fn: 'attachListen(bubble, text) → setPlayState(btn, "idle")', part: "log", h: 175, small: true,
       probe: playProbe,
-      note: "TODO: a freshly attached control has no aria-pressed and no data-state — both read null below. attachListen writes the label itself instead of going through setPlayLabel, so the pressed state is never set until the first press or a language switch, and a screen reader meets a plain button rather than a toggle that is off. The label is set in two places, which is how the two drifted apart; routing attachListen through setPlayLabel would fix both.",
-      todo: true,
+      note: "Fixed. This control used to be created with no aria-pressed and no data-state, because attachListen wrote the label itself instead of going through setPlayState — so until the first press or a language switch a screen reader met a plain button rather than a toggle that is off. The label was written in two places, which is how the two drifted apart. The probe below is the check: aria-pressed must read false at creation, not null.",
       run: function (api, doc, L) {
         var b = bubble(api, "agent", FIX.speakable[L], false);
         api.attachListen(b, FIX.speakable[L]);
@@ -450,8 +468,7 @@
           ["button label now", extra && extra.label ? extra.label : "—"]
         ]);
       },
-      todo: true,
-      note: "TODO: there is no retry-in-progress state. Try again has been pressed in the frame below and the request is still in flight, yet nothing on screen has changed — same label, still enabled, no spinner. A slow retry is indistinguishable from a click that did not register, so an officer presses it repeatedly. Decide whether the button should show a busy state.",
+      note: "Fixed. Try again has been pressed in the frame below and the request is still in flight. It used to change nothing at all — same label, still enabled — so a slow retry was indistinguishable from a click that never registered and an officer pressed it repeatedly. It now reads Trying again…, is disabled and carries aria-busy until the request settles, then either disappears with the repainted list or comes back on a fresh error box.",
       run: function (api, doc) {
         var count = { calls: 0, pressed: false, label: "" };
         api.network(function () {
@@ -623,6 +640,16 @@
     if (!btn) return;
     LANG = btn.dataset.lang;
     this.querySelectorAll("button").forEach(function (b) { b.classList.toggle("on", b === btn); });
+    applyAll();
+  });
+
+  document.getElementById("width-switch").addEventListener("click", function (event) {
+    var btn = event.target.closest("button");
+    if (!btn) return;
+    document.body.classList.toggle("desk-width", btn.dataset.wide === "1");
+    this.querySelectorAll("button").forEach(function (b) { b.classList.toggle("on", b === btn); });
+    // The frames relayout themselves; re-running the recipes keeps any list
+    // that measured its own height honest at the new width.
     applyAll();
   });
 

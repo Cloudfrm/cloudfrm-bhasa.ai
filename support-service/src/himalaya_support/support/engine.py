@@ -166,7 +166,7 @@ class SupportEngine:
         # its chance at "yes"/"no", and before retrieval. A bare affirmation
         # with nothing pending used to reach the knowledge base and come back
         # with a loan interest rate.
-        courtesy = classify_smalltalk(message)
+        courtesy = classify_smalltalk(message, self.settings.knowledge_path)
         if courtesy:
             return self._smalltalk_turn(conversation_id, message, courtesy, language)
 

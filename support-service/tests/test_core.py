@@ -927,3 +927,76 @@ def test_multi_word_courtesies_are_matched_as_phrases():
     assert classify("have a good evening") == WELL_WISH
     # and the phrase must not swallow a real question attached to it
     assert classify("Have a nice day, but first when does the branch open?") is None
+
+
+def test_courtesy_table_can_be_completed_without_a_deploy(tmp_path):
+    """The built-in list started at twenty and the desk's table is longer.
+
+    Reporting the gap one string at a time is nobody's good use of an
+    afternoon, so the rest of the table goes in a config file. A bad category
+    in that file must be ignored, not take the desk down.
+    """
+    import json
+
+    from himalaya_support.adapt import smalltalk
+    from himalaya_support.adapt.smalltalk import FAREWELL, PRAISE, classify
+
+    knowledge = tmp_path / "product.json"
+    knowledge.write_text("{}", encoding="utf-8")
+    (tmp_path / "courtesy_phrases.json").write_text(json.dumps({
+        "phrases": {"tata for now": "farewell", "bad one": "not_a_category"},
+        "words": {"shabash": "praise"},
+    }), encoding="utf-8")
+    smalltalk._loaded.clear()
+
+    assert classify("tata for now", knowledge) == FAREWELL
+    assert classify("shabash", knowledge) == PRAISE
+    assert classify("bad one", knowledge) is None      # unknown category ignored
+    assert classify("Hello", knowledge) is not None    # and the desk still works
+    smalltalk._loaded.clear()
+
+
+def test_courtesies_reported_after_the_phrase_fix():
+    """"Good day" is the pointed one: the reasoning for matching whole
+    phrases used it as the example of what bag-of-words would get wrong, and
+    then left it matching nothing at all. "How do you do?" was worse than
+    falling through — it returned statement-download instructions."""
+    from himalaya_support.adapt.smalltalk import classify
+
+    for text in ("Good day", "Lovely day", "Bless you", "All the best",
+                 "Safe travels", "Bravo", "How do you do?",
+                 "Pleased to meet you"):
+        assert classify(text) is not None, text
+    # and none of them may swallow a real question
+    assert classify("Good day, when does the branch open?") is None
+    assert classify("how do you calculate the interest rate?") is None
+
+
+def test_health_names_the_corpus_outside_production(monkeypatch, tmp_path):
+    """Two instances that look identical in a browser, one of which is the
+    real desk, is how test traffic ends up in the real desk."""
+    from fastapi.testclient import TestClient
+
+    scratch = tmp_path / "scratch" / "support.db"
+    main_mod = _fresh_app(monkeypatch, SUPPORT_DB_PATH=str(scratch))
+    body = TestClient(main_mod.app).get("/v1/health").json()
+    assert body["store"] == "scratch"
+
+    monkeypatch.delenv("SUPPORT_DB_PATH", raising=False)
+    plain = _fresh_app(monkeypatch)
+    assert TestClient(plain.app).get("/v1/health").json()["store"] == "desk"
+
+
+def test_scratch_db_path_moves_every_write_off_the_desk(monkeypatch, tmp_path):
+    """The standing instruction was to test against a scratch database, and
+    there was no way to comply with it from a browser. This is that way."""
+    from himalaya_support.config import get_settings
+
+    scratch = tmp_path / "elsewhere" / "support.db"
+    monkeypatch.setenv("SUPPORT_DB_PATH", str(scratch))
+    settings = get_settings()
+    assert settings.db_path == scratch
+    assert settings.is_scratch_store is True
+
+    monkeypatch.delenv("SUPPORT_DB_PATH")
+    assert get_settings().is_scratch_store is False

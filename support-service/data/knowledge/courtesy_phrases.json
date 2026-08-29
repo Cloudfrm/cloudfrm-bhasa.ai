@@ -1,0 +1,32 @@
+{
+  "_readme": [
+    "Courtesies the desk should answer like a person rather than search for.",
+    "",
+    "WHY THIS FILE EXISTS: the built-in list started at twenty items and the",
+    "desk's own courtesy table is longer. Reporting the gap one string at a",
+    "time — 'Good day', 'Bravo', 'Safe travels' — is nobody's good use of an",
+    "afternoon. Put the rest of the table here instead, without a deploy.",
+    "",
+    "'phrases' maps a whole message to a category. Use it when the words only",
+    "mean the courtesy together: 'good day' is a greeting, but 'good' and",
+    "'day' apart are not. Case, spacing and trailing punctuation are ignored.",
+    "",
+    "'words' adds a single word to a category's core vocabulary. Use it for a",
+    "word that carries the courtesy on its own, like 'bravo'. A message",
+    "matches a category when every content word is known to it and at least",
+    "one is core, so a stray word still sends the message to a real answer.",
+    "",
+    "CATEGORIES: greeting, thanks, apology, attention, farewell, praise,",
+    "well_wish, meeting, affirm, decline. An entry naming anything else is",
+    "ignored, so a typo cannot take the desk down.",
+    "",
+    "WHAT NOT TO PUT HERE: anything a member might mean literally. This layer",
+    "answers without searching the knowledge base, so a phrase added here can",
+    "never reach a real answer. 'Help me' is a request, not a courtesy.",
+    "",
+    "A courtesy is only matched when it is essentially the whole message, so",
+    "'Good day, when does the branch open?' still answers the branch question."
+  ],
+  "phrases": {},
+  "words": {}
+}
