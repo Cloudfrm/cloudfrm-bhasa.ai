@@ -1215,3 +1215,113 @@ def test_a_crisis_conversation_records_what_the_member_wrote(tmp_path):
     member2 = [m for m in engine.store.list_messages(out2["conversation_id"])
                if m["role"] == "user"][0]["content"]
     assert member2 == "म मर्न चाहन्छु"
+
+
+def test_prepare_user_text_converts_only_when_asked():
+    """The client guarded "don't convert in English mode" and the server
+    converted anyway, so the same text under locale en and locale ne came
+    back byte-identical. The guard was dead code."""
+    from himalaya_support.adapt.pipeline import prepare_user_text
+
+    typed = "i love you"
+    assert prepare_user_text(typed)["search"] != typed          # romanized converts
+    verbatim = prepare_user_text(typed, convert=False)
+    assert verbatim["search"] == typed
+    assert verbatim["display"] == typed
+    # nothing for the client to paint over the member's own bubble
+    assert verbatim["transliterated"] is None
+
+
+def test_input_mode_decides_what_is_stored(tmp_path):
+    """"i love you" was recorded as "म लोवे तपाईं" whatever the locale said.
+
+    Half-conversion is the part that made it look intermittent: "hello how
+    are you" became "हेलो how are you" because hello is in the dictionary and
+    the rest is not. Deterministic per word, and unpredictable to a member.
+    """
+    from himalaya_support.config import get_settings
+    from himalaya_support.store.db import SupportStore
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+    engine.store = SupportStore(tmp_path / "scratch.db")
+
+    def recorded(text, mode, sent=None):
+        out = engine.chat(sent or text, typed=text, input_mode=mode, locale="ne")
+        return [m["content"] for m in engine.store.list_messages(out["conversation_id"])
+                if m["role"] == "user"][-1]
+
+    for text in ("i love you", "hello how are you",
+                 "TXN-1001 NARBNPKA ram.thapa@example.com"):
+        assert recorded(text, "english") == text, text
+    assert recorded("म पिन बिर्सें", "unicode") == "म पिन बिर्सें"
+    # romanized is unchanged: converting is what that member asked for
+    assert recorded("mero pin birse", "romanized") == "मेरो पिन बिर्से"
+
+
+def test_crisis_fires_in_every_input_mode(tmp_path):
+    """The regression that matters most. Each row is what the composer sends
+    for the same keystrokes under a different mode."""
+    from himalaya_support.config import get_settings
+    from himalaya_support.store.db import SupportStore
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+    engine.store = SupportStore(tmp_path / "scratch.db")
+    typed = "I have no reason to live, my loan is too much"
+    sends = {
+        "english": typed,
+        "unicode": typed,
+        "romanized": "म हवे होइन रेअसोन लिवे, मेरो ऋण हो तू मुच",
+    }
+    for mode, sent in sends.items():
+        out = engine.chat(sent, typed=typed, input_mode=mode, locale="ne")
+        assert out["pipeline"] == "crisis", mode
+        assert out["tickets"], mode
+        for word in ("ऋण", "किस्ता", "जरिवाना"):
+            assert word not in out["reply"], f"{mode}: answered with {word}"
+
+
+def test_dedupe_key_separates_input_modes():
+    """The same keystrokes in English mode and romanized mode are two
+    questions with two correct records, and they can arrive with an identical
+    converted body inside the window."""
+    from himalaya_support.api.routes import _content_key
+    from himalaya_support.api.schemas import ChatRequest
+
+    body = "म लोवे तपाईं"
+    rom = ChatRequest(message=body, typed="i love you", input_mode="romanized", locale="ne")
+    eng = ChatRequest(message=body, typed="i love you", input_mode="english", locale="ne")
+    assert _content_key(rom) != _content_key(eng)
+    # a repeat in the same mode still dedupes
+    assert _content_key(rom) == _content_key(
+        ChatRequest(message=body, typed="i love you", input_mode="romanized", locale="ne")
+    )
+
+
+def test_every_conversion_layer_keys_off_the_input_mode():
+    """Four layers had to be gated. Three were guarded on replyLang, which is
+    the chrome language and not what the keyboard is doing, and the fourth —
+    painting the server's conversion over the member's own bubble — was not
+    guarded at all."""
+    from pathlib import Path
+
+    import himalaya_support
+
+    html = (Path(himalaya_support.__file__).parent / "static" / "dashboard.html").read_text(
+        encoding="utf-8"
+    )
+    for guard in (
+        'if (inputMode !== "romanized" || !hasLatin(raw)) return raw;',          # resolveOutgoing
+        'if (inputMode !== "romanized" || !hasLatin(typed)) {',                  # updatePreview
+        'if (inputMode === "romanized" && hasLatin(message)) shown = await resolveOutgoing',
+        'if (inputMode === "romanized" && data.transliterated && lastMemberBubble) {',
+    ):
+        assert guard in html, guard
+    # and no conversion path may still be deciding on the chrome language
+    assert 'replyLang !== "ne" || !hasLatin' not in html
+    # both send paths declare the mode
+    posts = html.split('fetch("/v1/support/chat"')[1:]
+    assert len(posts) == 2
+    for block in posts:
+        assert "input_mode: inputMode" in block[: block.index("})")]

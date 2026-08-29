@@ -14,6 +14,13 @@ class ChatRequest(BaseModel):
     # meant to read what was typed. Optional: an API caller that sends only
     # `message` behaves exactly as before.
     typed: str | None = Field(default=None, max_length=4000)
+    # How the member is typing, chosen by them at the composer:
+    #   romanized — Latin letters become Devanagari (the desk's original and,
+    #               until now, only behaviour)
+    #   english   — what is typed is what is sent, stored and shown
+    #   unicode   — the member has a Devanagari keyboard; nothing is converted
+    # Defaults to romanized so an API caller that omits it behaves as before.
+    input_mode: str = Field(default="romanized")
     conversation_id: str | None = None
     locale: str = Field(default="ne")
     channel: str = Field(default="chat")

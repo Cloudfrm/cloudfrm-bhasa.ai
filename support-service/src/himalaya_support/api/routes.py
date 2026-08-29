@@ -85,6 +85,11 @@ def _content_key(payload: ChatRequest) -> str:
             payload.conversation_id or "new",
             payload.channel or "chat",
             payload.locale or "ne",
+            # The same words in English mode and in romanized mode are two
+            # questions with two correct answers and two correct records, and
+            # they can arrive with an identical converted body. Same defect as
+            # the `typed` one, one dimension along.
+            payload.input_mode or "romanized",
             body,
             keyed,
         ]).encode("utf-8")
@@ -162,6 +167,7 @@ def _run_chat(payload: ChatRequest) -> ChatResponse:
         result = get_engine().chat(
             payload.message,
             typed=payload.typed,
+            input_mode=payload.input_mode,
             conversation_id=payload.conversation_id,
             locale=payload.locale,
             channel=payload.channel or "chat",

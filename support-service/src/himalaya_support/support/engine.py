@@ -83,6 +83,7 @@ class SupportEngine:
         message: str,
         *,
         typed: str | None = None,
+        input_mode: str = "romanized",
         conversation_id: str | None = None,
         user_id: str | None = None,
         locale: str = "auto",
@@ -103,7 +104,14 @@ class SupportEngine:
         keyed = (typed or "").strip() or message
         in_crisis = looks_like_crisis(keyed, self.settings.knowledge_path)
 
-        prepared = prepare_user_text(message)
+        # Only romanized mode asks for a conversion. In English and Unicode
+        # modes nothing is rewritten: not the search key, not the stored turn,
+        # not what the member sees. The client used to guard this on its own
+        # and the server converted anyway, which made the guard dead code.
+        mode = (input_mode or "romanized").strip().lower()
+        if mode not in {"romanized", "english", "unicode"}:
+            mode = "romanized"
+        prepared = prepare_user_text(message, convert=mode == "romanized")
         search_text = prepared["search"] or prepared["normalized"] or message
         # Only consulted when the locale is "auto"; the keyed text is the
         # honest signal there, since the composer's conversion makes every

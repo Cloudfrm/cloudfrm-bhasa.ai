@@ -644,6 +644,19 @@
       overflow-y: auto;
     }
     .desk-bar textarea::placeholder { color: var(--md-sys-color-outline); }
+    .imode { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 8px 0 2px; }
+    .imode__label { font-size: 11.5px; color: var(--muted); margin-right: 2px; }
+    .imode__btn {
+      font: inherit; font-size: 12px; cursor: pointer;
+      border: 1px solid var(--line); background: transparent; color: var(--muted);
+      border-radius: 999px; padding: 3px 11px; line-height: 1.5;
+    }
+    .imode__btn:hover { color: var(--ink); border-color: var(--primary-45); }
+    .imode__btn.on {
+      background: var(--primary-12); border-color: var(--primary);
+      color: var(--primary); font-weight: 700;
+    }
+    #imode-call { justify-content: center; margin-top: 14px; }
     .desk-bar textarea:focus { outline: 2px solid var(--primary-45); outline-offset: 1px; border-color: var(--primary); }
     .desk-bar #mic, .desk-bar #send {
       height: 52px;
@@ -789,6 +802,10 @@
               <span class="desk-bar__topics-label" id="topics-label"></span>
               <div id="chips"></div>
             </div>
+            <!-- Beside the box, not in the sidebar: the sidebar toggle is the
+                 chrome language, and reading it as an input setting is part of
+                 what this control exists to fix. -->
+            <div class="imode" id="imode-chat" role="group"><span class="imode__label"></span><button type="button" class="imode__btn" data-mode="romanized"></button><button type="button" class="imode__btn" data-mode="english"></button><button type="button" class="imode__btn" data-mode="unicode"></button></div>
             <form id="form">
               <button id="mic" type="button">🎤</button>
               <textarea id="box" rows="1" autocomplete="off"></textarea>
@@ -808,6 +825,7 @@
               <button type="button" id="pickup"></button>
               <button type="button" id="hangup" class="hidden"></button>
             </div>
+            <div class="imode" id="imode-call" role="group"><span class="imode__label"></span><button type="button" class="imode__btn" data-mode="romanized"></button><button type="button" class="imode__btn" data-mode="english"></button><button type="button" class="imode__btn" data-mode="unicode"></button></div>
             <div id="call-log"></div>
           </div>
         </section>
@@ -872,7 +890,15 @@
         welcomeTitle: "नमस्ते, म भाषा हुँ",
         welcomeBody: "लगइन, रकम, ऋण, केवाईसी वा कार्ड — विषय छान्नुहोस् वा समस्या लेख्नुहोस्।",
         placeholder: "नेपाली वा अंग्रेजी अक्षरमा लेख्नुहोस्…",
+        placeholderEnglish: "अंग्रेजीमा लेख्नुहोस् — जस्ताको तस्तै पठाइन्छ…",
+        placeholderUnicode: "देवनागरीमा सिधै लेख्नुहोस्…",
         unicoderHint: "अंग्रेजी अक्षर यहाँ नेपाली युनिकोडमा बदलिन्छ · Enter ले पठाउँछ, Shift+Enter ले नयाँ लाइन",
+        hintEnglish: "तपाईंले लेख्नुभएको जस्ताको तस्तै पठाइन्छ · Enter ले पठाउँछ, Shift+Enter ले नयाँ लाइन",
+        hintUnicode: "आफ्नै देवनागरी किबोर्डबाट लेख्नुहोस्; केही परिवर्तन हुँदैन · Enter ले पठाउँछ",
+        modeLabel: "लेख्ने तरिका",
+        modeRoman: "नेपाली",
+        modeEnglish: "अंग्रेजी",
+        modeUnicode: "यूनिकोड",
         unicoderLabel: "नेपालीमा: ",
         send: "पठाउनुहोस्",
         mic: "बोल्नुहोस्",
@@ -954,7 +980,15 @@
         welcomeTitle: "Namaste, I am Bhasa",
         welcomeBody: "Login, transfers, loans, KYC, or cards — pick a topic or type the issue.",
         placeholder: "Type in English letters — they convert to Nepali…",
+        placeholderEnglish: "Type in English — sent exactly as written…",
+        placeholderUnicode: "Type Devanagari directly…",
         unicoderHint: "English letters convert to Nepali Unicode here · Enter sends, Shift+Enter adds a line",
+        hintEnglish: "What you type is what is sent · Enter sends, Shift+Enter adds a line",
+        hintUnicode: "Type from your own Devanagari keyboard; nothing is converted · Enter sends",
+        modeLabel: "Input",
+        modeRoman: "Nepali",
+        modeEnglish: "English",
+        modeUnicode: "Unicode",
         unicoderLabel: "Nepali: ",
         send: "Send",
         mic: "Speak",
@@ -1025,6 +1059,14 @@
     const themeToggle = document.getElementById("theme-toggle");
     let view = "home";
     let replyLang = localStorage.getItem("bhasa-lang") || "ne";
+    /* How the member is typing. Distinct from replyLang, which is the
+       language of the chrome: one is what the desk speaks, the other is what
+       the keyboard produces, and conflating them is how English typing came
+       out as "म लोवे तपाईं". Romanized is the default because that is what
+       most members type; the other two now exist and can be chosen. */
+    const INPUT_MODES = ["romanized", "english", "unicode"];
+    let inputMode = localStorage.getItem("bhasa-input-mode") || "romanized";
+    if (INPUT_MODES.indexOf(inputMode) === -1) inputMode = "romanized";
     // Opt-in: was on by default, which narrated every reply unasked.
     let speakOn = localStorage.getItem("bhasa-speak") === "on";
     let chatId = null;
@@ -1199,7 +1241,7 @@
       document.getElementById("call-body").textContent = c.callBody;
       document.getElementById("pickup").textContent = c.pickup;
       document.getElementById("hangup").textContent = c.hangup;
-      box.placeholder = c.placeholder;
+      paintInputMode();
       send.textContent = c.send;
       mic.title = c.mic;
       document.getElementById("export-title").textContent = c.exportTitle;
@@ -1233,23 +1275,61 @@
       });
     }
 
+    /* The hint and the placeholder used to assert one behaviour whatever was
+       happening — "English letters convert to Nepali" while in English mode
+       they would not. A line that describes the wrong behaviour is worse than
+       no line. */
+    function modeHint() {
+      const c = t();
+      if (inputMode === "english") return c.hintEnglish;
+      if (inputMode === "unicode") return c.hintUnicode;
+      return c.unicoderHint;
+    }
+
+    function modePlaceholder() {
+      const c = t();
+      if (inputMode === "english") return c.placeholderEnglish;
+      if (inputMode === "unicode") return c.placeholderUnicode;
+      return c.placeholder;
+    }
+
+    function paintInputMode() {
+      const c = t();
+      const label = { romanized: c.modeRoman, english: c.modeEnglish, unicode: c.modeUnicode };
+      document.querySelectorAll(".imode").forEach((group) => {
+        group.setAttribute("aria-label", c.modeLabel);
+        const caption = group.querySelector(".imode__label");
+        if (caption) caption.textContent = c.modeLabel;
+        group.querySelectorAll(".imode__btn").forEach((btn) => {
+          const mode = btn.dataset.mode;
+          btn.textContent = label[mode];
+          btn.classList.toggle("on", mode === inputMode);
+          btn.setAttribute("aria-pressed", mode === inputMode ? "true" : "false");
+        });
+      });
+      box.placeholder = modePlaceholder();
+    }
+
+    function setInputMode(mode) {
+      inputMode = INPUT_MODES.indexOf(mode) === -1 ? "romanized" : mode;
+      try { localStorage.setItem("bhasa-input-mode", inputMode); } catch (e) {}
+      /* A preview computed under the previous mode describes a conversion
+         that is no longer going to happen. */
+      previewSource = "";
+      previewValue = "";
+      paintInputMode();
+      paintUnicoderHint();
+    }
+
     function paintUnicoderHint(preview) {
-      if (replyLang !== "ne") {
-        unicoderHint.textContent = t().unicoderHint;
+      /* Only romanized mode has a conversion to preview. */
+      if (inputMode !== "romanized" || !(preview && preview !== box.value)) {
         unicoderHint.className = "unicoder idle";
-        if (preview && preview !== box.value) {
-          unicoderHint.className = "unicoder";
-          unicoderHint.textContent = t().unicoderLabel + preview;
-        }
+        unicoderHint.textContent = modeHint();
         return;
       }
-      if (preview && preview !== box.value) {
-        unicoderHint.className = "unicoder";
-        unicoderHint.textContent = t().unicoderLabel + preview;
-        return;
-      }
-      unicoderHint.className = "unicoder idle";
-      unicoderHint.textContent = t().unicoderHint;
+      unicoderHint.className = "unicoder";
+      unicoderHint.textContent = t().unicoderLabel + preview;
     }
 
     const NE_DIGITS = ["०", "१", "२", "३", "४", "५", "६", "७", "८", "९"];
@@ -1357,7 +1437,7 @@
 
     async function resolveOutgoing(text) {
       const raw = (text || "").trim();
-      if (replyLang !== "ne" || !hasLatin(raw)) return raw;
+      if (inputMode !== "romanized" || !hasLatin(raw)) return raw;
       if (previewSource === raw && previewValue) return previewValue;
       return await toUnicoder(raw);
     }
@@ -1368,7 +1448,7 @@
        the end of the line on every conversion. */
     async function updatePreview() {
       const typed = box.value;
-      if (replyLang !== "ne" || !hasLatin(typed)) {
+      if (inputMode !== "romanized" || !hasLatin(typed)) {
         previewSource = "";
         previewValue = "";
         paintUnicoderHint();
@@ -1717,7 +1797,7 @@
         /* Only Nepali mode transliterates, and only if this text has not
            already been resolved from the preview. English-mode messages were
            being converted to Devanagari against the officer's intent. */
-        if (replyLang === "ne" && hasLatin(message)) shown = await resolveOutgoing(message);
+        if (inputMode === "romanized" && hasLatin(message)) shown = await resolveOutgoing(message);
         lastMemberBubble = addTurn(log, "member", shown);
         showLoading(log);
         const res = await fetch("/v1/support/chat", {
@@ -1727,6 +1807,7 @@
             message: shown,
             conversation_id: chatId,
             typed: typed || message,
+            input_mode: inputMode,
             locale: replyLang,
             channel: "chat",
             client_id: clientId
@@ -1735,7 +1816,12 @@
         const data = await res.json();
         if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
         chatId = data.conversation_id;
-        if (data.transliterated && lastMemberBubble) lastMemberBubble.textContent = data.transliterated;
+        /* This overwrote the bubble showing what the member typed with the
+           server's conversion, in every mode and both UI languages — the last
+           of the four layers, and the one that made the others invisible. */
+        if (inputMode === "romanized" && data.transliterated && lastMemberBubble) {
+          lastMemberBubble.textContent = data.transliterated;
+        }
         clearLoading("pending");
         addAgent(data.reply, false, data);
         paintRoomHead();
@@ -2257,14 +2343,14 @@
          surface still read the transliteration. Distress is at least as
          likely on a call as in chat. */
       const typed = message;
-      if (hasLatin(message)) shown = await toUnicoder(message);
+      if (inputMode === "romanized" && hasLatin(message)) shown = await toUnicoder(message);
       addTurn(callLog, "member", shown);
       showLoading(callLog);
       try {
         const res = await fetch("/v1/support/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: shown, conversation_id: callId, typed: typed || shown, locale: replyLang, channel: "call" })
+          body: JSON.stringify({ message: shown, conversation_id: callId, typed: typed || shown, input_mode: inputMode, locale: replyLang, channel: "call" })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : res.statusText);
@@ -2372,6 +2458,14 @@
       const params = new URLSearchParams({ format });
       if (channel) params.set("channel", channel);
       window.location.href = "/v1/support/export?" + params.toString();
+    });
+    /* One setting, two surfaces: both groups drive the same state and both
+       repaint, so the control can never disagree with itself. */
+    document.querySelectorAll(".imode").forEach((group) => {
+      group.addEventListener("click", (event) => {
+        const btn = event.target.closest(".imode__btn");
+        if (btn) setInputMode(btn.dataset.mode);
+      });
     });
     document.getElementById("pickup").addEventListener("click", pickup);
     document.getElementById("hangup").addEventListener("click", hangup);

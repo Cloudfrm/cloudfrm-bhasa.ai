@@ -9,6 +9,7 @@ from himalaya_support.adapt.grounding import GROUNDING_FALLBACK, check_numeric_g
 from himalaya_support.adapt.honorific import check_honorific
 from himalaya_support.adapt.register import classify
 from himalaya_support.adapt.to_nepali import latin_to_nepali
+from himalaya_support.adapt.translit import classify_input
 
 GENERIC_NE = "कुन विषय हो"
 GENERIC_EN = "Which topic can I help with"
@@ -152,9 +153,32 @@ def snippet_answers(question: str, asked: str) -> bool:
     return bool(overlap)
 
 
-def prepare_user_text(message: str) -> dict[str, Any]:
+def prepare_user_text(message: str, convert: bool = True) -> dict[str, Any]:
+    """Normalise a member's message, and transliterate it only if asked to.
+
+    This used to transliterate unconditionally, which made the client's own
+    "don't convert in English mode" guard dead code: the same text sent under
+    locale "en" and locale "ne" came back byte-identical, both converted. The
+    member's words then lost a race they were never told about.
+
+    `convert` is False for the English and Unicode input modes. Nothing about
+    the message is rewritten in those modes — not what is searched, not what
+    is stored, not what is shown.
+    """
     raw = (message or "").strip()
     normalized = normalize(raw)
+    if not convert:
+        return {
+            "raw": raw,
+            "normalized": normalized,
+            "script": classify_input(normalized) if normalized else "empty",
+            "mode": "verbatim",
+            # No conversion happened, so there is nothing for the client to
+            # paint over the member's own bubble.
+            "transliterated": None,
+            "search": normalized,
+            "display": normalize(raw, keep_lines=True),
+        }
     converted = latin_to_nepali(normalized)
     nepali = converted["out"] or normalized
 
