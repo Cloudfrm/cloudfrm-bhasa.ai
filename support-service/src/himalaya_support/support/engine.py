@@ -198,7 +198,7 @@ class SupportEngine:
                 logger.info("Proofread skipped: %s", exc)
 
         intent = self._classify_heuristic(cleaned)
-        snippets = self._pick_snippet(cleaned, language)
+        snippets, match_key = self._pick_snippet(cleaned, language)
         history = self.store.recent_messages(conversation_id, limit=4)
         self.store.add_message(
             conversation_id,
@@ -254,7 +254,9 @@ class SupportEngine:
                 snippets,
                 language,
                 intent=str(intent.get("intent") or "other"),
-                user_message=cleaned,
+                # The key the rows were found with, so "does this row answer
+                # the question" is asked in the language the rows are in.
+                user_message=match_key,
                 echo=echo_text,
             )
         except ReplyGenerationError as exc:
@@ -477,7 +479,32 @@ class SupportEngine:
             return "en"
         return detect_language(message)
 
-    def _pick_snippet(self, query: str, language: str) -> list[dict]:
+    def _pick_snippet(self, query: str, language: str) -> tuple[list[dict], str]:
+        """Return the rows to ground on, and the key that actually found them.
+
+        The caller needs the key as well as the rows: whether a row answers
+        what was asked is decided by word overlap, so comparing a Nepali row
+        against an English query rejects every row the Nepali key just found,
+        and a correct-language answer becomes a correct-language non-answer.
+        """
+        key = query
+        preferred, rest, usable = self._rank_hits(query, language)
+        # A member typing English is now searched in English, so the corpus
+        # answers in English — and spliced into a Nepali reply frame that
+        # produced a two-script answer on every banking question tried.
+        # Retrieval may use a Nepali key even where nothing else may: it
+        # changes which row is found, never what the member typed, sees, or
+        # has stored against their name.
+        if not preferred and language == "ne" and re.search(r"[A-Za-z]", query):
+            alt = prepare_user_text(query).get("search") or ""
+            if alt and alt != query:
+                alt_preferred, alt_rest, alt_usable = self._rank_hits(alt, language)
+                if alt_preferred:
+                    preferred, rest, usable = alt_preferred, alt_rest, alt_usable
+                    key = alt
+        return (preferred or rest or usable)[:3], key
+
+    def _rank_hits(self, query: str, language: str) -> tuple[list[dict], list[dict], list[dict]]:
         hits = self.retriever.search(query, k=8)
         usable = []
         for hit in hits:
@@ -508,10 +535,16 @@ class SupportEngine:
         for hit in usable:
             doc_id = str(hit.get("id", ""))
             source = str(hit.get("source") or "")
+            # Metadata first, then the text itself. A row can be Nepali
+            # without saying so in its id, source or title, and the script it
+            # is actually written in is the thing that decides whether
+            # splicing it into a Nepali answer produces one language or two.
+            body = hit.get("text") or ""
             is_ne = (
                 doc_id.endswith("-ne")
                 or "banking" in source
                 or "नेपाली" in hit.get("title", "")
+                or len(DEVANAGARI_RE.findall(body)) > len(re.findall(r"[A-Za-z]", body))
             )
             if language == "ne" and is_ne:
                 preferred.append(hit)
@@ -519,7 +552,7 @@ class SupportEngine:
                 preferred.append(hit)
             else:
                 rest.append(hit)
-        return (preferred or rest or usable)[:3]
+        return preferred, rest, usable
 
     def _offline_reply(self, message: str, language: str) -> str:
         if language == "ne":

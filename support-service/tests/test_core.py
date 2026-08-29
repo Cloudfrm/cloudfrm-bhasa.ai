@@ -336,7 +336,8 @@ def test_each_loan_question_gets_its_own_answer():
     engine = SupportEngine(get_settings())
 
     def answer(query: str) -> str:
-        reply, _ = finish_reply("", engine._pick_snippet(query, "ne"), "ne", user_message=query)
+        snippets, match_key = engine._pick_snippet(query, "ne")
+        reply, _ = finish_reply("", snippets, "ne", user_message=match_key)
         return reply
 
     due = answer("ऋण किस्ता कहिले तिर्ने?")
@@ -1325,3 +1326,46 @@ def test_every_conversion_layer_keys_off_the_input_mode():
     assert len(posts) == 2
     for block in posts:
         assert "input_mode: inputMode" in block[: block.index("})")]
+
+
+def test_an_english_question_is_answered_in_one_language(tmp_path):
+    """Found by running the app after the input modes shipped.
+
+    English mode searches in English, so the corpus answered in English — and
+    spliced into a Nepali reply frame that produced a two-script answer on
+    every banking question tried. Retrieval may use a Nepali key even where
+    nothing else may: it changes which row is found, never what the member
+    typed, sees, or has stored.
+    """
+    import re
+
+    from himalaya_support.config import get_settings
+    from himalaya_support.store.db import SupportStore
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+    engine.store = SupportStore(tmp_path / "scratch.db")
+
+    for question in ("how do I block my card?",
+                     "what is the savings interest rate?",
+                     "when does the branch open?"):
+        out = engine.chat(question, typed=question, input_mode="english", locale="ne")
+        reply = out["reply"]
+        # The generic fallback quotes the member's own question back, which is
+        # Latin on purpose; everything after the quote must be one language.
+        body = reply.split("”")[-1] if "”" in reply else reply
+        assert not re.search(r"[A-Za-z]", body), f"{question} -> {reply[:120]}"
+
+
+def test_pick_snippet_reports_the_key_it_searched_with(tmp_path):
+    """Whether a row answers the question is decided by word overlap, so a
+    Nepali row compared against an English query is rejected — and a
+    correct-language answer becomes a correct-language non-answer."""
+    from himalaya_support.config import get_settings
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+    snippets, key = engine._pick_snippet("what is the savings interest rate?", "ne")
+    assert snippets, "nothing retrieved for a question the corpus answers"
+    # the key that found Nepali rows is not the English one it started from
+    assert key != "what is the savings interest rate?"
