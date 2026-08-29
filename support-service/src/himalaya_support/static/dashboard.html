@@ -474,7 +474,8 @@
       line-height: 1.6;
     }
     .load-error__line { font-weight: 600; }
-    .chat-inbox[data-state="error"] .chat-inbox__count {
+    /* Any failed list, not just Chat's — the Call pane uses the same badge. */
+    [data-state="error"] .chat-inbox__count {
       background: var(--danger-soft);
       color: var(--on-danger-soft);
     }
@@ -1537,18 +1538,26 @@
        The count is the part that lies loudest, so it shows a dash rather than
        asserting zero, and the message is announced, not just drawn. */
     function paintInboxError() {
-      const pane = document.getElementById("chat-inbox");
-      if (pane) pane.dataset.state = "error";
-
       const countEl = document.getElementById("chat-inbox-count");
-      if (countEl) {
-        countEl.textContent = "—";
-        countEl.setAttribute("aria-hidden", "true");
-        const heading = countEl.closest("h3");
-        if (heading) heading.setAttribute("aria-label", t().chatInbox + ": " + t().listFailed);
-      }
+      paintListFailure({
+        pane: document.getElementById("chat-inbox"),
+        count: countEl,
+        heading: countEl && countEl.closest("h3"),
+        list: document.getElementById("chat-list"),
+        name: t().chatInbox,
+        onRetry: () => loadInbox("chat")
+      });
+    }
 
-      paintListError(document.getElementById("chat-list"), () => loadInbox("chat"));
+    function paintCallInboxError() {
+      paintListFailure({
+        pane: document.getElementById("inbox-pane"),
+        count: document.getElementById("inbox-count"),
+        heading: document.getElementById("inbox-title"),
+        list: document.getElementById("inbox-list"),
+        name: t().call,
+        onRetry: () => loadInbox("call")
+      });
     }
 
     function clearInboxError() {
@@ -1618,6 +1627,23 @@
       }
     }
 
+    /* Marking a list as failed is one operation, not a checklist each
+       surface reimplements. Call's branch had copied only half of it — the
+       visible dash, but not the aria-hidden or the heading label — so a
+       screen reader kept announcing the last good count during an outage.
+       Both surfaces now go through here. */
+    function paintListFailure(opts) {
+      if (opts.pane) opts.pane.dataset.state = "error";
+      if (opts.count) {
+        opts.count.textContent = "—";
+        opts.count.setAttribute("aria-hidden", "true");
+      }
+      if (opts.heading) {
+        opts.heading.setAttribute("aria-label", opts.name + ": " + t().listFailed);
+      }
+      paintListError(opts.list, opts.onRetry);
+    }
+
     /* A failed list is never rendered as an empty one, on any surface. */
     function paintListError(container, onRetry) {
       container.innerHTML = "";
@@ -1660,6 +1686,8 @@
     function paintCallInbox() {
       const list = document.getElementById("inbox-list");
       const countEl = document.getElementById("inbox-count");
+      const pane = document.getElementById("inbox-pane");
+      if (pane) delete pane.dataset.state;
       list.innerHTML = "";
       if (countEl) {
         countEl.textContent = localNum(Math.max(callList.rows.length, callList.total || 0));
@@ -1709,11 +1737,7 @@
       try {
         await loadFirstPage(callList);
       } catch (err) {
-        /* Same as Chat: the count must not assert a number when the load
-           failed, or it reads as "0 calls" rather than "we do not know". */
-        const countEl = document.getElementById("inbox-count");
-        if (countEl) countEl.textContent = "—";
-        paintListError(document.getElementById("inbox-list"), () => loadInbox("call"));
+        paintCallInboxError();
         return;
       }
       paintCallInbox();
