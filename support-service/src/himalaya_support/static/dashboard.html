@@ -1038,11 +1038,34 @@
     let unicoderAbort = null;
     let previewTimer = null;
 
+    /* ------------------------------------------------------------------
+       States gallery, development only.
+
+       /chat/states/frame is registered in main.py only when SUPPORT_ENV is
+       not production, so on a production deployment this path 404s and the
+       branch below is unreachable.
+
+       In gallery mode this document renders from fixtures the gallery hands
+       it and never reads the desk. getJSON, getPage and fetchSpeech are the
+       only places this page talks to the server, and all three hand off to
+       the gallery's responder instead — so a states page cannot reach a real
+       conversation even by accident.
+       ------------------------------------------------------------------ */
+    const GALLERY = location.pathname === "/chat/states/frame";
+    let galleryResponder = null;
+    function galleryRespond(url, kind) {
+      if (!galleryResponder) {
+        return Promise.reject(new Error("gallery: no fixture for " + url));
+      }
+      return Promise.resolve(galleryResponder(url, kind));
+    }
+
     /* Opening one conversation used to fire four identical conversation
        fetches and two ticket fetches. Concurrent callers for the same URL now
        share one request instead of each starting their own. */
     const inflightGets = new Map();
     function getJSON(url) {
+      if (GALLERY) return galleryRespond(url, "json");
       if (inflightGets.has(url)) return inflightGets.get(url);
       const pending = fetch(url)
         .then((res) => res.json())
@@ -1055,6 +1078,7 @@
        is one page; the badge has to state the whole desk. */
     const inflightPages = new Map();
     function getPage(url) {
+      if (GALLERY) return galleryRespond(url, "page");
       if (inflightPages.has(url)) return inflightPages.get(url);
       const pending = fetch(url)
         .then(async (res) => {
@@ -1082,10 +1106,15 @@
       document.getElementById("theme-color").setAttribute("content", dark ? THEME_COLORS.dark : THEME_COLORS.light);
     }
 
-    function setTheme(dark) {
+    /* persist is false only for the states gallery, which flips the theme of
+       a page full of frames at once and must not overwrite the theme the
+       officer chose for the real desk. */
+    function setTheme(dark, persist) {
       document.documentElement.classList.toggle("dark", dark);
       document.documentElement.style.colorScheme = dark ? "dark" : "light";
-      try { localStorage.setItem("bhasa-theme", dark ? "dark" : "light"); } catch (e) {}
+      if (persist !== false) {
+        try { localStorage.setItem("bhasa-theme", dark ? "dark" : "light"); } catch (e) {}
+      }
       paintTheme();
     }
 
@@ -1107,6 +1136,9 @@
       document.getElementById("ticket-box").classList.toggle("hidden", name !== "chat");
       document.getElementById("speak-toggle").classList.toggle("hidden", name !== "chat");
       paintChrome();
+      // The gallery renders from fixtures; switching surfaces there must not
+      // pull the real inbox, tickets or counts.
+      if (GALLERY) return;
       if (name === "home") loadHome();
       if (work) loadInbox();
       if (name === "chat") { loadTickets(); box.focus(); }
@@ -1503,6 +1535,12 @@
          with nothing to press and nothing to read. */
       const timer = setTimeout(() => { if (speechAbort) speechAbort.abort("timeout"); },
         SPEECH_TIMEOUT_MS);
+      // In the gallery a press drives the real pending/error path against a
+      // fixture, rather than spending a call on the speech provider.
+      if (GALLERY) {
+        try { return await galleryRespond("/v1/support/speak", "speech"); }
+        finally { clearTimeout(timer); }
+      }
       try {
         const res = await fetch("/v1/support/speak", {
           method: "POST",
@@ -2288,7 +2326,104 @@
     document.getElementById("pickup").addEventListener("click", pickup);
     document.getElementById("hangup").addEventListener("click", hangup);
 
-    setView("home");
+    /* ------------------------------------------------------------------
+       Gallery handle.
+
+       Everything exported here is the function the desk itself calls — the
+       gallery supplies arguments and never draws markup of its own. That is
+       the whole point: a gallery that reimplements a bubble stops matching
+       the app on the commit after it is written, and then it lies.
+
+       The only presentation this adds is a crop: the frames are small, so
+       chrome the frame is not demonstrating is hidden. No component is
+       restyled.
+       ------------------------------------------------------------------ */
+    const GALLERY_CSS = `
+      html[data-gallery] body { overflow: hidden; }
+      html[data-gallery] .app { grid-template-columns: 1fr; padding: 0; gap: 0; }
+      html[data-gallery] .sidebar, html[data-gallery] .topbar { display: none; }
+      html[data-gallery] .main { border: 0; box-shadow: none; border-radius: 0; }
+      /* One surface per frame, so one column and one row that fills the
+         frame. Without the row rule a frame narrower than the 960px
+         breakpoint picks up the narrow layout's two-row template and sizes
+         the surface to its content, leaving the list showing two rows and a
+         gap — neither the desk layout nor the narrow one. */
+      html[data-gallery] .stage {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(0, 1fr);
+      }
+      html[data-gallery][data-part="room"] #chat-inbox,
+      html[data-gallery][data-part="log"] #chat-inbox,
+      html[data-gallery][data-part="composer"] #chat-inbox { display: none; }
+      html[data-gallery][data-part="log"] .room__head,
+      html[data-gallery][data-part="log"] .desk-bar { display: none; }
+      html[data-gallery][data-part="composer"] .room__head,
+      html[data-gallery][data-part="composer"] #log { display: none; }
+      html[data-gallery][data-part="chat-inbox"] #view-chat { display: none; }
+      /* Below 960px the app caps both list panes so they cannot crowd out the
+         room beneath them. In a frame showing nothing but the pane there is
+         no room to protect, and the cap would hide most of the list. */
+      html[data-gallery][data-part="chat-inbox"] #chat-inbox,
+      html[data-gallery][data-part="call-inbox"] #inbox-pane { max-height: none; }
+      /* Tickets come from the desk, so the gallery does not load them; an
+         empty box would only take height away from the list. */
+      html[data-gallery][data-part="chat-inbox"] #ticket-box { display: none; }
+      html[data-gallery][data-part="call-inbox"] #view-call { display: none; }
+      html[data-gallery][data-part="call-log"] #inbox-pane { display: none; }
+    `;
+
+    function galleryStart() {
+      document.documentElement.setAttribute("data-gallery", "");
+      const style = document.createElement("style");
+      style.textContent = GALLERY_CSS;
+      document.head.appendChild(style);
+      /* Narration follows a saved preference. Left on, every agent fixture on
+         the page would have asked the speech provider to read it aloud. */
+      speakOn = false;
+
+      window.bhasaStates = {
+        addTurn, addAgent, attachListen, showWelcome, showLoading, clearLoading,
+        paintChatInbox, paintCallInbox, paintInboxError, paintCallInboxError,
+        paintListFailure, paintListError, paintTimezoneNotes, paintTurnLabels,
+        setPlayLabel, setPlayState, setSendBusy, showSpeechError, togglePlayback,
+        loadInbox, loadOlderConversations, loadFirstPage, loadNextPage,
+        log, callLog,
+
+        /* Fixtures in. This is the only way the frame answers a request. */
+        network(fn) { galleryResponder = fn; },
+        lang(code) {
+          replyLang = code === "en" ? "en" : "ne";
+          paintChrome();
+        },
+        theme(dark) { setTheme(!!dark, false); },
+        part(name) {
+          setView(name === "call-inbox" || name === "call-log" ? "call" : "chat");
+          document.documentElement.setAttribute("data-part", name);
+        },
+        reset() {
+          stopPlayback();
+          galleryResponder = null;
+          log.innerHTML = "";
+          callLog.innerHTML = "";
+          started = false;
+          chatId = null;
+          callId = null;
+          [chatList, callList].forEach((src) => {
+            src.rows = []; src.total = 0; src.exhausted = false; src.loading = false;
+          });
+          conversations = [];
+          conversationTotal = 0;
+          inboxExhausted = false;
+          setSendBusy(false);
+          unicoderHint.className = "unicoder idle";
+          unicoderHint.textContent = "";
+        }
+      };
+      setView("chat");
+    }
+
+    if (GALLERY) galleryStart();
+    else setView("home");
   </script>
 </body>
 </html>

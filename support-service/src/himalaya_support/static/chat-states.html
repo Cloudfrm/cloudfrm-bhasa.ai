@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>भाषा · UI states</title>
+<style>
+  :root {
+    --bg: #f4fbf8;
+    --panel: #ffffff;
+    --panel-2: #eef6f2;
+    --ink: #12211d;
+    --muted: #5a6f68;
+    --line: #d7e6df;
+    --primary: #0f8a5f;
+    --warn-bg: #fff5e6;
+    --warn-line: #e8c48a;
+    --warn-ink: #6b4a12;
+    --todo-bg: #fdecec;
+    --todo-line: #e5a7a7;
+    --todo-ink: #7a2020;
+  }
+  html.dark {
+    --bg: #0b1210;
+    --panel: #121b18;
+    --panel-2: #17221e;
+    --ink: #e8f2ee;
+    --muted: #9db3ab;
+    --line: #24352f;
+    --primary: #3fcf95;
+    --warn-bg: #24200f;
+    --warn-line: #5c4a1c;
+    --warn-ink: #e8d5a6;
+    --todo-bg: #2a1414;
+    --todo-line: #5e2626;
+    --todo-ink: #f0bcbc;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Noto Sans Devanagari", "Segoe UI", Roboto, system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  code, .mono { font-family: "Cascadia Mono", Consolas, "SF Mono", ui-monospace, monospace; }
+
+  .top {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    padding: 14px 22px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+  }
+  .top h1 { margin: 0; font-size: 18px; font-weight: 700; }
+  .top h1 small { font-weight: 500; color: var(--muted); font-size: 13px; margin-left: 8px; }
+  .grow { flex: 1; }
+  .switch { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .switch button {
+    font: inherit; border: 0; padding: 6px 14px; cursor: pointer;
+    background: transparent; color: var(--muted);
+  }
+  .switch button.on { background: var(--primary); color: #fff; font-weight: 700; }
+  .tag {
+    font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn-ink);
+    border-radius: 999px; padding: 3px 10px;
+  }
+
+  main { padding: 22px; max-width: 1500px; margin: 0 auto; }
+  .lede {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px; margin: 0 0 26px; color: var(--muted); max-width: 92ch;
+  }
+  .lede strong { color: var(--ink); }
+  .lede p { margin: 0 0 8px; }
+  .lede p:last-child { margin: 0; }
+
+  h2.group {
+    margin: 34px 0 6px; font-size: 15px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--primary);
+  }
+  h2.group + p.groupnote { margin: 0 0 16px; color: var(--muted); max-width: 92ch; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+  figure.state {
+    margin: 0 0 18px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    width: 100%; max-width: 520px;
+  }
+  figure.state.wide { max-width: 760px; }
+  figcaption { padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+  .cap-head { display: flex; align-items: baseline; gap: 8px; }
+  .num {
+    flex: none; min-width: 22px; height: 22px; border-radius: 6px;
+    background: var(--panel-2); color: var(--muted);
+    font-size: 12px; font-weight: 700; display: inline-grid; place-items: center;
+  }
+  .name { font-weight: 700; }
+  .replay {
+    margin-left: auto; font: inherit; font-size: 12px; cursor: pointer;
+    background: transparent; border: 1px solid var(--line); color: var(--muted);
+    border-radius: 999px; padding: 2px 10px;
+  }
+  .replay:hover { color: var(--ink); border-color: var(--primary); }
+  .fn { display: block; margin-top: 5px; font-size: 12px; color: var(--primary); word-break: break-word; }
+  .note { margin: 7px 0 0; font-size: 12.5px; color: var(--muted); }
+  .note.todo {
+    background: var(--todo-bg); border: 1px solid var(--todo-line); color: var(--todo-ink);
+    border-radius: 8px; padding: 7px 9px;
+  }
+  .note.why {
+    background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink);
+    border-radius: 8px; padding: 7px 9px;
+  }
+  .frame { background: var(--bg); }
+  iframe { width: 100%; border: 0; display: block; background: transparent; }
+  .probe {
+    margin: 0; padding: 9px 14px; border-top: 1px solid var(--line);
+    background: var(--panel-2); font-size: 12px;
+    display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px;
+  }
+  .probe dt { color: var(--muted); }
+  .probe dd { margin: 0; word-break: break-word; }
+  .probe dd.bad { color: #c0392b; font-weight: 700; }
+  html.dark .probe dd.bad { color: #ff8b7a; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>भाषा · UI states <small>every visual state, from fixtures</small></h1>
+  <span class="tag">dev only</span>
+  <span class="grow"></span>
+  <div class="switch" id="lang-switch">
+    <button type="button" data-lang="ne" class="on">नेपाली</button>
+    <button type="button" data-lang="en">English</button>
+  </div>
+  <div class="switch" id="theme-switch">
+    <button type="button" data-dark="0" class="on">Light</button>
+    <button type="button" data-dark="1">Dark</button>
+  </div>
+</header>
+
+<main>
+  <div class="lede">
+    <p>
+      Every frame below is <strong>the real Chat UI</strong>, loaded from
+      <code>/chat/states/frame</code> — the same <code>dashboard.html</code> the desk
+      serves at <code>/</code>. Each state is produced by calling the function the app
+      itself calls, named under the state's title. Nothing here draws its own markup, so
+      this page cannot drift away from the app: if a component changes, these change with it.
+    </p>
+    <p>
+      <strong>No desk data is read.</strong> In gallery mode the frame's three network
+      helpers (<code>getJSON</code>, <code>getPage</code>, <code>fetchSpeech</code>) are
+      redirected to fixtures defined in this file, so no conversation, ticket, message or
+      speech call leaves the page. Nothing is written either.
+    </p>
+    <p>
+      The route is registered only when <code>SUPPORT_ENV</code> is not
+      <code>production</code>. On a production deployment both this page and the frame
+      path return 404.
+    </p>
+    <p>
+      One caveat worth knowing: each frame is its own viewport, so the app's responsive
+      rules apply at the <em>frame's</em> width, not the browser's. These frames sit below
+      the 960px breakpoint, so type, padding and stacking are the narrow-layout ones. The
+      states themselves are identical; the desk's own proportions are not.
+    </p>
+  </div>
+  <div id="board"></div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ==================================================================
+     Fixtures. Invented content only — no member ever typed any of this.
+     ================================================================== */
+  var FIX = {
+    memberOne: {
+      ne: "मेरो कार्ड हरायो, अब के गर्ने?",
+      en: "I lost my card. What should I do now?"
+    },
+    memberMulti: {
+      ne: "नमस्ते।\n\nमैले हिजो रकम पठाएको थिएँ।\nतर अझै पुगेको छैन।",
+      en: "Hello.\n\nI sent money yesterday.\nIt still has not arrived."
+    },
+    memberIds: {
+      ne: "कारोबार TXN-1001 मिलेन।\nस्विफ्ट NARBNPKA, इमेल ram.thapa@example.com\nसहायता पृष्ठ https://bank.com.np/help",
+      en: "Transaction TXN-1001 did not settle.\nSWIFT NARBNPKA, email ram.thapa@example.com\nHelp page https://bank.com.np/help"
+    },
+    grounded: {
+      ne: "कार्ड हराएमा पहिले कार्ड ब्लक गर्नुहोस्। मोबाइल बैंकिङ खोलेर कार्ड सेवा छान्नुहोस्, वा नजिकको शाखामा परिचयपत्र लिएर जानुहोस्। पिन वा ओटीपी यहाँ नलेख्नुहोस्।",
+      en: "If your card is lost, block it first. Open mobile banking and choose Card services, or visit your nearest branch with original ID. Do not type your PIN or OTP here."
+    },
+    failure: {
+      ne: "सेवा अहिले उपलब्ध छैन। केही बेरपछि फेरि प्रयास गर्नुहोस्।",
+      en: "The service is unavailable right now. Please try again shortly."
+    },
+    ticketReply: {
+      ne: "तपाईंको अनुरोध दर्ता गरियो। हाम्रो टोलीले सम्पर्क गर्नेछ।",
+      en: "Your request has been recorded. Our team will get in touch."
+    },
+    ticketIds: ["TCK-4B21C9E0"],
+    longReply: {
+      ne: "किस्ता तिर्ने दिन नाघेमा पहिले बाँकी रकम र जरिवाना मोबाइल बैंकिङको ऋण खण्डमा हेर्नुहोस्, त्यहाँ अर्को भुक्तानी मिति र तिर्नुपर्ने कुल रकम देखिन्छ। रकम खातामा राखेपछि स्वतः कट्टी हुन्छ; नभएमा शाखामा परिचयपत्र लिएर जानुहोस् वा टिकट खोल्न भन्नुहोस्। कट्टी भइसकेको छ तर देखिएको छैन भने कारोबार नम्बर राख्नुहोस्, हामी जाँच्नेछौं। कुनै अवस्थामा पनि पिन, पासवर्ड वा ओटीपी यहाँ नलेख्नुहोस् — बैंकले ती कहिल्यै सोध्दैन।",
+      en: "If an instalment date has passed, first check the outstanding amount and penalty in the Loans section of mobile banking, where the next due date and the total payable are both shown. Once the money is in the account it is debited automatically; if it is not, visit a branch with original ID or ask to open a ticket. If it has already been debited but is not showing, keep the transaction reference and we will check it. In no case type your PIN, password, or OTP here — the bank never asks for them."
+    },
+    numericFallback: {
+      ne: "माफ गर्नुहोस्, यो रकम म पक्का गर्न सक्दिनँ। एकछिन पर्खनुहोस्।",
+      en: "I cannot confirm that amount from our records. Ask an officer, or say yes to open a ticket."
+    },
+    genericFallback: {
+      ne: "तपाईंले लेख्नुभएको कुरा बुझें: “खाता खोल्न के चाहिन्छ?”। लगइन, रकम, ऋण, केवाईसी, बचत, कार्ड वा शाखा समयमा कदम-कदममा भन्न सक्छु। थोरै थप लेख्नुहोस्, वा टिकट खोलौं हो?",
+      en: "I understood: “what do I need to open an account?”. I can walk through login, transfers, loans, KYC, savings, cards, or hours. Add one more sentence, or say yes and I will open a ticket."
+    },
+    speakable: {
+      ne: "कार्ड ब्लक गर्न मोबाइल बैंकिङ खोल्नुहोस्।",
+      en: "To block the card, open mobile banking."
+    }
+  };
+
+  function ago(mins) { return new Date(Date.now() - mins * 60000).toISOString(); }
+
+  /* Conversation rows shaped exactly like /v1/support/conversations returns
+     them. The ids are invented; the timestamps are spread so fmtWhen shows
+     each of its branches — just now, minutes, today, yesterday, dated. */
+  function rows(L) {
+    var previews = {
+      ne: [
+        "नमूना: कार्ड ब्लक कसरी गर्ने?",
+        "नमूना: रकम पठाएँ तर पुगेन",
+        "नमूना: केवाईसी कागजात के चाहिन्छ?",
+        "नमूना: ऋण किस्ता कहिले तिर्ने?",
+        "नमूना: शाखा कति बजे खुल्छ?"
+      ],
+      en: [
+        "Sample: how do I block a card?",
+        "Sample: I sent money but it did not arrive",
+        "Sample: which documents does KYC need?",
+        "Sample: when is my loan instalment due?",
+        "Sample: what time does the branch open?"
+      ]
+    }[L];
+    var when = [ago(0), ago(12), ago(260), ago(1500), ago(14000)];
+    return previews.map(function (preview, i) {
+      return {
+        id: "fixture" + (i + 1) + "0000deadbeef",
+        user_id: null,
+        locale: L,
+        channel: "chat",
+        created_at: when[i],
+        updated_at: when[i],
+        preview: preview,
+        message_count: [6, 4, 9, 2, 11][i]
+      };
+    });
+  }
+
+  /* A responder stands in for the server. It receives the URL the app built,
+     so limit/offset paging is exercised for real. */
+  function pageOf(list, total) {
+    return function (url) {
+      var q = new URL(url, location.origin);
+      var limit = Number(q.searchParams.get("limit") || list.length);
+      var offset = Number(q.searchParams.get("offset") || 0);
+      return { rows: list.slice(offset, offset + limit), total: total };
+    };
+  }
+  function fails() {
+    return function () { return Promise.reject(new Error("gallery: forced failure")); };
+  }
+  function hangs() {
+    return function () { return new Promise(function () {}); };
+  }
+
+  /* ==================================================================
+     Probes. Read attributes back out of the frame so the page shows what
+     assistive technology would actually get, not just what it looks like.
+     ================================================================== */
+  function listProbe(ids) {
+    return function (doc) {
+      var count = doc.getElementById(ids.count);
+      var heading = doc.getElementById(ids.heading) || (count && count.closest("h3"));
+      var list = doc.getElementById(ids.list);
+      var box = list && list.querySelector(".load-error");
+      return [
+        ["badge", count ? count.textContent : "—"],
+        ["badge aria-hidden", count ? String(count.getAttribute("aria-hidden")) : "null"],
+        ["heading aria-label", heading ? String(heading.getAttribute("aria-label")) : "null"],
+        ["rows on screen", String(list ? list.querySelectorAll(".convo, .thread").length : 0)],
+        ["error box", box ? "present, role=" + box.getAttribute("role") : "absent"]
+      ];
+    };
+  }
+  var CHAT_IDS = { count: "chat-inbox-count", heading: null, list: "chat-list" };
+  var CALL_IDS = { count: "inbox-count", heading: "inbox-title", list: "inbox-list" };
+
+  function playProbe(doc) {
+    var btn = doc.querySelector("#log .play");
+    if (!btn) return [["control", "missing"]];
+    return [
+      ["label", btn.textContent],
+      ["data-state", String(btn.dataset.state)],
+      ["aria-pressed", String(btn.getAttribute("aria-pressed"))],
+      ["aria-busy", String(btn.getAttribute("aria-busy"))],
+      ["disabled", String(btn.disabled)]
+    ];
+  }
+
+  function bubble(api, role, text, isErr) {
+    return api.addTurn(api.log, role, text, isErr);
+  }
+
+  /* ==================================================================
+     The states.
+     ================================================================== */
+  var STATES = [
+    { group: "Conversation surface", groupnote: "Rendered into the real chat log by the functions that build every turn the desk shows." },
+
+    { n: 1, name: "Empty thread", fn: "showWelcome()", part: "room", h: 300,
+      note: "The state a fresh room opens in. The welcome copy is chrome, so it follows the language switch.",
+      run: function (api) { api.showWelcome(); } },
+
+    { n: 2, name: "Member bubble, single line", fn: 'addTurn(log, "member", text)', part: "log", h: 130,
+      run: function (api, doc, L) { bubble(api, "member", FIX.memberOne[L]); } },
+
+    { n: 3, name: "Member bubble, multi-line", fn: 'addTurn(log, "member", text) · white-space: pre-wrap', part: "log", h: 200,
+      note: "Contains a blank line. Both line breaks and the empty line between them must survive; a collapsed version of this was the whitespace defect.",
+      run: function (api, doc, L) { bubble(api, "member", FIX.memberMulti[L]); } },
+
+    { n: 4, name: "Member bubble, preserved identifiers", fn: 'addTurn(log, "member", text)', part: "log", h: 185,
+      note: "A reference code, a SWIFT/BIC, an email and a URL. None may be transliterated on the way in or out.",
+      run: function (api, doc, L) { bubble(api, "member", FIX.memberIds[L]); } },
+
+    { n: 5, name: "Loading / thinking", fn: "showLoading(log)", part: "log", h: 175,
+      note: "Shown with the member turn that precedes it, because that is the only way it occurs: an empty log paints the welcome instead, and showLoading appends rather than replaces.",
+      run: function (api, doc, L) {
+        bubble(api, "member", FIX.memberOne[L]);
+        api.showLoading(api.log);
+      } },
+
+    { n: 6, name: "Agent reply, with Listen", fn: "addAgent(text, false)", part: "log", h: 215,
+      note: "addAgent attaches the Listen control itself, via attachListen.",
+      run: function (api, doc, L) { api.addAgent(FIX.grounded[L], false); } },
+
+    { n: 7, name: "Agent reply, error variant", fn: "addAgent(text, true)", part: "log", h: 155,
+      note: "isErr is true, so no Listen control is attached — deliberately. There is nothing worth reading aloud in a failure notice.",
+      run: function (api, doc, L) { api.addAgent(FIX.failure[L], true); } },
+
+    { n: 8, name: "Agent reply with a ticket note", fn: "addAgent(text, false, { tickets: [...] })", part: "log", h: 215,
+      run: function (api, doc, L) { api.addAgent(FIX.ticketReply[L], false, { tickets: FIX.ticketIds }); } },
+
+    { n: 9, name: "A very long reply", fn: "addAgent(longText, false)", part: "log", h: 330,
+      note: "Wrapping, max-width and scroll behaviour on a reply far longer than anything the desk usually returns.",
+      run: function (api, doc, L) { api.addAgent(FIX.longReply[L], false); } },
+
+    { n: 10, name: "Composer, send busy", fn: "setSendBusy(true)", part: "composer", h: 210,
+      note: "Send, the mic and every topic chip disable together, so a second send cannot start while one is in flight.",
+      run: function (api) { api.setSendBusy(true); } },
+
+    { group: "Listen control", groupnote: "All four states of one control, side by side. Each is produced by the function that produces it in the app — states 12 and 14 by pressing the control for real, against a fixture that never answers." },
+
+    { n: 11, name: "Idle", fn: "attachListen(bubble, text)", part: "log", h: 175, small: true,
+      probe: playProbe,
+      note: "TODO: a freshly attached control has no aria-pressed and no data-state — both read null below. attachListen writes the label itself instead of going through setPlayLabel, so the pressed state is never set until the first press or a language switch, and a screen reader meets a plain button rather than a toggle that is off. The label is set in two places, which is how the two drifted apart; routing attachListen through setPlayLabel would fix both.",
+      todo: true,
+      run: function (api, doc, L) {
+        var b = bubble(api, "agent", FIX.speakable[L], false);
+        api.attachListen(b, FIX.speakable[L]);
+      } },
+
+    { n: 12, name: "Pending", fn: 'setPlayState(btn, "pending") via togglePlayback', part: "log", h: 175, small: true,
+      probe: playProbe,
+      note: "A real press against a provider that never answers. Set synchronously before the await, so it paints on the click, and left enabled — pressing again cancels.",
+      run: function (api, doc, L) {
+        var b = bubble(api, "agent", FIX.speakable[L], false);
+        var btn = api.attachListen(b, FIX.speakable[L]);
+        api.network(hangs());
+        api.togglePlayback(btn, FIX.speakable[L]);
+      } },
+
+    { n: 13, name: "Playing", fn: 'setPlayState(btn, "playing") → setPlayLabel(btn, true)', part: "log", h: 175, small: true,
+      probe: playProbe,
+      run: function (api, doc, L) {
+        var b = bubble(api, "agent", FIX.speakable[L], false);
+        var btn = api.attachListen(b, FIX.speakable[L]);
+        api.setPlayState(btn, "playing");
+      } },
+
+    { n: 14, name: "Error / timeout", fn: "showSpeechError() + setPlayState(btn, \"idle\")", part: "room", h: 450, small: true,
+      probe: playProbe,
+      note: "A real press against a provider that returns nothing. The control returns to Listen and stays pressable; the line appears above the composer. It clears itself after four seconds — press ↻ to see it again.",
+      run: function (api, doc, L) {
+        var b = bubble(api, "agent", FIX.speakable[L], false);
+        var btn = api.attachListen(b, FIX.speakable[L]);
+        api.network(function () { return null; });
+        return api.togglePlayback(btn, FIX.speakable[L]);
+      } },
+
+    { group: "List panes", groupnote: "Chat and Call rendered adjacent. Three rounds of work went into making these two identical; keeping them beside each other is how they stay that way. Every row here comes from a fixture response handed to the app's own loadInbox." },
+
+    { n: 15, newRow: true, name: "Populated · Chat", fn: "loadInbox(\"chat\") → paintChatInbox(rows)", part: "chat-inbox", h: 560,
+      probe: listProbe(CHAT_IDS),
+      note: "Badge counts the desk (128), not the page. The timezone note names the viewer's own clock.",
+      run: function (api, doc, L) { api.network(pageOf(rows(L), 128)); return api.loadInbox("chat"); } },
+
+    { n: 15, name: "Populated · Call", fn: "loadInbox(\"call\") → paintCallInbox()", part: "call-inbox", h: 560,
+      probe: listProbe(CALL_IDS),
+      run: function (api, doc, L) { api.network(pageOf(rows(L), 128)); return api.loadInbox("call"); } },
+
+    { n: 16, newRow: true, name: "Empty · Chat", fn: "paintChatInbox([]) → t().emptyInbox", part: "chat-inbox", h: 300,
+      probe: listProbe(CHAT_IDS),
+      run: function (api) { api.network(pageOf([], 0)); return api.loadInbox("chat"); } },
+
+    { n: 16, name: "Empty · Call", fn: "paintCallInbox() → t().emptyInbox", part: "call-inbox", h: 300,
+      probe: listProbe(CALL_IDS),
+      run: function (api) { api.network(pageOf([], 0)); return api.loadInbox("call"); } },
+
+    { n: 17, newRow: true, name: "First-load failure · Chat", fn: "paintInboxError() → paintListFailure()", part: "chat-inbox", h: 330,
+      probe: listProbe(CHAT_IDS),
+      note: "Badge blanked to — and hidden from assistive tech; the heading's aria-label carries the failure instead. Compare the two probes: they must read the same.",
+      run: function (api) { api.network(fails()); return api.loadInbox("chat"); } },
+
+    { n: 17, name: "First-load failure · Call", fn: "paintCallInboxError() → paintListFailure()", part: "call-inbox", h: 330,
+      probe: listProbe(CALL_IDS),
+      run: function (api) { api.network(fails()); return api.loadInbox("call"); } },
+
+    { n: 18, newRow: true, name: "Scroll-pagination failure", fn: "loadNextPage() catch → returns false", part: "chat-inbox", h: 560, wide: true,
+      probe: listProbe(CHAT_IDS),
+      why: "Intentionally NOT the same as state 17. A first load has nothing to lose, so it shows the error and offers a retry. A paging failure happens under an officer who already has rows on screen: replacing them with an error box would cost them the list they were reading to tell them about a request they did not make. So the rows stay, the badge is untouched, no error box appears, and scrolling again retries. Do not 'fix' this into consistency with 17.",
+      run: function (api, doc, L) {
+        api.network(pageOf(rows(L), 128));
+        return api.loadInbox("chat").then(function () {
+          api.network(fails());
+          return api.loadOlderConversations();
+        });
+      } },
+
+    { n: 19, newRow: true, name: "Retry in progress", fn: "paintListError() retry button → loadInbox()", part: "chat-inbox", h: 330, wide: true,
+      /* The last two probe rows are the evidence that this is a real
+         in-flight retry and not a click that missed: the button was found and
+         pressed, and the request it started has not answered. */
+      probe: function (doc, extra) {
+        return listProbe(CHAT_IDS)(doc).concat([
+          ["retry button pressed", extra && extra.pressed ? "yes" : "NO"],
+          ["requests issued", String(extra ? extra.calls : "?") + " (2 first load + 1 retry, still pending)"],
+          ["button label now", extra && extra.label ? extra.label : "—"]
+        ]);
+      },
+      todo: true,
+      note: "TODO: there is no retry-in-progress state. Try again has been pressed in the frame below and the request is still in flight, yet nothing on screen has changed — same label, still enabled, no spinner. A slow retry is indistinguishable from a click that did not register, so an officer presses it repeatedly. Decide whether the button should show a busy state.",
+      run: function (api, doc) {
+        var count = { calls: 0, pressed: false, label: "" };
+        api.network(function () {
+          count.calls += 1;
+          return Promise.reject(new Error("gallery: forced failure"));
+        });
+        return api.loadInbox("chat").then(function () {
+          api.network(function () {
+            count.calls += 1;
+            return new Promise(function () {});
+          });
+          var retry = doc.querySelector("#chat-list .load-error button");
+          if (retry) {
+            retry.click();
+            count.pressed = true;
+            count.label = retry.textContent + (retry.disabled ? " (disabled)" : " (enabled)");
+          }
+          return count;
+        });
+      } },
+
+    { group: "Reply types", groupnote: "The three shapes a reply can take, all through addAgent." },
+
+    { n: 20, name: "Grounded product answer", fn: "addAgent(reply, false)", part: "log", h: 235,
+      note: "The normal case: retrieval found product knowledge and the answer is built from it.",
+      run: function (api, doc, L) { api.addAgent(FIX.grounded[L], false); } },
+
+    { n: 21, name: "Numeric-grounding fallback", fn: "addAgent(GROUNDING_FALLBACK, false)", part: "log", h: 175,
+      note: "Refuses rather than states a figure it cannot ground. Both strings are copied from adapt/grounding.py and adapt/pipeline.py, so this is what the server actually returns.",
+      run: function (api, doc, L) { api.addAgent(FIX.numericFallback[L], false); } },
+
+    { n: 22, name: "Generic fallback", fn: "addAgent(generic_reply(asked), false)", part: "log", h: 255,
+      note: "Nothing retrieved: repeats what was understood and offers a route forward.",
+      run: function (api, doc, L) { api.addAgent(FIX.genericFallback[L], false); } }
+  ];
+
+  /* ==================================================================
+     Harness.
+     ================================================================== */
+  var LANG = "ne";
+  var DARK = false;
+  var board = document.getElementById("board");
+  var cards = [];
+
+  function build() {
+    var row = null;
+    STATES.forEach(function (def, index) {
+      if (def.group) {
+        var h2 = document.createElement("h2");
+        h2.className = "group";
+        h2.textContent = def.group;
+        board.appendChild(h2);
+        if (def.groupnote) {
+          var p = document.createElement("p");
+          p.className = "groupnote";
+          p.textContent = def.groupnote;
+          board.appendChild(p);
+        }
+        row = document.createElement("div");
+        row.className = "row";
+        board.appendChild(row);
+        return;
+      }
+      /* Pairs that are meant to be compared share a row of their own, so a
+         wrap can never put Chat and Call on different lines. */
+      if (def.newRow || !row) {
+        row = document.createElement("div");
+        row.className = "row";
+        board.appendChild(row);
+      }
+      var fig = document.createElement("figure");
+      fig.className = "state" + (def.wide ? " wide" : "");
+      if (def.small) fig.style.maxWidth = "340px";
+
+      var cap = document.createElement("figcaption");
+      var head = document.createElement("div");
+      head.className = "cap-head";
+      var num = document.createElement("span");
+      num.className = "num";
+      num.textContent = def.n;
+      var name = document.createElement("span");
+      name.className = "name";
+      name.textContent = def.name;
+      var replay = document.createElement("button");
+      replay.type = "button";
+      replay.className = "replay";
+      replay.textContent = "↻ replay";
+      replay.addEventListener("click", function () { apply(fig); });
+      head.append(num, name, replay);
+      var fn = document.createElement("code");
+      fn.className = "fn";
+      fn.textContent = def.fn;
+      cap.append(head, fn);
+      if (def.note) {
+        var note = document.createElement("p");
+        note.className = "note" + (def.todo ? " todo" : "");
+        note.textContent = def.note;
+        cap.appendChild(note);
+      }
+      if (def.why) {
+        var why = document.createElement("p");
+        why.className = "note why";
+        why.textContent = def.why;
+        cap.appendChild(why);
+      }
+      fig.appendChild(cap);
+
+      var holder = document.createElement("div");
+      holder.className = "frame";
+      var frame = document.createElement("iframe");
+      frame.height = def.h;
+      frame.title = def.n + " · " + def.name;
+      frame.src = "/chat/states/frame";
+      holder.appendChild(frame);
+      fig.appendChild(holder);
+
+      if (def.probe) {
+        var dl = document.createElement("dl");
+        dl.className = "probe";
+        fig.appendChild(dl);
+      }
+
+      (row || board).appendChild(fig);
+      fig._def = def;
+      cards.push(fig);
+      frame.addEventListener("load", function () { apply(fig); });
+    });
+  }
+
+  function paintProbe(fig, pairs) {
+    var dl = fig.querySelector(".probe");
+    if (!dl) return;
+    dl.innerHTML = "";
+    pairs.forEach(function (pair) {
+      var dt = document.createElement("dt");
+      dt.textContent = pair[0];
+      var dd = document.createElement("dd");
+      dd.textContent = pair[1];
+      if (pair[1] === "null" || pair[1] === "missing") dd.className = "bad";
+      dl.append(dt, dd);
+    });
+  }
+
+  function apply(fig) {
+    var def = fig._def;
+    var frame = fig.querySelector("iframe");
+    var win = frame.contentWindow;
+    var api = win && win.bhasaStates;
+    if (!api) return;
+    api.reset();
+    api.lang(LANG);
+    api.theme(DARK);
+    api.part(def.part);
+    var done;
+    try {
+      done = def.run(api, frame.contentDocument, LANG);
+    } catch (err) {
+      done = Promise.reject(err);
+    }
+    Promise.resolve(done).catch(function () { return null; }).then(function (extra) {
+      if (def.probe) paintProbe(fig, def.probe(frame.contentDocument, extra));
+    });
+  }
+
+  function applyAll() { cards.forEach(apply); }
+
+  document.getElementById("lang-switch").addEventListener("click", function (event) {
+    var btn = event.target.closest("button");
+    if (!btn) return;
+    LANG = btn.dataset.lang;
+    this.querySelectorAll("button").forEach(function (b) { b.classList.toggle("on", b === btn); });
+    applyAll();
+  });
+
+  document.getElementById("theme-switch").addEventListener("click", function (event) {
+    var btn = event.target.closest("button");
+    if (!btn) return;
+    DARK = btn.dataset.dark === "1";
+    document.documentElement.classList.toggle("dark", DARK);
+    this.querySelectorAll("button").forEach(function (b) { b.classList.toggle("on", b === btn); });
+    applyAll();
+  });
+
+  build();
+})();
+</script>
+</body>
+</html>

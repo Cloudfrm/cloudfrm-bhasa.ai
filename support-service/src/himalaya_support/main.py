@@ -76,7 +76,16 @@ async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSON
 
 CHAT_PAGE = Path(__file__).with_name("static") / "chat.html"
 DASHBOARD_PAGE = Path(__file__).with_name("static") / "dashboard.html"
+CHAT_STATES_PAGE = Path(__file__).with_name("static") / "chat-states.html"
 STATIC_DIR = Path(__file__).with_name("static")
+
+# The states gallery is a development tool. Registering it at all is the
+# decision, not hiding it behind a check inside the handler: outside
+# development these paths do not exist, so there is nothing to authorise,
+# nothing to misconfigure, and nothing in the schema.
+OPEN_PAGES = {"/", "/chat", "/v1/health"}
+if not settings.is_production:
+    OPEN_PAGES |= {"/chat/states", "/chat/states/frame"}
 
 
 @app.middleware("http")
@@ -84,7 +93,7 @@ async def require_api_key(request: Request, call_next):
     key = settings.api_key.strip()
     if (
         not key
-        or request.url.path in {"/", "/chat", "/v1/health"}
+        or request.url.path in OPEN_PAGES
         or request.url.path.startswith("/static/")
         or request.method == "OPTIONS"
     ):
@@ -108,6 +117,25 @@ def dashboard_page() -> FileResponse:
 @app.get("/chat", include_in_schema=False)
 def chat_page() -> FileResponse:
     return FileResponse(CHAT_PAGE, headers={"Cache-Control": "no-store"})
+
+
+if not settings.is_production:
+
+    @app.get("/chat/states", include_in_schema=False)
+    def chat_states_page() -> FileResponse:
+        """Gallery of every visual state the chat UI can be in, from fixtures."""
+        return FileResponse(CHAT_STATES_PAGE, headers={"Cache-Control": "no-store"})
+
+    @app.get("/chat/states/frame", include_in_schema=False)
+    def chat_states_frame() -> FileResponse:
+        """The real dashboard, served again for the gallery to drive.
+
+        The same file as /, deliberately: a gallery that renders a copy of the
+        UI stops matching it on the next commit. dashboard.html recognises this
+        path, closes its network helpers, and exposes the render functions the
+        gallery calls with fixture arguments.
+        """
+        return FileResponse(DASHBOARD_PAGE, headers={"Cache-Control": "no-store"})
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
