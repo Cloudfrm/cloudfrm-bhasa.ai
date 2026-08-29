@@ -801,6 +801,7 @@
         agent: "भाषा सेवा",
         member: "तपाईं",
         play: "सुन्नुहोस्",
+        stopPlay: "रोक्नुहोस्",
         newThread: "नयाँ",
         tickets: "टिकट",
         emptyInbox: "अहिले संवाद छैन",
@@ -871,6 +872,7 @@
         agent: "Bhasa support",
         member: "You",
         play: "Listen",
+        stopPlay: "Stop",
         newThread: "New",
         tickets: "Tickets",
         emptyInbox: "No conversations yet",
@@ -1071,6 +1073,7 @@
       paintTheme();
       paintChips();
       paintStats();
+      paintTurnLabels();
       paintUnicoderHint();
       if (view === "chat" && !started) showWelcome();
       paintRoomHead();
@@ -1258,13 +1261,30 @@
         play.type = "button";
         play.className = "play";
         play.textContent = t().play;
-        play.addEventListener("click", () => speakReply(text, true));
+        play.dataset.speech = text;
+        play.addEventListener("click", () => togglePlayback(play, text));
         bubble.parentNode.appendChild(play);
         /* Auto-narration now only happens when the officer has switched the
            Voice toggle on, and that toggle defaults to off. It used to fetch
            a full MP3 for every reply whether or not anyone was listening. */
         if (speakOn) speakReply(text, false);
       }
+    }
+
+    /* Labels painted once at creation time kept the locale they were born
+       in, so a bubble already on screen still read "Listen" after the
+       officer switched to Nepali. Speaker names and the Listen/Stop control
+       are chrome and follow the switch; message bodies deliberately do not. */
+    function paintTurnLabels() {
+      const c = t();
+      document.querySelectorAll("#log .turn, #call-log .turn").forEach((turn) => {
+        const who = turn.querySelector(".who");
+        if (who && !turn.querySelector(".ticket-note, .who + .who")) {
+          who.textContent = turn.classList.contains("member") ? c.member : c.agent;
+        }
+        const play = turn.querySelector(".play");
+        if (play) setPlayLabel(play, play.dataset.playing === "true");
+      });
     }
 
     function showLoading(host) {
@@ -1281,32 +1301,121 @@
       if (pending) pending.remove();
     }
 
+    /* ------------------------------------------------------------------
+       Playback. One controller owns the audio, so there is a single place
+       that can stop it.
+       Before this, the only pause() in the app ran as a side effect of
+       starting the next clip, behind a full round trip to /speak — so the
+       closest thing to a stop was "press Listen again and wait a second
+       for it to restart". Stopping now never waits on the network.
+       ------------------------------------------------------------------ */
+    let currentAudio = null;
+    let currentPlayBtn = null;
+    const speechCache = new WeakMap();   // play button -> data URL, so a
+                                         // replay costs no second TTS call
+
+    function setPlayLabel(btn, playing) {
+      if (!btn) return;
+      btn.textContent = playing ? t().stopPlay : t().play;
+      btn.setAttribute("aria-pressed", playing ? "true" : "false");
+      btn.dataset.playing = playing ? "true" : "false";
+    }
+
+    /* Synchronous on purpose: a stop must be instant. */
+    function stopPlayback() {
+      const audio = currentAudio;
+      currentAudio = null;
+      const btn = currentPlayBtn;
+      currentPlayBtn = null;
+      setPlayLabel(btn, false);
+      if (audio) {
+        try { audio.pause(); } catch (e) {}
+      }
+      if (lastAudio === audio) lastAudio = null;
+    }
+
+    function playSrc(src, btn) {
+      stopPlayback();
+      const audio = new Audio(src);
+      currentAudio = audio;
+      currentPlayBtn = btn || null;
+      lastAudio = audio;
+      const finished = () => {
+        if (currentAudio === audio) {
+          currentAudio = null;
+          currentPlayBtn = null;
+        }
+        setPlayLabel(btn, false);
+      };
+      audio.addEventListener("ended", finished);
+      audio.addEventListener("pause", finished);
+      audio.addEventListener("error", finished);
+      setPlayLabel(btn, true);
+      const started = audio.play().catch(() => { finished(); });
+      return { audio, started };
+    }
+
+    async function fetchSpeech(text) {
+      const res = await fetch("/v1/support/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, locale: replyLang })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.audio_base64) return null;
+      return "data:" + (data.mime || "audio/mpeg") + ";base64," + data.audio_base64;
+    }
+
+    /* The Listen control is a toggle. While this bubble is speaking it reads
+       रोक्नुहोस् / Stop, and pressing it silences the reply immediately. */
+    async function togglePlayback(btn, text) {
+      if (currentPlayBtn === btn && currentAudio) {
+        stopPlayback();
+        return;
+      }
+      stopPlayback();
+      let src = speechCache.get(btn);
+      if (!src) {
+        btn.disabled = true;
+        try {
+          src = await fetchSpeech(text);
+        } catch {
+          src = null;
+        }
+        btn.disabled = false;
+        if (!src) return;
+        speechCache.set(btn, src);
+      }
+      playSrc(src, btn);
+    }
+
     async function speakReply(text, wait) {
       if (!text) return;
       if (!wait && !speakOn) return;
       try {
-        const res = await fetch("/v1/support/speak", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, locale: replyLang })
-        });
-        const data = await res.json();
-        if (res.ok && data.audio_base64) {
-          if (lastAudio) lastAudio.pause();
-          lastAudio = new Audio("data:" + (data.mime || "audio/mpeg") + ";base64," + data.audio_base64);
-          const done = lastAudio.play().catch(() => {});
-          if (wait) await new Promise((resolve) => { lastAudio.onended = resolve; lastAudio.onerror = resolve; });
-          await done;
+        const src = await fetchSpeech(text);
+        if (!src) return;
+        const { audio, started } = playSrc(src, null);
+        if (wait) {
+          await new Promise((resolve) => {
+            audio.addEventListener("ended", resolve);
+            audio.addEventListener("pause", resolve);
+            audio.addEventListener("error", resolve);
+          });
         }
+        await started;
       } catch {}
     }
 
     async function playPayload(data) {
       if (!data || !data.audio_base64) return;
-      if (lastAudio) lastAudio.pause();
-      lastAudio = new Audio("data:" + (data.mime || "audio/mpeg") + ";base64," + data.audio_base64);
-      try { await lastAudio.play(); } catch {}
-      await new Promise((resolve) => { lastAudio.onended = resolve; lastAudio.onerror = resolve; });
+      const src = "data:" + (data.mime || "audio/mpeg") + ";base64," + data.audio_base64;
+      const { audio } = playSrc(src, null);
+      await new Promise((resolve) => {
+        audio.addEventListener("ended", resolve);
+        audio.addEventListener("pause", resolve);
+        audio.addEventListener("error", resolve);
+      });
     }
 
     function newClientId() {
@@ -1600,6 +1709,10 @@
       try {
         await loadFirstPage(callList);
       } catch (err) {
+        /* Same as Chat: the count must not assert a number when the load
+           failed, or it reads as "0 calls" rather than "we do not know". */
+        const countEl = document.getElementById("inbox-count");
+        if (countEl) countEl.textContent = "—";
         paintListError(document.getElementById("inbox-list"), () => loadInbox("call"));
         return;
       }
@@ -1658,7 +1771,9 @@
         callId = id;
         callLog.innerHTML = "";
         (data.messages || []).forEach((msg) => addTurn(callLog, msg.role, msg.content));
-        loadInbox("call");
+        /* Repaint to move the selection, like Chat does. Selecting a row is
+           local state and was re-fetching the whole call list. */
+        paintCallInbox();
         return;
       }
       chatId = id;
@@ -1859,6 +1974,10 @@
     document.getElementById("speak-toggle").addEventListener("click", () => {
       speakOn = !speakOn;
       localStorage.setItem("bhasa-speak", speakOn ? "on" : "off");
+      /* Switching narration off silences what is being read right now.
+         It used to only govern future replies, so an officer who turned
+         Voice off mid-sentence kept listening to the sentence. */
+      if (!speakOn) stopPlayback();
       paintChrome();
     });
     themeToggle.addEventListener("click", () => setTheme(!isDark()));
