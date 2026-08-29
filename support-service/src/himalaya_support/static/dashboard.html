@@ -1804,7 +1804,16 @@
       if (kind === "call") {
         callId = id;
         callLog.innerHTML = "";
-        (data.messages || []).forEach((msg) => addTurn(callLog, msg.role, msg.content));
+        (data.messages || []).forEach((msg) => {
+          const isMember = msg.role === "user" || msg.role === "member";
+          const bubble = addTurn(callLog, msg.role, msg.content);
+          /* A call transcript is a record of something spoken, so replaying
+             it is at least as useful here as in Chat. Reviewing history
+             only: during a live call the reply is narrated automatically
+             while the microphone is listening, and a manual replay there
+             would feed the speaker back into the recogniser. */
+          if (!isMember && !callLive) attachListen(bubble, msg.content);
+        });
         /* Repaint to move the selection, like Chat does. Selecting a row is
            local state and was re-fetching the whole call list. */
         paintCallInbox();
