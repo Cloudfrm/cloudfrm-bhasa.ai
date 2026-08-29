@@ -74,10 +74,11 @@ async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSON
     logger.error("Unhandled error: %s\n%s", exc, traceback.format_exc())
     return JSONResponse({"detail": "Internal server error"}, status_code=500)
 
-CHAT_PAGE = Path(__file__).with_name("static") / "chat.html"
-DASHBOARD_PAGE = Path(__file__).with_name("static") / "dashboard.html"
-CHAT_STATES_PAGE = Path(__file__).with_name("static") / "chat-states.html"
-STATIC_DIR = Path(__file__).with_name("static")
+FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+CHAT_PAGE = FRONTEND_DIR / "chat.html"
+DASHBOARD_PAGE = FRONTEND_DIR / "index.html"
+CHAT_STATES_PAGE = FRONTEND_DIR / "chat-states.html"
+STATIC_DIR = FRONTEND_DIR
 
 
 @app.middleware("http")

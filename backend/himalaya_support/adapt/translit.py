@@ -585,7 +585,7 @@ def load_web_lexicon() -> int:
     """Merge roman→Devanagari pairs pulled from public datasets. Does not override core keys."""
     from pathlib import Path
 
-    path = Path(__file__).resolve().parents[3] / "data" / "knowledge" / "roman_lexicon.json"
+    path = Path(__file__).resolve().parents[2] / "data" / "knowledge" / "roman_lexicon.json"
     if not path.exists():
         return 0
     try:

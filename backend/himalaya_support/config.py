@@ -6,7 +6,7 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-SERVICE_ROOT = Path(__file__).resolve().parents[2]
+SERVICE_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = SERVICE_ROOT.parent
 # Vercel (and most serverless runtimes) ship a read-only deployment bundle;
 # only /tmp is writable at runtime.

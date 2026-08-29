@@ -14,7 +14,7 @@ from pathlib import Path
 from himalaya_support.adapt.devanagari import normalize
 from himalaya_support.adapt.translit import classify_input, to_devanagari
 
-_DATA = Path(__file__).resolve().parents[3] / "data" / "knowledge" / "english_nepali.json"
+_DATA = Path(__file__).resolve().parents[2] / "data" / "knowledge" / "english_nepali.json"
 _WORD_RE = re.compile(r"[A-Za-z']+|[^A-Za-z']+")
 _LATIN_RE = re.compile(r"[A-Za-z]")
 
