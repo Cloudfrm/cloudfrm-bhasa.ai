@@ -54,6 +54,7 @@ const copy = {
         threadLabel: "कुराकानी",
         memberRow: "सदस्य",
         listFailed: "सूची ल्याउन सकिएन।",
+        timesShownIn: "समय {zone} अनुसार",
         retry: "फेरि प्रयास",
         retrying: "फेरि प्रयास गर्दै…",
         roomMsgs: "सन्देश",
@@ -138,6 +139,7 @@ const copy = {
         threadLabel: "Conversation",
         memberRow: "Member",
         listFailed: "Could not load the list.",
+        timesShownIn: "Times shown in {zone}",
         retry: "Try again",
         retrying: "Trying again…",
         roomMsgs: "messages",
@@ -413,6 +415,7 @@ const copy = {
       document.getElementById("chat-inbox-title").textContent = c.chatInbox;
       document.getElementById("chat-new").textContent = c.chatNew;
       document.getElementById("topics-label").textContent = c.topics;
+      paintTimezoneNote();
       document.getElementById("tickets-label").textContent = c.tickets;
       document.getElementById("settings-title").textContent = c.settingsTitle;
       document.getElementById("settings-body").textContent = c.settingsBody;
@@ -1110,6 +1113,21 @@ const copy = {
 
     /* The catch used to paint the empty state, so a list that failed to
        load was indistinguishable from a desk with no conversations. */
+    /* Intl can throw or return "" in locked-down browsers; a blank note
+       is correct there, an exception is not. */
+    function viewerTimeZone() {
+      try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; }
+      catch (e) { return ""; }
+    }
+
+    function paintTimezoneNote() {
+      const el = document.getElementById("chat-tz");
+      if (!el) return;
+      const zone = viewerTimeZone();
+      el.textContent = zone ? t().timesShownIn.replace("{zone}", zone) : "";
+      el.title = zone;
+    }
+
     function paintInboxError(onRetry) {
       const list = document.getElementById("chat-list");
       const pane = document.getElementById("chat-inbox");

@@ -599,6 +599,15 @@
     }
     /* A failed load has to read as a problem, not as "nothing here". The
        empty state above is quiet; this is not. Ported from SF-1. */
+    /* Which clock these timestamps use. Quiet — reassurance, not a
+       control. Ported from SF-1. */
+    .tz-note {
+      flex-shrink: 0;
+      padding: 0 16px 8px;
+      font-size: 11.5px;
+      color: var(--bhasa-text-muted);
+      line-height: 1.5;
+    }
     .load-error {
       color: var(--bhasa-error);
       text-align: center;
