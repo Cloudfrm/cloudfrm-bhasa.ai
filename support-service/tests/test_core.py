@@ -584,3 +584,81 @@ def test_reference_formats_survive_the_composer_path():
     # and the carve-out still converts
     assert "पिन" in unicoder("I forgot my PIN")["nepali"]
     assert "पिन" in unicoder("mero pin birse")["nepali"]
+
+
+def _fresh_app(monkeypatch, **env):
+    """Import the app under a given environment, fresh each time."""
+    import importlib
+    import sys
+
+    for key in ("SUPPORT_ENV", "SUPPORT_API_KEY", "SUPPORT_CORS_ORIGINS"):
+        monkeypatch.delenv(key, raising=False)
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    for mod in [m for m in list(sys.modules) if m.startswith("himalaya_support")]:
+        del sys.modules[mod]
+    return importlib.import_module("himalaya_support.main")
+
+
+def test_production_refuses_to_boot_without_a_key(monkeypatch):
+    """An unset key left every /v1 route open, silently.
+
+    Starting insecure is worse than not starting: the failure is invisible
+    until someone finds the open API.
+    """
+    import pytest
+
+    with pytest.raises(RuntimeError, match="SUPPORT_API_KEY"):
+        _fresh_app(monkeypatch, SUPPORT_ENV="production")
+
+    with pytest.raises(RuntimeError, match="SUPPORT_CORS_ORIGINS"):
+        _fresh_app(monkeypatch, SUPPORT_ENV="production",
+                   SUPPORT_API_KEY="k", SUPPORT_CORS_ORIGINS="*")
+
+    # development is unaffected, so the local workflow still runs keyless
+    assert _fresh_app(monkeypatch, SUPPORT_ENV="development") is not None
+
+
+def test_api_key_is_enforced_and_reveals_nothing(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    main_mod = _fresh_app(
+        monkeypatch,
+        SUPPORT_ENV="production",
+        SUPPORT_API_KEY="k-123",
+        SUPPORT_CORS_ORIGINS="https://desk.example.np",
+    )
+    client = TestClient(main_mod.app)
+
+    assert client.get("/v1/support/tickets").status_code == 401
+    assert client.get("/v1/support/tickets", headers={"x-api-key": "wrong"}).status_code == 401
+    assert client.get("/v1/support/tickets", headers={"x-api-key": "k-123"}).status_code == 200
+    assert client.get("/v1/support/tickets",
+                      headers={"authorization": "Bearer k-123"}).status_code == 200
+
+    # the rejection says nothing about why
+    assert client.get("/v1/support/tickets").json() == {"detail": "Unauthorized"}
+    # liveness stays reachable, and carries no configuration
+    health = client.get("/v1/health")
+    assert health.status_code == 200
+    assert set(health.json()) == {"ok"}
+
+
+def test_unhandled_errors_do_not_leak_internals(monkeypatch):
+    """The handler answered with "{ExceptionType}: {message}", which hands a
+    caller the exception class and whatever the provider put in the message."""
+    from fastapi.testclient import TestClient
+
+    main_mod = _fresh_app(monkeypatch, SUPPORT_ENV="development")
+
+    @main_mod.app.get("/v1/_boom")
+    def _boom():
+        raise ValueError("connection string postgres://user:hunter2@db:5432 failed")
+
+    client = TestClient(main_mod.app, raise_server_exceptions=False)
+    response = client.get("/v1/_boom")
+    assert response.status_code == 500
+    body = response.text
+    assert body == '{"detail":"Internal server error"}'
+    for leak in ("ValueError", "hunter2", "postgres://", "Traceback", "himalaya_support"):
+        assert leak not in body
