@@ -21,6 +21,9 @@ from himalaya_support.store.db import SupportStore
 from himalaya_support.support.finetune import SFTRecorder
 from himalaya_support.adapt.actions import parse_confirmation
 from himalaya_support.adapt.conversation_repair import repair_message
+from himalaya_support.adapt.crisis import crisis_reply, load_crisis_config, looks_like_crisis
+from himalaya_support.adapt.smalltalk import classify as classify_smalltalk
+from himalaya_support.adapt.smalltalk import reply_for as smalltalk_reply
 from himalaya_support.adapt.pipeline import (
     ReplyGenerationError,
     asks_a_different_question,
@@ -84,12 +87,22 @@ class SupportEngine:
         proofread: bool = True,
         channel: str = "chat",
     ) -> dict[str, Any]:
+        # Checked on the raw message, before transliteration mangles it and
+        # before retrieval can answer a banking question instead. "I am going
+        # to kill myself" became "म हुँ गोइङ किल्ल ंय्सेल्फ" downstream, and a
+        # member writing about debt and not wanting to live was answered with
+        # late-payment penalties.
+        in_crisis = looks_like_crisis(message)
+
         prepared = prepare_user_text(message)
         search_text = prepared["search"] or prepared["normalized"] or message
-        language = self._reply_language(locale, search_text)
+        language = self._reply_language(locale, message if in_crisis else search_text)
         conversation_id = self.store.get_or_create_conversation(
             conversation_id, user_id, language, channel=channel
         )
+
+        if in_crisis:
+            return self._crisis_turn(conversation_id, message, language, user_id)
 
         confirmed = parse_confirmation(search_text)
         if conversation_id in self._pending_ticket:
@@ -145,6 +158,14 @@ class SupportEngine:
                     "generated": False,
                     "dataset_grounded_only": True,
                 }
+
+        # Courtesies are answered here, after any pending ticket offer has had
+        # its chance at "yes"/"no", and before retrieval. A bare affirmation
+        # with nothing pending used to reach the knowledge base and come back
+        # with a loan interest rate.
+        courtesy = classify_smalltalk(message)
+        if courtesy:
+            return self._smalltalk_turn(conversation_id, message, courtesy, language)
 
         cleaned = search_text
         local = self._is_local()
@@ -281,6 +302,103 @@ class SupportEngine:
             "tickets": ticket_ids,
             "generated": True,
             "dataset_grounded_only": False,
+        }
+
+    def _smalltalk_turn(
+        self,
+        conversation_id: str,
+        message: str,
+        category: str,
+        language: str,
+    ) -> dict[str, Any]:
+        """A short, warm answer — no retrieval, no model call."""
+        reply_text = smalltalk_reply(category, language)
+        self.store.add_message(
+            conversation_id, "user", message, {"language": language, "smalltalk": category}
+        )
+        self.store.add_message(
+            conversation_id, "assistant", reply_text, {"smalltalk": category}
+        )
+        return {
+            "conversation_id": conversation_id,
+            "reply": reply_text,
+            "language": language,
+            "intent": {"intent": "smalltalk", "needs_ticket": False},
+            "model": "policy",
+            "backend": "smalltalk",
+            "pipeline": "smalltalk",
+            "transliterated": None,
+            "grounded": True,
+            "register": "spoken",
+            "tickets": [],
+            "pending_confirm": None,
+            "retrieved": [],
+            "tools": [],
+            "generated": False,
+            "dataset_grounded_only": True,
+        }
+
+    def _crisis_turn(
+        self,
+        conversation_id: str,
+        message: str,
+        language: str,
+        user_id: str | None,
+    ) -> dict[str, Any]:
+        """Answer a distress message, and nothing else.
+
+        No retrieval, no model call, no financial content — if someone writes
+        that their loan is too much and they have no reason to live, the loan
+        answer waits. The conversation is flagged and a ticket is raised as
+        wellbeing/urgent so it does not sit in the ordinary queue unmarked.
+        """
+        config = load_crisis_config(self.settings.knowledge_path)
+        reply_text = crisis_reply(language, config)
+
+        self.store.add_message(
+            conversation_id, "user", message, {"language": language, "crisis": True}
+        )
+        self.store.add_message(
+            conversation_id, "assistant", reply_text, {"crisis": True, "generated": False}
+        )
+
+        ticket_ids: list[str] = []
+        try:
+            ticket = self.store.create_ticket(
+                {
+                    "conversation_id": conversation_id,
+                    "user_id": user_id,
+                    "subject": "Member wellbeing — needs a person",
+                    # The member's own words are not copied into the ticket
+                    # subject or body; an officer opens the conversation to
+                    # read them in context.
+                    "description": "Distress signal detected in chat. Open the conversation.",
+                    "category": "wellbeing",
+                    "priority": "urgent",
+                }
+            )
+            ticket_ids.append(ticket["id"])
+        except Exception as exc:  # noqa: BLE001 — the reply must still reach them
+            logger.error("Could not raise a wellbeing ticket: %s", exc)
+
+        return {
+            "conversation_id": conversation_id,
+            "reply": reply_text,
+            "language": language,
+            "intent": {"intent": "wellbeing", "needs_human": True},
+            "model": "policy",
+            "backend": "crisis",
+            "pipeline": "crisis",
+            "transliterated": None,
+            "grounded": True,
+            "register": "spoken",
+            "tickets": ticket_ids,
+            "pending_confirm": None,
+            "retrieved": [],
+            "tools": [],
+            "generated": False,
+            "dataset_grounded_only": True,
+            "crisis": True,
         }
 
     def _reply_language(self, locale: str, message: str) -> str:

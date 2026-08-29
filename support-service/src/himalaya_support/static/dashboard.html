@@ -346,6 +346,23 @@
     }
     .err .bubble { background: var(--danger-soft); border-color: var(--danger); color: var(--on-danger-soft); }
     .play { border: 0; background: transparent; color: var(--primary); font-size: 13px; font-weight: 600; cursor: pointer; padding: 0 4px; }
+    /* Preparing: visibly working, and still clickable — pressing it cancels. */
+    .play--pending { color: var(--muted); }
+    .play--pending::before {
+      content: "";
+      display: inline-block;
+      width: 9px; height: 9px;
+      margin-right: 6px;
+      vertical-align: -1px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      animation: play-spin 0.7s linear infinite;
+    }
+    @keyframes play-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .play--pending::before { animation: none; opacity: .6; }
+    }
     .loading { color: var(--muted); display: flex; align-items: center; gap: 10px; }
     .dots { display: inline-flex; gap: 4px; }
     .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); animation: bounce 1s infinite ease-in-out; }
@@ -855,6 +872,8 @@
         member: "तपाईं",
         play: "सुन्नुहोस्",
         stopPlay: "रोक्नुहोस्",
+        preparing: "तयार गर्दै…",
+        speechFailed: "आवाज तयार भएन। फेरि प्रयास गर्नुहोस्।",
         timesShownIn: "समय {zone} अनुसार",
         exportTitle: "कुराकानीको डेटा निर्यात",
         exportBody: "पुनःप्रशिक्षणका लागि सबै च्याट र कल यहाँबाट झिक्न सकिन्छ।",
@@ -934,6 +953,8 @@
         member: "You",
         play: "Listen",
         stopPlay: "Stop",
+        preparing: "Preparing…",
+        speechFailed: "Could not prepare the audio. Try again.",
         timesShownIn: "Times shown in {zone}",
         exportTitle: "Export conversation data",
         exportBody: "Download every chat and call for retraining.",
@@ -1399,7 +1420,9 @@
           who.textContent = turn.classList.contains("member") ? c.member : c.agent;
         }
         const play = turn.querySelector(".play");
-        if (play) setPlayLabel(play, play.dataset.playing === "true");
+        // A control mid-prepare keeps its pending label rather than snapping
+        // back to Listen when the language changes.
+        if (play) setPlayState(play, play.dataset.state || (play.dataset.playing === "true" ? "playing" : "idle"));
       });
     }
 
@@ -1427,6 +1450,8 @@
        ------------------------------------------------------------------ */
     let currentAudio = null;
     let currentPlayBtn = null;
+    let pendingPlayBtn = null;
+    let speechAbort = null;
     const speechCache = new WeakMap();   // play button -> data URL, so a
                                          // replay costs no second TTS call
 
@@ -1461,48 +1486,108 @@
           currentAudio = null;
           currentPlayBtn = null;
         }
-        setPlayLabel(btn, false);
+        setPlayState(btn, "idle");
       };
       audio.addEventListener("ended", finished);
       audio.addEventListener("pause", finished);
       audio.addEventListener("error", finished);
-      setPlayLabel(btn, true);
+      setPlayState(btn, "playing");
       const started = audio.play().catch(() => { finished(); });
       return { audio, started };
     }
 
-    async function fetchSpeech(text) {
-      const res = await fetch("/v1/support/speak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, locale: replyLang })
-      });
-      const data = await res.json();
-      if (!res.ok || !data.audio_base64) return null;
-      return "data:" + (data.mime || "audio/mpeg") + ";base64," + data.audio_base64;
+    const SPEECH_TIMEOUT_MS = 10000;
+
+    async function fetchSpeech(text, signal) {
+      /* A timeout of its own: a hung provider used to leave the control dead
+         with nothing to press and nothing to read. */
+      const timer = setTimeout(() => { if (speechAbort) speechAbort.abort("timeout"); },
+        SPEECH_TIMEOUT_MS);
+      try {
+        const res = await fetch("/v1/support/speak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, locale: replyLang }),
+          signal
+        });
+        const data = await res.json();
+        if (!res.ok || !data.audio_base64) return null;
+        return "data:" + (data.mime || "audio/mpeg") + ";base64," + data.audio_base64;
+      } finally {
+        clearTimeout(timer);
+      }
     }
 
-    /* The Listen control is a toggle. While this bubble is speaking it reads
-       रोक्नुहोस् / Stop, and pressing it silences the reply immediately. */
+    /* Three states, not two. Generating the audio takes about two and a half
+       seconds on a cold press, and the control used to sit unchanged and
+       disabled for all of it — looking broken, and refusing the click that
+       would have cancelled it. */
+    function setPlayState(btn, state) {
+      if (!btn) return;
+      btn.dataset.state = state;
+      btn.classList.toggle("play--pending", state === "pending");
+      if (state === "pending") {
+        btn.textContent = t().preparing;
+        btn.setAttribute("aria-busy", "true");
+        btn.setAttribute("aria-pressed", "false");
+        return;
+      }
+      btn.removeAttribute("aria-busy");
+      setPlayLabel(btn, state === "playing");
+    }
+
     async function togglePlayback(btn, text) {
+      // Already speaking: stop, exactly as before.
       if (currentPlayBtn === btn && currentAudio) {
         stopPlayback();
         return;
       }
+      // Already preparing: a second press cancels rather than being ignored.
+      if (btn.dataset.state === "pending") {
+        if (speechAbort) speechAbort.abort("cancelled");
+        return;
+      }
       stopPlayback();
+
       let src = speechCache.get(btn);
       if (!src) {
-        btn.disabled = true;
+        // Set synchronously, before any await, so it paints on this click.
+        setPlayState(btn, "pending");
+        speechAbort = new AbortController();
+        pendingPlayBtn = btn;
+        const signal = speechAbort.signal;
         try {
-          src = await fetchSpeech(text);
-        } catch {
+          src = await fetchSpeech(text, signal);
+        } catch (err) {
           src = null;
         }
-        btn.disabled = false;
-        if (!src) return;
+        const wasCancelled = signal.aborted;
+        if (pendingPlayBtn === btn) {
+          pendingPlayBtn = null;
+          speechAbort = null;
+        }
+        if (wasCancelled) {
+          setPlayState(btn, "idle");
+          return;
+        }
+        if (!src) {
+          setPlayState(btn, "idle");
+          showSpeechError();
+          return;
+        }
         speechCache.set(btn, src);
       }
       playSrc(src, btn);
+    }
+
+    /* A brief line rather than a dead button, so a failed or timed-out
+       provider is something the officer can see and retry. */
+    function showSpeechError() {
+      unicoderHint.className = "unicoder err";
+      unicoderHint.textContent = t().speechFailed;
+      setTimeout(() => {
+        if (unicoderHint.textContent === t().speechFailed) paintUnicoderHint();
+      }, 4000);
     }
 
     async function speakReply(text, wait) {

@@ -1,0 +1,50 @@
+{
+  "_readme": [
+    "Wording and crisis resources for messages where a member signals risk to",
+    "their own life. Editable without a deploy — the service reads this file.",
+    "",
+    "resources_verified is false and the list is empty ON PURPOSE. Nothing here",
+    "was taken from a model, and no number has been confirmed by anyone who owns",
+    "this desk. While it stays false the reply names no helpline at all: it",
+    "acknowledges the member, asks them to reach someone they trust, and says a",
+    "person will follow up. That is safe. A wrong helpline number is not.",
+    "",
+    "TO ACTIVATE: confirm the current numbers with the institution (services in",
+    "Nepal include TPO Nepal and the national suicide prevention helpline —",
+    "verify both against a current official source, not this file), add them",
+    "below, then set resources_verified to true.",
+    "",
+    "Each resource: name, contact, and optionally hours. Both languages are",
+    "shown the same list, so write the name in a form both audiences can read.",
+    "",
+    "The message wording is a placeholder written by an engineer, not a",
+    "clinician or a native-speaker reviewer. Have both read it before this",
+    "reaches members."
+  ],
+
+  "resources_verified": false,
+  "resources": [],
+
+  "_resources_example": [
+    {
+      "name": "<service name>",
+      "contact": "<phone number>",
+      "hours": "<e.g. 24 hours, or 09:00-17:00>"
+    }
+  ],
+
+  "message": {
+    "ne": {
+      "acknowledge": "तपाईंले यो कुरा भन्नुभयो — यो सजिलो छैन, र तपाईं एक्लै हुनुहुन्न।",
+      "reach_out": "कृपया अहिले नै आफूले विश्वास गर्ने कोही — परिवार, साथी वा स्वास्थ्यकर्मीसँग कुरा गर्नुहोस्।",
+      "resources_intro": "तुरुन्तै कुरा गर्न सकिने ठाउँ:",
+      "follow_up": "हाम्रो टोलीका एक जना यहाँ तपाईंलाई सम्पर्क गर्नेछन्।"
+    },
+    "en": {
+      "acknowledge": "Thank you for telling me. That sounds very hard, and you are not alone.",
+      "reach_out": "Please talk to someone you trust right now — family, a friend, or a health worker.",
+      "resources_intro": "People you can talk to right now:",
+      "follow_up": "Someone from our team will get in touch with you."
+    }
+  }
+}

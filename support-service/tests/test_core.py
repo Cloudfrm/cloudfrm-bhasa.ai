@@ -662,3 +662,145 @@ def test_unhandled_errors_do_not_leak_internals(monkeypatch):
     assert body == '{"detail":"Internal server error"}'
     for leak in ("ValueError", "hunter2", "postgres://", "Traceback", "himalaya_support"):
         assert leak not in body
+
+
+# --- crisis handling -------------------------------------------------------
+
+def test_distress_is_detected_in_all_three_scripts():
+    """A member typed "I want to die." and got the banking menu.
+
+    Detection runs on the raw message because transliteration destroys the
+    signal: "I am going to kill myself" became "म हुँ गोइङ किल्ल ंय्सेल्फ".
+    """
+    from himalaya_support.adapt.crisis import looks_like_crisis
+
+    for text in [
+        "I want to die.",
+        "म मर्न चाहन्छु",
+        "I am going to kill myself",
+        "I have no reason to live, my loan is too much",
+        "मलाई मर्न मन छ",
+        "marna manchu",
+        "I don't want to live any more",
+    ]:
+        assert looks_like_crisis(text), f"missed: {text!r}"
+
+    # ordinary banking language must not trip it
+    for text in [
+        "my card is dead",
+        "the app killed my session",
+        "मेरो पिन बिर्सें",
+        "ऋण किस्ता कहिले तिर्ने?",
+        "I want to close my account",
+        "kill the pending transfer",
+    ]:
+        assert not looks_like_crisis(text), f"false positive: {text!r}"
+
+
+def test_crisis_reply_names_no_helpline_until_one_is_verified():
+    """No number is invented. Until someone confirms the real ones, the reply
+    acknowledges the member and says a person will follow up, and that is all.
+    """
+    import re
+
+    from himalaya_support.adapt.crisis import crisis_reply, load_crisis_config
+
+    config = load_crisis_config(None)  # nothing configured
+    for language in ("ne", "en"):
+        reply = crisis_reply(language, config)
+        assert reply.strip()
+        assert not re.search(r"\d{3,}", reply), "a phone number appeared from nowhere"
+        for financial in ("ऋण", "loan", "interest", "ब्याज", "जरिवाना"):
+            assert financial not in reply
+
+    # once verified, the resource is shown
+    configured = {
+        "resources": [{"name": "Example Service", "contact": "0000000", "hours": "24 hours"}],
+        "message": config["message"],
+    }
+    assert "Example Service" in crisis_reply("en", configured)
+
+
+def test_crisis_turn_bypasses_retrieval_and_flags_a_person(tmp_path):
+    from himalaya_support.config import get_settings
+    from himalaya_support.store.db import SupportStore
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+    engine.store = SupportStore(tmp_path / "scratch.db")
+
+    out = engine.chat("I have no reason to live, my loan is too much",
+                      locale="ne", proofread=False)
+
+    assert out["crisis"] is True
+    assert out["retrieved"] == []
+    assert out["intent"]["needs_human"] is True
+    assert out["tickets"], "a wellbeing ticket must be raised"
+    for financial in ("ऋण", "किस्ता", "जरिवाना", "ब्याज"):
+        assert financial not in out["reply"], "financial content in a crisis turn"
+
+    ticket = engine.store.get_ticket(out["tickets"][0])
+    assert ticket["category"] == "wellbeing"
+    assert ticket["priority"] == "urgent"
+
+
+# --- small talk ------------------------------------------------------------
+
+def test_courtesies_are_answered_not_searched():
+    from himalaya_support.adapt.smalltalk import classify
+
+    expected = {
+        "Hello": "greeting", "Hi": "greeting", "Namaste": "greeting",
+        "नमस्ते": "greeting", "Good morning": "greeting",
+        "Thank you": "thanks", "Thanks": "thanks", "धन्यवाद": "thanks",
+        "Thank you so much": "thanks",
+        "Sorry": "apology", "माफ गर्नुहोस्": "apology",
+        "Excuse me": "attention",
+        "Bye": "farewell", "Take care": "farewell",
+        "Well done": "praise", "thumbs up": "praise",
+        "Good luck": "well_wish",
+        "ok": "affirm", "yes": "affirm", "हुन्छ": "affirm",
+        "no": "decline", "no thanks": "decline",
+    }
+    for text, category in expected.items():
+        assert classify(text) == category, f"{text!r} classified as {classify(text)!r}"
+
+
+def test_smalltalk_does_not_swallow_a_real_question():
+    """A greeting plus a banking question is a banking question."""
+    from himalaya_support.adapt.smalltalk import classify
+
+    for text in [
+        "Hello, my PIN is forgotten, what do I do?",
+        "नमस्ते, ऋण किस्ता कहिले तिर्ने?",
+        "thanks, what is the savings interest rate?",
+        "ok so when does the branch open",
+        "no money arrived in my account",
+    ]:
+        assert classify(text) is None, f"over-matched: {text!r}"
+
+
+def test_bare_affirmation_never_reaches_retrieval(tmp_path):
+    """"ok" returned OTP validity rules and "yes" returned a loan interest
+    rate — while the fallback had just invited the member to say yes."""
+    from himalaya_support.config import get_settings
+    from himalaya_support.store.db import SupportStore
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+    engine.store = SupportStore(tmp_path / "scratch.db")
+
+    for text, forbidden in [("ok", "ओटिपी"), ("yes", "ब्याजदर"), ("हुन्छ", "ब्याजदर")]:
+        out = engine.chat(text, locale="ne", proofread=False)
+        assert out["pipeline"] == "smalltalk"
+        assert out["retrieved"] == []
+        assert forbidden not in out["reply"]
+
+    # but a pending ticket offer still wins
+    convo = engine.store.get_or_create_conversation(None, None, "ne", channel="chat")
+    engine._pending_ticket[convo] = {
+        "conversation_id": convo, "user_id": None, "subject": "s",
+        "description": "d", "category": "other", "priority": "normal",
+    }
+    out = engine.chat("yes", conversation_id=convo, locale="ne", proofread=False)
+    assert out["tickets"], "a pending offer must still be confirmable"
