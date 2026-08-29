@@ -53,6 +53,10 @@ const copy = {
         inboxNewRowLabel: "नयाँ कुराकानी",
         threadLabel: "कुराकानी",
         memberRow: "सदस्य",
+        roomNew: "नयाँ संवाद",
+        roomNewSub: "सदस्यको पहिलो सन्देश लेख्नुहोस्, वा तलबाट विषय छान्नुहोस्।",
+        roomThread: "संवाद",
+        roomTag: "एआई जवाफ दिन्छ",
         listFailed: "सूची ल्याउन सकिएन।",
         timesShownIn: "समय {zone} अनुसार",
         retry: "फेरि प्रयास",
@@ -138,6 +142,10 @@ const copy = {
         inboxNewRowLabel: "New chat",
         threadLabel: "Conversation",
         memberRow: "Member",
+        roomNew: "New conversation",
+        roomNewSub: "Type the member's first message, or pick a topic below.",
+        roomThread: "Conversation",
+        roomTag: "AI replies",
         listFailed: "Could not load the list.",
         timesShownIn: "Times shown in {zone}",
         retry: "Try again",
@@ -416,6 +424,8 @@ const copy = {
       document.getElementById("chat-new").textContent = c.chatNew;
       document.getElementById("topics-label").textContent = c.topics;
       paintTimezoneNote();
+      document.getElementById("room-tag").textContent = c.roomTag;
+      paintRoomHead();
       document.getElementById("tickets-label").textContent = c.tickets;
       document.getElementById("settings-title").textContent = c.settingsTitle;
       document.getElementById("settings-body").textContent = c.settingsBody;
@@ -615,6 +625,7 @@ const copy = {
       started = false;
       chatId = null;
       logStick = true;
+      paintRoomHead();
     }
 
     /* A0.11 — Bhasa answers are policy prose: they need paragraphs,
@@ -1120,6 +1131,23 @@ const copy = {
       catch (e) { return ""; }
     }
 
+    /* SF-1 also printed a "started" date from convoMeta; this branch has
+       no such cache, so the subtitle states only what the DOM can prove. */
+    function paintRoomHead() {
+      const c = t();
+      const titleEl = document.getElementById("room-title");
+      const subEl = document.getElementById("room-sub");
+      if (!titleEl || !subEl) return;
+      if (!chatId) {
+        titleEl.textContent = c.roomNew;
+        subEl.textContent = c.roomNewSub;
+        return;
+      }
+      const turns = log.querySelectorAll(".turn:not(#pending)").length;
+      titleEl.textContent = c.roomThread + " " + String(chatId).slice(0, 8).toUpperCase();
+      subEl.textContent = (replyLang === "ne" ? neNum(turns) : String(turns)) + " " + c.roomMsgs;
+    }
+
     function paintTimezoneNote() {
       const el = document.getElementById("chat-tz");
       if (!el) return;
@@ -1229,6 +1257,7 @@ const copy = {
         messages.forEach((msg) => addTurn(log, msg.role === "user" ? "member" : "agent", msg.content));
         logStick = true;
         stickToBottom(true);
+      paintRoomHead();
         loadInbox("chat");
         box.focus();
         return;
@@ -1506,6 +1535,7 @@ const copy = {
     document.getElementById("jump-latest").addEventListener("click", () => {
       logStick = true;
       stickToBottom(true);
+      paintRoomHead();
       box.focus();
     });
     document.getElementById("conn-action").addEventListener("click", () => {

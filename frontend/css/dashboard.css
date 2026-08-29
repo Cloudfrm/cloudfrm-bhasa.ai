@@ -663,11 +663,45 @@
        composer is pushed off-screen at long thread lengths. */
     .room {
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto auto;
+      grid-template-rows: auto auto minmax(0, 1fr) auto auto;
       min-height: 0;
       min-width: 0;
       background: var(--bhasa-room);
       position: relative;
+    }
+    /* Which conversation is open, and how big it is. Ported from SF-1. */
+    .room__head {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 13px 28px;
+      border-bottom: 1px solid var(--bhasa-line-soft);
+      background: var(--bhasa-surface);
+    }
+    .room__title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--bhasa-text);
+    }
+    .room__sub {
+      margin: 2px 0 0;
+      font-size: 12.5px;
+      color: var(--bhasa-text-muted);
+      line-height: 1.6;
+    }
+    .room__tag {
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--bhasa-gold);
+      border: 1px solid var(--bhasa-gold-edge);
+      border-radius: 999px;
+      padding: 4px 11px;
+      background: var(--bhasa-gold-quiet);
+      white-space: nowrap;
     }
     .room__topics {
       flex-shrink: 0;
