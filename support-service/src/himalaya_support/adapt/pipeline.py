@@ -214,9 +214,14 @@ def compose_from_knowledge(message: str, snippets: list[dict], language: str) ->
         if facts:
             # No "here is how to do it" lead-in: the row may be a fact, not a
             # procedure, and asserting otherwise misleads the officer.
+            # The English branch below has always ended "or say yes to open a
+            # ticket" and this one never did, so a member reading Nepali got
+            # no route from a grounded answer to a person while a member
+            # reading English got one every time. In a Nepali-first product
+            # that is the wrong way round.
             return (
                 f"{facts} "
-                "यति गर्दा पनि नखुले शाखामा परिचयपत्र लिएर जानुहोस्। "
+                "यति गर्दा पनि नखुले शाखामा परिचयपत्र लिएर जानुहोस्, वा टिकट खोलौं हो? "
                 "पिन, पासवर्ड वा ओटीपी यहाँ नलेख्नुहोस्।"
             )
         return (
@@ -234,6 +239,26 @@ def compose_from_knowledge(message: str, snippets: list[dict], language: str) ->
         f"I understood: “{asked}”. I can walk through login, transfers, loans, KYC, savings, cards, or hours. "
         "Add one more sentence, or say yes and I will open a ticket."
     )
+
+
+# Every way the desk offers to open a ticket, in one place next to the copy
+# that says it. The offer used to be written here while the state that answers
+# "yes" was armed somewhere else, and only for replies whose intent was
+# flagged needs_ticket — so most of the time the app promised a ticket and
+# then had no memory of having promised it. Whatever says this now arms that.
+_TICKET_OFFERS = (
+    "टिकट खोलौं",
+    "टिकट खोल्न",
+    "say yes to open a ticket",
+    "say yes and i will open a ticket",
+    "open a ticket? say yes or no",
+)
+
+
+def offers_ticket(reply: str) -> bool:
+    """True when this reply has just offered to open a ticket."""
+    lowered = (reply or "").lower()
+    return any(marker in lowered for marker in _TICKET_OFFERS)
 
 
 def is_thin_reply(reply: str, language: str, intent: str) -> bool:

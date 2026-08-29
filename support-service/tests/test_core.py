@@ -804,3 +804,126 @@ def test_bare_affirmation_never_reaches_retrieval(tmp_path):
     }
     out = engine.chat("yes", conversation_id=convo, locale="ne", proofread=False)
     assert out["tickets"], "a pending offer must still be confirmable"
+
+
+def test_crisis_recall_survives_nepali_inflection():
+    """The first phrase list was written English-first and it showed.
+
+    "मलाई बाँच्ने इच्छा छैन" was caught while "मलाई बाँच्नु मन छैन" was not —
+    one sentence, a different verbal noun and a different word for wanting.
+    Every case below is a Nepali or indirect form that the phrase-only
+    matcher missed.
+    """
+    from himalaya_support.adapt.crisis import looks_like_crisis
+
+    missed_before = [
+        "मलाई बाँच्ने कुनै कारण छैन, मेरो ऋण धेरै भयो",
+        "मलाई बाँच्नु मन छैन",
+        "मेरो जीवन अर्थहीन छ, सबै समाप्त गर्न चाहन्छु",
+        "honestly I would rather not be alive anymore",
+        "malai bachnu man chaina",
+        "बाँच्न मन लाग्दैन",
+        "मेरो जीवनको कुनै अर्थ छैन",
+        "म सबैको लागि बोझ भएँ",
+        "nothing left to live for",
+        "I am tired of living",
+        "everyone would be better off without me",
+    ]
+    for text in missed_before:
+        assert looks_like_crisis(text), text
+
+
+def test_crisis_detection_does_not_fire_on_money_talk():
+    """Widening recall must not turn ordinary banking into a crisis.
+
+    The traps that matter are the ones a cooperative member really writes:
+    life insurance, life savings, and the many ways of saying "I cannot pay".
+    """
+    from himalaya_support.adapt.crisis import looks_like_crisis
+
+    ordinary = [
+        "my card is dead and the app killed my session",
+        "I am dying to know my balance",
+        "kill the pending transfer",
+        "I don't want to lose my life savings",
+        "जीवन बीमा को बारेमा जान्न चाहन्छु",
+        "मेरो जीवन बीमाको किस्ता कति हो?",
+        "म यो ऋण तिर्न सक्दिनँ",
+        "किस्ता तिर्न मन छैन",
+        "काम समाप्त गर्न चाहन्छु",
+        "मेरो हजुरबुबा मर्नुभयो, खाता बन्द गर्नुपर्‍यो",
+        "I can't go on with this loan application",
+        "I do not want to live in Kathmandu anymore, closing my account",
+    ]
+    for text in ordinary:
+        assert not looks_like_crisis(text), text
+
+
+def test_confirmation_understands_the_language_the_offer_was_made_in():
+    """The copy says "say yes to open a ticket" and this knew only Devanagari.
+
+    It must also refuse to read a decision out of a message that merely
+    contains one: "ok so my card is blocked" is not consent.
+    """
+    from himalaya_support.adapt.actions import parse_confirmation
+
+    for text in ("yes", "Yes.", "yeah", "sure", "yes please",
+                 "yes please open a ticket", "हो", "हुन्छ", "ठीक छ", "hunchha"):
+        assert parse_confirmation(text) is True, text
+    # "ok" acknowledges the answer; it does not consent to a ticket.
+    assert parse_confirmation("ok") is None
+    for text in ("no", "no thanks", "होइन", "पर्दैन", "no do not open a ticket"):
+        assert parse_confirmation(text) is False, text
+    for text in ("ok so my card is blocked and I need help",
+                 "I have not received my money yet",
+                 "पिन बिर्सें",
+                 "correct the name on my account please"):
+        assert parse_confirmation(text) is None, text
+
+
+def test_offering_a_ticket_is_what_arms_the_yes(tmp_path):
+    """The offer and the state that answers it are one decision.
+
+    The reply has always ended "say yes and I will open a ticket", but only
+    an intent flagged needs_ticket ever armed the pending state, so most of
+    the time the app promised a ticket and then had no memory of promising
+    it. Both locales, because the Nepali branch never made the offer at all.
+    """
+    from himalaya_support.config import get_settings
+    from himalaya_support.store.db import SupportStore
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+    engine.store = SupportStore(tmp_path / "scratch.db")
+
+    for locale, affirm in (("en", "yes"), ("ne", "हुन्छ")):
+        first = engine.chat("what do I need to open an account?", locale=locale)
+        assert first["pending_confirm"] == "create_ticket", locale
+        second = engine.chat(affirm, conversation_id=first["conversation_id"], locale=locale)
+        assert second["conversation_id"] == first["conversation_id"]
+        assert len(second["tickets"]) == 1, f"{locale}: saying yes must open the ticket"
+
+
+def test_offers_ticket_matches_every_way_the_desk_offers_one():
+    from himalaya_support.adapt.pipeline import GROUNDING_FALLBACK, offers_ticket
+
+    assert offers_ticket("यति गर्दा पनि नखुले शाखामा जानुहोस्, वा टिकट खोलौं हो?")
+    assert offers_ticket("If that still fails, or say yes to open a ticket. Do not type PIN.")
+    assert offers_ticket("Add one more sentence, or say yes and I will open a ticket.")
+    assert offers_ticket("Open a ticket? Say yes or no.")
+    assert not offers_ticket(GROUNDING_FALLBACK)
+    assert not offers_ticket("नमस्ते! म कसरी सहयोग गर्न सक्छु?")
+
+
+def test_multi_word_courtesies_are_matched_as_phrases():
+    """"Have a nice day" and "Nice to meet you" fell through a bag-of-words
+    classifier: adding their words to a category would have made "nice" plus
+    any stray word match, and "good day" — a greeting — read as a well-wish."""
+    from himalaya_support.adapt.smalltalk import MEETING, WELL_WISH, classify
+
+    assert classify("Nice to meet you") == MEETING
+    assert classify("nice to meet you!") == MEETING
+    assert classify("Have a nice day") == WELL_WISH
+    assert classify("have a good evening") == WELL_WISH
+    # and the phrase must not swallow a real question attached to it
+    assert classify("Have a nice day, but first when does the branch open?") is None

@@ -92,8 +92,51 @@ _ALLOWED: dict[str, set[str]] = {
 # Words that carry no meaning of their own and should not block a match.
 _FILLER = {"a", "the", "is", "it", "u", "and", "please", "plz", "hai", "ho", "na", "ni", "है"}
 
+MEETING = "meeting"
+
+# Some courtesies are phrases, not bags of words. "Have a nice day" and "Nice
+# to meet you" both fell through: adding their words to a category would have
+# made "nice" plus any stray word match it, and "good day" — a greeting —
+# would have been answered as a well-wish. The whole phrase is the unit, so
+# it is matched as one. Spacing and case are flexible; a trailing "!" or "."
+# is stripped before matching.
+_PHRASES: dict[str, str] = {
+    "nice to meet you": MEETING,
+    "nice to meet you too": MEETING,
+    "pleased to meet you": MEETING,
+    "pleasure to meet you": MEETING,
+    "good to meet you": MEETING,
+    "great to meet you": MEETING,
+    "nice meeting you": MEETING,
+    "भेटेर खुसी लाग्यो": MEETING,
+    "तपाईंलाई भेटेर खुसी लाग्यो": MEETING,
+    "chinera khusi lagyo": MEETING,
+    "have a nice day": WELL_WISH,
+    "have a good day": WELL_WISH,
+    "have a great day": WELL_WISH,
+    "have a lovely day": WELL_WISH,
+    "have a nice evening": WELL_WISH,
+    "have a good evening": WELL_WISH,
+    "have a good night": WELL_WISH,
+    "have a nice weekend": WELL_WISH,
+    "have a good weekend": WELL_WISH,
+    "you too have a nice day": WELL_WISH,
+    "शुभ दिन": WELL_WISH,
+    "शुभ दिनको कामना": WELL_WISH,
+    "तपाईंको दिन राम्रो होस्": WELL_WISH,
+    "दिन राम्रो होस्": WELL_WISH,
+    "subha din": WELL_WISH,
+    "ramro din": WELL_WISH,
+}
+
 _WORD = re.compile(r"[\wऀ-ॿ]+", re.UNICODE)
+_TRIM = re.compile(r"[\s।!?.,;:]+")
 _MAX_WORDS = 6  # a courtesy is short; anything longer is a real message
+
+
+def _phrase_key(text: str) -> str:
+    """Lowercase, punctuation-stripped, single-spaced form for phrase lookup."""
+    return " ".join(_TRIM.split((text or "").lower())).strip()
 
 
 def classify(text: str) -> str | None:
@@ -101,6 +144,11 @@ def classify(text: str) -> str | None:
     raw = (text or "").strip()
     if not raw:
         return None
+
+    phrase = _PHRASES.get(_phrase_key(raw))
+    if phrase:
+        return phrase
+
     words = [w.lower() for w in _WORD.findall(raw)]
     content = [w for w in words if w not in _FILLER]
     if not content or len(content) > _MAX_WORDS:
@@ -145,6 +193,10 @@ _REPLIES: dict[str, dict[str, str]] = {
     WELL_WISH: {
         "ne": "धन्यवाद! तपाईंलाई पनि शुभकामना।",
         "en": "Thank you — the same to you.",
+    },
+    MEETING: {
+        "ne": "भेटेर मलाई पनि खुसी लाग्यो! म कसरी सहयोग गर्न सक्छु?",
+        "en": "Good to meet you too. How can I help?",
     },
     # Reached only when nothing was pending; a pending ticket offer is
     # answered before this layer runs.

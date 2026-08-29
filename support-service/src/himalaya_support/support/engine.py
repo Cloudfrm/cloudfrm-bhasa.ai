@@ -30,6 +30,7 @@ from himalaya_support.adapt.pipeline import (
     finish_reply,
     is_directive_row,
     is_training_artifact,
+    offers_ticket,
     prepare_user_text,
     split_knowledge_row,
 )
@@ -92,7 +93,7 @@ class SupportEngine:
         # to kill myself" became "म हुँ गोइङ किल्ल ंय्सेल्फ" downstream, and a
         # member writing about debt and not wanting to live was answered with
         # late-payment penalties.
-        in_crisis = looks_like_crisis(message)
+        in_crisis = looks_like_crisis(message, self.settings.knowledge_path)
 
         prepared = prepare_user_text(message)
         search_text = prepared["search"] or prepared["normalized"] or message
@@ -104,7 +105,9 @@ class SupportEngine:
         if in_crisis:
             return self._crisis_turn(conversation_id, message, language, user_id)
 
-        confirmed = parse_confirmation(search_text)
+        # On the raw message, not the transliterated one: an English "yes"
+        # becomes Devanagari on the way through and stops being a decision.
+        confirmed = parse_confirmation(message)
         if conversation_id in self._pending_ticket:
             pending = self._pending_ticket[conversation_id]
             if confirmed is True:
@@ -239,8 +242,19 @@ class SupportEngine:
                 raise InferenceError(
                     "Support could not compose a safe answer"
                 ) from retry_exc
+        # The offer and the state that answers it are now decided together.
+        # The fallback copy has always ended "say yes and I will open a
+        # ticket", but only an intent flagged needs_ticket ever armed the
+        # pending state — so for every other reply the promise was unkept and
+        # "yes" fell through to the small-talk layer, which answered it
+        # politely and opened nothing. Anything that offers a ticket arms it;
+        # anything that does not, disarms it, so "yes" always answers the
+        # offer still on screen rather than one from three turns ago.
         pending_confirm = None
-        if intent.get("needs_ticket"):
+        if intent.get("needs_ticket") and not offers_ticket(reply_text):
+            extra = " टिकट खोलौं हो?" if language == "ne" else " Open a ticket? Say yes or no."
+            reply_text = reply_text.rstrip() + extra
+        if intent.get("needs_ticket") or offers_ticket(reply_text):
             self._pending_ticket[conversation_id] = {
                 "conversation_id": conversation_id,
                 "user_id": user_id,
@@ -250,9 +264,8 @@ class SupportEngine:
                 "priority": intent.get("priority") or "normal",
             }
             pending_confirm = "create_ticket"
-            extra = " टिकट खोलौं हो?" if language == "ne" else " Open a ticket? Say yes or no."
-            if extra.strip() not in reply_text:
-                reply_text = reply_text.rstrip() + extra
+        else:
+            self._pending_ticket.pop(conversation_id, None)
         used_model = first.model
         backend = first.backend
 
