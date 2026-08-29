@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     )
     inference_backend: str = Field(default="auto", alias="INFERENCE_BACKEND")
     inference_base_url: str = Field(default="", alias="INFERENCE_BASE_URL")
+    inference_api_key: str = Field(default="", alias="INFERENCE_API_KEY")
     ollama_host: str = Field(default="http://127.0.0.1:11434", alias="OLLAMA_HOST")
     ollama_model: str = Field(default="himalaya-gemma", alias="OLLAMA_MODEL")
     local_gguf: str = Field(default="", alias="HIMALAYA_GGUF_PATH")

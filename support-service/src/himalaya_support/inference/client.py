@@ -97,7 +97,11 @@ class HimalayaChatClient:
             if not self.settings.inference_base_url:
                 raise InferenceError("INFERENCE_BASE_URL is empty")
             payload = self._openai_payload(model, messages, temperature, max_tokens, json_mode)
-            data = self._post_openai(self.settings.inference_base_url.rstrip("/"), payload)
+            data = self._post_openai(
+                self.settings.inference_base_url.rstrip("/"),
+                payload,
+                api_key=self.settings.inference_api_key or None,
+            )
             return ChatResult(self._choice_text(data), model, backend, data)
         if backend == "hf_router":
             payload = self._openai_payload(model, messages, temperature, max_tokens, json_mode)
@@ -137,19 +141,25 @@ class HimalayaChatClient:
             payload["response_format"] = {"type": "json_object"}
         return payload
 
-    def _headers(self, require_token: bool = False) -> dict[str, str]:
+    def _headers(self, require_token: bool = False, api_key: str | None = None) -> dict[str, str]:
         headers = {"Content-Type": "application/json"}
-        token = self.settings.hf_token.strip()
+        token = (api_key if api_key is not None else self.settings.hf_token).strip()
         if token:
             headers["Authorization"] = f"Bearer {token}"
         elif require_token:
             raise InferenceError("HF_TOKEN is required for Hugging Face Inference")
         return headers
 
-    def _post_openai(self, base: str, payload: dict[str, Any], require_token: bool = False) -> dict[str, Any]:
+    def _post_openai(
+        self,
+        base: str,
+        payload: dict[str, Any],
+        require_token: bool = False,
+        api_key: str | None = None,
+    ) -> dict[str, Any]:
         url = f"{base}/chat/completions" if not base.endswith("/chat/completions") else base
         with httpx.Client(timeout=self._timeout) as client:
-            response = client.post(url, headers=self._headers(require_token), json=payload)
+            response = client.post(url, headers=self._headers(require_token, api_key), json=payload)
         if response.status_code >= 400:
             raise InferenceError(f"{url} returned {response.status_code}: {response.text[:500]}")
         return response.json()
