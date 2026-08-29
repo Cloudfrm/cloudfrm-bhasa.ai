@@ -22,6 +22,9 @@ import unicodedata
 # ZWSP, ZWNJ, ZWJ, LRM/RLM, directional isolates/embeddings, WORD JOINER, BOM
 _ZERO_WIDTH = re.compile("[​-‏‪-‮⁠-⁯﻿]")
 _WHITESPACE = re.compile(r"\s+")
+# Everything whitespace except a line break, for the line-preserving mode.
+_HORIZONTAL_WS = re.compile(r"[^\S\n]+")
+_MANY_NEWLINES = re.compile(r"\n{3,}")
 _DEVA_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
 _ASCII_TO_DEVA = str.maketrans("0123456789", "०१२३४५६७८९")
 
@@ -29,12 +32,24 @@ _ASCII_TO_DEVA = str.maketrans("0123456789", "०१२३४५६७८९")
 _DANDA_SPACE = re.compile(r"\s+([।॥])")
 
 
-def normalize(text: str, *, fold_digits: bool = False, strip_zero_width: bool = True) -> str:
+def normalize(
+    text: str,
+    *,
+    fold_digits: bool = False,
+    strip_zero_width: bool = True,
+    keep_lines: bool = False,
+) -> str:
     """Canonical form for embedding, retrieval and comparison.
 
     NFKC first (unifies precomposed nukta), then NFC (recompose to the shortest
     canonical form so string length is stable), then explicit format-character
     removal, then whitespace and danda tidying.
+
+    `keep_lines` preserves line structure. Collapsing every run of whitespace
+    is right for a retrieval key, but this same function was also producing the
+    text stored as the member's message, so a multi-line message — a pasted
+    error, a list of transaction numbers — was flattened into one line and the
+    original shape was lost from the record.
     """
     if not text:
         return ""
@@ -45,6 +60,14 @@ def normalize(text: str, *, fold_digits: bool = False, strip_zero_width: bool = 
     if fold_digits:
         out = out.translate(_DEVA_DIGITS)
     out = _DANDA_SPACE.sub(r"\1", out)
+    if keep_lines:
+        out = out.replace("\r\n", "\n").replace("\r", "\n")
+        # Horizontal runs collapse; newlines survive. Three or more blank
+        # lines become one blank line, so paste artefacts do not turn a
+        # message into a scroll.
+        out = _HORIZONTAL_WS.sub(" ", out)
+        out = _MANY_NEWLINES.sub("\n\n", out)
+        return "\n".join(line.strip() for line in out.split("\n")).strip()
     return _WHITESPACE.sub(" ", out).strip()
 
 

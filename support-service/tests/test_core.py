@@ -466,3 +466,48 @@ def test_export_rows_survive_line_per_record_serialisation(tmp_path):
     assert "\n" not in line, "an embedded newline would break line-per-record"
     assert json.loads(line)["content"] == hostile
     assert "पहिलो" in line, "Devanagari should stay readable, not backslash-u escaped"
+
+
+def test_multiline_message_keeps_its_line_breaks():
+    """The record of what a member said should look like what they typed.
+
+    normalize() collapses every run of whitespace, which is right for a
+    retrieval key — but that same flattened text was being stored as the
+    message, so a pasted list of transaction numbers became one line.
+    """
+    from himalaya_support.adapt.devanagari import normalize
+    from himalaya_support.adapt.pipeline import prepare_user_text
+
+    raw = "मेरो कारोबार पुगेन। विवरण:\nTXN-1001\nTXN-1002\n\n\n\nकृपया हेर्नुहोस्।"
+
+    # the retrieval key stays flat, deliberately
+    assert "\n" not in normalize(raw)
+
+    kept = normalize(raw, keep_lines=True)
+    assert kept.count("\n") >= 3
+    assert "\r" not in kept
+    assert "\n\n\n" not in kept, "runaway blank lines should collapse to one"
+
+    prepared = prepare_user_text(raw)
+    assert "\n" in prepared["display"], "the stored form must keep line breaks"
+    assert "\n" not in prepared["search"], "the retrieval key must stay one line"
+    assert [l for l in prepared["display"].split("\n") if l.strip()].__len__() == 4
+
+
+def test_reference_codes_are_not_transliterated():
+    """TXN-1001 became ट्क्ष्ण-1001, and 24x7 became 24क्ष7.
+
+    A token that fuses letters and digits is a reference, not romanized
+    Nepali — and it is exactly the detail a member pastes when a transfer
+    fails. Letter-only words must still convert.
+    """
+    from himalaya_support.adapt.to_nepali import latin_to_nepali
+
+    assert latin_to_nepali("TXN-1001")["out"] == "TXN-1001"
+    assert "TXN-1001" in latin_to_nepali("मेरो कारोबार TXN-1001 पुगेन")["out"]
+    assert "24x7" in latin_to_nepali("ATM 24x7")["out"]
+
+    # unchanged: letter-only words are still translated/transliterated
+    assert "पिन" in latin_to_nepali("I forgot my PIN")["out"]
+    roman = latin_to_nepali("mero pin birse")["out"]
+    assert "पिन" in roman or "मेरो" in roman

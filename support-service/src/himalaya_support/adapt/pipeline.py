@@ -132,6 +132,24 @@ def prepare_user_text(message: str) -> dict[str, Any]:
     normalized = normalize(raw)
     converted = latin_to_nepali(normalized)
     nepali = converted["out"] or normalized
+
+    # `search` is a retrieval key and stays flattened. `display` is what the
+    # member actually sees stored against their name, so it keeps the line
+    # breaks they typed. Transliterating line by line means the conversion
+    # cannot re-join lines behind our back.
+    display_source = normalize(raw, keep_lines=True)
+    if "\n" in display_source:
+        lines = []
+        for line in display_source.split("\n"):
+            if not line:
+                lines.append("")
+                continue
+            line_out = latin_to_nepali(line)
+            lines.append(line_out["out"] or line)
+        display = "\n".join(lines).strip()
+    else:
+        display = nepali
+
     return {
         "raw": raw,
         "normalized": normalized,
@@ -139,6 +157,7 @@ def prepare_user_text(message: str) -> dict[str, Any]:
         "mode": converted["mode"],
         "transliterated": nepali if nepali != raw else None,
         "search": nepali,
+        "display": display,
     }
 
 

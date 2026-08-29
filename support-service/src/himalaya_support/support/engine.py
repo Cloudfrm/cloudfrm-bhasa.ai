@@ -159,12 +159,16 @@ class SupportEngine:
         self.store.add_message(
             conversation_id,
             "user",
-            search_text,
+            # The record of what the member said, with their line breaks
+            # intact. It used to store the retrieval key, which is flattened
+            # to a single line by design.
+            prepared.get("display") or search_text,
             {
                 "language": language,
                 "raw": message,
                 "proofread": cleaned,
                 "transliterated": prepared.get("transliterated"),
+                "search": search_text,
             },
         )
 

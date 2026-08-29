@@ -38,6 +38,47 @@ def _tables() -> dict:
     return {"phrases": phrases, "words": words, "drop": drop, "ordered": ordered}
 
 
+# A token mixing letters and digits is a reference, not romanized Nepali:
+# TXN-1001, 24x7, A1B2. Transliterating them produced ट्क्ष्ण-1001 and 24क्ष7,
+# which destroys exactly the detail a member pastes when reporting a failed
+# transfer. No Nepali word fuses digits into letters, so the rule is safe —
+# and it deliberately leaves letter-only words like PIN alone, which should
+# still become पिन.
+_ID_TOKEN = re.compile(r"[A-Za-z0-9]+(?:[-/_][A-Za-z0-9]+)*")
+_HAS_LETTER = re.compile(r"[A-Za-z]")
+_HAS_DIGIT = re.compile(r"\d")
+_PUA_BASE = 0xE000
+_MAX_PROTECTED = 256
+
+
+def _protect_identifiers(text: str) -> tuple[str, list[str]]:
+    """Swap identifiers for private-use placeholders during conversion.
+
+    Private-use characters carry no letters or digits, so neither the
+    transliteration tables nor Unicode normalisation touch them.
+    """
+    saved: list[str] = []
+
+    def swap(match: re.Match) -> str:
+        token = match.group(0)
+        if (
+            len(saved) < _MAX_PROTECTED
+            and _HAS_LETTER.search(token)
+            and _HAS_DIGIT.search(token)
+        ):
+            saved.append(token)
+            return chr(_PUA_BASE + len(saved) - 1)
+        return token
+
+    return _ID_TOKEN.sub(swap, text), saved
+
+
+def _restore_identifiers(text: str, saved: list[str]) -> str:
+    for index, token in enumerate(saved):
+        text = text.replace(chr(_PUA_BASE + index), token)
+    return text
+
+
 def latin_to_nepali(text: str) -> dict[str, str]:
     """Convert English letters into Nepali Unicode. Already-Devanagari text is left alone."""
     raw = (text or "").strip()
@@ -58,12 +99,21 @@ def latin_to_nepali(text: str) -> dict[str, str]:
         if suffix:
             mapped = mapped + suffix.group(0)
         return {"out": normalize(mapped), "mode": "translate", "script": "english"}
+    protected, saved = _protect_identifiers(raw)
     if script in {"romanized_nepali", "mixed"}:
-        converted = to_devanagari(raw, force=True).out
-        return {"out": normalize(converted), "mode": "translit", "script": script}
+        converted = to_devanagari(protected, force=True).out
+        return {
+            "out": _restore_identifiers(normalize(converted), saved),
+            "mode": "translit",
+            "script": script,
+        }
 
-    translated = _translate_english(raw)
-    return {"out": normalize(translated), "mode": "translate", "script": "english"}
+    translated = _translate_english(protected)
+    return {
+        "out": _restore_identifiers(normalize(translated), saved),
+        "mode": "translate",
+        "script": "english",
+    }
 
 
 def _translate_english(text: str) -> str:
