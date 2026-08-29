@@ -82,6 +82,7 @@ class SupportEngine:
         self,
         message: str,
         *,
+        typed: str | None = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
         locale: str = "auto",
@@ -93,11 +94,21 @@ class SupportEngine:
         # to kill myself" became "म हुँ गोइङ किल्ल ंय्सेल्फ" downstream, and a
         # member writing about debt and not wanting to live was answered with
         # late-payment penalties.
-        in_crisis = looks_like_crisis(message, self.settings.knowledge_path)
+        # The desk transliterates Latin typing into Devanagari in the composer,
+        # so `message` has already been converted by the time it arrives:
+        # "I want to die" reaches here as "म चाहन्छु दिए". Every layer that is
+        # meant to read what the member typed has to read `typed`, or it reads
+        # the conversion and matches nothing. Falls back to `message` for API
+        # callers that send only that.
+        keyed = (typed or "").strip() or message
+        in_crisis = looks_like_crisis(keyed, self.settings.knowledge_path)
 
         prepared = prepare_user_text(message)
         search_text = prepared["search"] or prepared["normalized"] or message
-        language = self._reply_language(locale, message if in_crisis else search_text)
+        # Only consulted when the locale is "auto"; the keyed text is the
+        # honest signal there, since the composer's conversion makes every
+        # message look like Devanagari.
+        language = self._reply_language(locale, keyed if in_crisis else search_text)
         conversation_id = self.store.get_or_create_conversation(
             conversation_id, user_id, language, channel=channel
         )
@@ -105,9 +116,9 @@ class SupportEngine:
         if in_crisis:
             return self._crisis_turn(conversation_id, message, language, user_id)
 
-        # On the raw message, not the transliterated one: an English "yes"
+        # On what was keyed, not the transliterated form: an English "yes"
         # becomes Devanagari on the way through and stops being a decision.
-        confirmed = parse_confirmation(message)
+        confirmed = parse_confirmation(keyed)
         if conversation_id in self._pending_ticket:
             pending = self._pending_ticket[conversation_id]
             if confirmed is True:
@@ -166,7 +177,7 @@ class SupportEngine:
         # its chance at "yes"/"no", and before retrieval. A bare affirmation
         # with nothing pending used to reach the knowledge base and come back
         # with a loan interest rate.
-        courtesy = classify_smalltalk(message, self.settings.knowledge_path)
+        courtesy = classify_smalltalk(keyed, self.settings.knowledge_path)
         if courtesy:
             return self._smalltalk_turn(conversation_id, message, courtesy, language)
 
@@ -221,9 +232,12 @@ class SupportEngine:
         # A member typing English gets their English back; a member typing
         # romanized Nepali gets the Devanagari, which is what they were
         # asking the desk to produce. Retrieval keeps using `cleaned`.
+        keyed_script = (
+            prepared.get("script") if keyed == message
+            else prepare_user_text(keyed).get("script")
+        )
         echo_text = (
-            prepared.get("raw") or message
-            if prepared.get("script") == "english"
+            keyed if keyed_script == "english"
             else (prepared.get("display") or cleaned)
         )
         try:

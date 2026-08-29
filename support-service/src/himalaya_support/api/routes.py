@@ -139,6 +139,7 @@ def _run_chat(payload: ChatRequest) -> ChatResponse:
     try:
         result = get_engine().chat(
             payload.message,
+            typed=payload.typed,
             conversation_id=payload.conversation_id,
             locale=payload.locale,
             channel=payload.channel or "chat",

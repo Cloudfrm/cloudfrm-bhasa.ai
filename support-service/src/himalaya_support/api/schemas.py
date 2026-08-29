@@ -7,6 +7,13 @@ from pydantic import BaseModel, Field
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
+    # What the member keyed, before the composer transliterated it. The desk
+    # converts Latin typing into Devanagari on the way out, so by the time a
+    # message arrives "I want to die" has become "म चाहन्छु दिए" — which the
+    # crisis, courtesy and yes/no layers cannot match, because they are all
+    # meant to read what was typed. Optional: an API caller that sends only
+    # `message` behaves exactly as before.
+    typed: str | None = Field(default=None, max_length=4000)
     conversation_id: str | None = None
     locale: str = Field(default="ne")
     channel: str = Field(default="chat")

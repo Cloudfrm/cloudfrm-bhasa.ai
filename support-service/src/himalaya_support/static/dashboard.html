@@ -1696,7 +1696,13 @@
     let lastSentText = "";
     let lastSentAt = 0;
 
-    async function sendText(message) {
+    /* `typed` is what the member actually keyed, before the composer turned
+       it into Devanagari. The two differ and the difference matters: crisis
+       detection, courtesies and yes/no all read what was typed, and in
+       Nepali mode "I want to die" reaches the server as "म चाहन्छु दिए",
+       which matches nothing. Every round of crisis testing POSTed raw
+       English to the API and so never saw this. */
+    async function sendText(message, typed) {
       if (!message || sendBusy) return;
       const now = Date.now();
       if (message === lastSentText && now - lastSentAt < REPEAT_WINDOW_MS) return;
@@ -1720,6 +1726,7 @@
           body: JSON.stringify({
             message: shown,
             conversation_id: chatId,
+            typed: typed || message,
             locale: replyLang,
             channel: "chat",
             client_id: clientId
@@ -2340,7 +2347,7 @@
       previewValue = "";
       growBox();
       paintUnicoderHint();
-      sendText(message);
+      sendText(message, typed);
     });
     document.getElementById("chat-list").addEventListener("scroll", (event) => {
       const el = event.currentTarget;

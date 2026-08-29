@@ -1064,3 +1064,65 @@ def test_compose_from_knowledge_separates_the_key_from_the_quote():
     assert "चल्चुलते" not in out
     # with no echo given, behaviour is unchanged
     assert "abc" in compose_from_knowledge("abc", [], "en")
+
+
+def test_crisis_survives_the_composer(tmp_path):
+    """Found by running the app, not by testing the API.
+
+    The desk transliterates Latin typing into Devanagari in the composer, so
+    a member typing "I want to die" in Nepali mode sends "म चाहन्छु दिए" — and
+    the worst case, "I have no reason to live, my loan is too much", arrives
+    as "म हवे होइन रेअसोन लिवे, मेरो ऋण हो तू मुच", which matched no crisis
+    pattern and retrieved the loan article, penalty clause included.
+
+    Every crisis test to this point POSTed raw English to the API and so could
+    not see it. These are the exact strings the composer produces.
+    """
+    from himalaya_support.config import get_settings
+    from himalaya_support.store.db import SupportStore
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+    engine.store = SupportStore(tmp_path / "scratch.db")
+
+    composed = [
+        ("I have no reason to live, my loan is too much",
+         "म हवे होइन रेअसोन लिवे, मेरो ऋण हो तू मुच"),
+        ("I want to die", "म चाहन्छु दिए"),
+        ("I am going to kill myself", "म हुँ गोइङ किल्ल ंय्सेल्फ"),
+    ]
+    for typed, sent in composed:
+        out = engine.chat(sent, typed=typed, locale="ne")
+        assert out["tickets"], f"{typed!r} did not raise a ticket"
+        assert out["retrieved"] == [], f"{typed!r} reached retrieval"
+        for word in ("ऋण", "किस्ता", "जरिवाना", "ब्याज"):
+            assert word not in out["reply"], f"{typed!r} answered with {word}"
+
+
+def test_courtesies_survive_the_composer(tmp_path):
+    """"Got it" reaches the server as "गोत", which is not a courtesy."""
+    from himalaya_support.config import get_settings
+    from himalaya_support.store.db import SupportStore
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+    engine.store = SupportStore(tmp_path / "scratch.db")
+
+    for typed, sent in (("Got it", "गोत"),
+                        ("Have a nice day", "हवे निचे दय"),
+                        ("No worries", "होइन वोर्रिएस")):
+        out = engine.chat(sent, typed=typed, locale="ne")
+        assert out["pipeline"] == "smalltalk", f"{typed!r} -> {out['reply'][:60]}"
+
+
+def test_a_caller_that_sends_no_typed_text_is_unchanged(tmp_path):
+    """The field is additive: the API contract for existing callers holds."""
+    from himalaya_support.config import get_settings
+    from himalaya_support.store.db import SupportStore
+    from himalaya_support.support.engine import SupportEngine
+
+    engine = SupportEngine(get_settings())
+    engine.store = SupportStore(tmp_path / "scratch.db")
+
+    assert engine.chat("म मर्न चाहन्छु", locale="ne")["tickets"]
+    assert engine.chat("Hello", locale="en")["pipeline"] == "smalltalk"
