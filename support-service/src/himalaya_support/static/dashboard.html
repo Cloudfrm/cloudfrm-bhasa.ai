@@ -1307,7 +1307,7 @@
        Ticket   { id, subject, openedAt }
     */
 
-    const SEND_TIMEOUT_MS = 20000;
+    const SEND_TIMEOUT_MS = 60000;
     const MAX_MESSAGE_CHARS = 2000;
     const COUNTER_AT = 1800;
     const STICK_THRESHOLD_PX = 120;
@@ -1330,26 +1330,42 @@
     const api = {
       async request(path, options) {
         const opts = options || {};
+        const reqId = Math.random().toString(36).slice(2, 8);
+        const method = opts.method || "GET";
+        const startedAt = performance.now();
+        const timeoutMs = opts.timeoutMs || SEND_TIMEOUT_MS;
+        console.log(`[bhasa-api][${reqId}] -> ${method} ${path} (timeout ${timeoutMs}ms)`, opts.body ? JSON.parse(opts.body) : undefined);
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort("timeout"), opts.timeoutMs || SEND_TIMEOUT_MS);
+        const timer = setTimeout(() => controller.abort("timeout"), timeoutMs);
         if (typeof navigator !== "undefined" && navigator.onLine === false) {
           clearTimeout(timer);
+          console.warn(`[bhasa-api][${reqId}] <- offline, request not sent`);
           throw { failureCode: "offline" };
         }
         try {
           const res = await fetch(path, {
-            method: opts.method || "GET",
+            method,
             headers: opts.headers,
             body: opts.body,
             signal: controller.signal
           });
+          const elapsed = Math.round(performance.now() - startedAt);
           let data = null;
           try { data = await res.json(); } catch { data = null; }
+          console.log(`[bhasa-api][${reqId}] <- ${res.status} ${method} ${path} in ${elapsed}ms`, data);
           if (!res.ok) throw { failureCode: api.codeForStatus(res.status) };
           return data;
         } catch (err) {
-          if (err && err.failureCode) throw err;
-          if (err && (err.name === "AbortError" || err === "timeout")) throw { failureCode: "timeout" };
+          const elapsed = Math.round(performance.now() - startedAt);
+          if (err && err.failureCode) {
+            console.error(`[bhasa-api][${reqId}] FAILED ${method} ${path} after ${elapsed}ms — code: ${err.failureCode}`, err);
+            throw err;
+          }
+          if (err && (err.name === "AbortError" || err === "timeout")) {
+            console.error(`[bhasa-api][${reqId}] TIMED OUT ${method} ${path} after ${elapsed}ms (limit ${timeoutMs}ms) — the server may still finish this in the background, but the browser gave up waiting.`);
+            throw { failureCode: "timeout" };
+          }
+          console.error(`[bhasa-api][${reqId}] NETWORK ERROR ${method} ${path} after ${elapsed}ms`, err);
           throw { failureCode: navigator.onLine === false ? "offline" : "unknown" };
         } finally {
           clearTimeout(timer);
